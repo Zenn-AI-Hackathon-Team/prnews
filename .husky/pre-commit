@@ -1,0 +1,25 @@
+echo "🐶 Husky: コミット前にBiomeのチェックを実行します..."
+bun run check
+
+if [ $? -ne 0 ]; then
+  echo "❌ Biomeのチェックに失敗しました。問題を修正して再度コミットしてください。"
+  exit 1
+fi
+echo "✅ Biomeのチェックをパスしました！コミットを続行します..."
+
+# main、develop、devブランチへのコミットを制限
+echo "🐶 Husky: 現在のブランチ名を確認しています..."
+
+current_branch=$(git symbolic-ref --short HEAD)
+
+PROTECTED_BRANCHES="main develop dev"
+
+for protected_branch in $PROTECTED_BRANCHES; do
+  if [ "$current_branch" = "$protected_branch" ]; then
+    echo "❌ エラー: '$current_branch' ブランチへの直接コミットは許可されていません！"
+    echo "新しいフィーチャーブランチ（例: feat/your-feature-name）を作成し、そこでコミットしてください。"
+    exit 1 # コミットを中止
+  fi
+done
+
+echo "✅ ブランチチェックをパスしました。"
