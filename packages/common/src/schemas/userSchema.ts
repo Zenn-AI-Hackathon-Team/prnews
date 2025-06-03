@@ -1,27 +1,24 @@
-// packages/common/src/schemas/userSchema.ts
 import { z } from "zod";
 
 export const userSchema = z.object({
-	id: z.string().uuid().describe("アプリ固有のユーザーID (UUIDなど)"),
-	githubUserId: z.number().int().positive().describe("GitHubユーザーID"), //
-	githubUsername: z.string().min(1).describe("GitHubユーザー名 (例: octocat)"), //
-	githubDisplayName: z
-		.string()
-		.nullable()
-		.optional()
-		.describe("GitHub表示名 (例: The Octocat)"), // TODO: GitHub APIのレスポンスに合わせて、必須/任意や型を再確認する
+	id: z.string().uuid("ユーザーIDは UUID 形式で入力してください"),
+	githubUserId: z
+		.number()
+		.int("GitHub ユーザーIDは整数で入力してください")
+		.positive("GitHub ユーザーIDは正の数で入力してください"),
+	githubUsername: z.string().min(1, "GitHub ユーザー名を入力してください"),
+	githubDisplayName: z.string().nullable().optional(),
 	email: z
 		.string()
 		.email("正しいメールアドレス形式で入力してください")
-		.describe("メールアドレス"), //
+		.nullable()
+		.optional(),
 	avatarUrl: z
 		.string()
-		.url("正しいURL形式で入力してください")
+		.url("正しい URL 形式で入力してください")
 		.nullable()
-		.optional()
-		.describe("プロフィール画像のURL"), // TODO: GitHub APIのレスポンスに合わせて、必須/任意や型を再確認する
-	createdAt: z.string().datetime().optional().describe("ユーザー作成日時"),
-	updatedAt: z.string().datetime().optional().describe("ユーザー更新日時"),
+		.optional(),
+	createdAt: z.string().datetime("正しい日時形式で入力してください").optional(),
+	updatedAt: z.string().datetime("正しい日時形式で入力してください").optional(),
 });
-
 export type User = z.infer<typeof userSchema>;
