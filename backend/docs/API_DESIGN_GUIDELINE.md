@@ -1,4 +1,4 @@
-# API設計ガイドライン（改訂版）
+# API設計ガイドライン
 
 本ガイドラインは **Hono + Zod + Hono Client** を用いた REST API 設計方針を示す。**成功・失敗で同一キー構造**を持つ `ApiResponse<T>` を正式採用し、`error.code` は列挙型で管理する。また、`ErrorCode` と HTTP ステータスコードを 1 か所でマッピングし、実装の重複を排除する。
 
