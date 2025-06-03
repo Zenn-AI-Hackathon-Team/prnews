@@ -1,4 +1,8 @@
-# API設計ガイドライン
+# API設計ガイドライン（改訂版）
+
+本ガイドラインは **Hono + Zod + Hono Client** を用いた REST API 設計方針を示す。**成功・失敗で同一キー構造**を持つ `ApiResponse<T>` を正式採用し、`error.code` は列挙型で管理する。また、`ErrorCode` と HTTP ステータスコードを 1 か所でマッピングし、実装の重複を排除する。
+
+---
 
 ## 1. はじめに
 
@@ -8,112 +12,161 @@
 
 ## 2. 共通レスポンススキーマ
 
-全エンドポイントは共通レスポンススキーマに準拠し、クライアント側のハンドリングを単純化する。
+### 2.1 エラーコードの列挙型
 
-### 2.1 成功レスポンス `SuccessResponse`
+```typescript
+// packages/common/src/errorCodes.ts
+export const ErrorCode = {
+  VALIDATION_ERROR:      'VALIDATION_ERROR',
+  UNAUTHENTICATED:       'UNAUTHENTICATED',
+  FORBIDDEN:             'FORBIDDEN',
+  NOT_FOUND:             'NOT_FOUND',
+  INTERNAL_SERVER_ERROR: 'INTERNAL_SERVER_ERROR',
+} as const;
+
+export type ErrorCode = typeof ErrorCode[keyof typeof ErrorCode];
+```
+
+### 2.2 ApiResponse 型と Zod スキーマ
 
 ```typescript
 // packages/common/src/schemas/apiResponseSchema.ts
 import { z } from 'zod';
+import { ErrorCode } from '../errorCodes';
 
-export const successResponseSchema = <T extends z.ZodTypeAny>(dataSchema: T) =>
+// 成功レスポンス
+const successPart = <T extends z.ZodTypeAny>(dataSchema: T) =>
   z.object({
-    success: z.literal(true).describe('処理成功時は常に true'),
-    data: dataSchema.describe('レスポンス本体'),
-    message: z.string().optional().describe('成功メッセージ（任意）'),
+    success: z.literal(true),
+    data:    dataSchema,
+    message: z.string().optional(),
   });
 
-export type SuccessResponse<T> = z.infer<ReturnType<typeof successResponseSchema<T>>>;
-```
-
-### 2.2 エラーレスポンス `ErrorResponse`
-
-```typescript
-// packages/common/src/schemas/apiResponseSchema.ts
-import { z } from 'zod';
-
-export const errorResponseSchema = z.object({
-  success: z.literal(false).describe('処理失敗時は常に false'),
+// 失敗レスポンス
+const errorPart = z.object({
+  success: z.literal(false),
   error: z.object({
-    code: z.string().describe("アプリ固有のエラーコード (例: 'VALIDATION_ERROR')"),
-    message: z.string().describe('開発者／ユーザー向けメッセージ'),
-    details: z.any().optional().describe('追加情報（任意）'),
+    code:    z.enum([...Object.values(ErrorCode)] as [ErrorCode, ...ErrorCode[]]),
+    details: z.any().optional(),
   }),
+  message: z.string().optional(),
 });
 
-export type ErrorResponse = z.infer<typeof errorResponseSchema>;
+export const apiResponseSchema = <T extends z.ZodTypeAny>(dataSchema: T) =>
+  z.discriminatedUnion('success', [successPart(dataSchema), errorPart]);
+
+export type ApiResponse<T> = z.infer<ReturnType<typeof apiResponseSchema<T>>>;
 ```
 
-### 2.3 HTTP ステータスコードと `error.code` の使い分け
+**プロパティ**
 
-- **200 OK** – 正常取得・更新
-- **201 Created** – リソース新規作成成功
-- **400 Bad Request** – クライアントリクエスト不正 (`VALIDATION_ERROR`)
-- **401 Unauthorized** – 未認証／トークン不正 (`UNAUTHENTICATED`)
-- **403 Forbidden** – 認証済みだが権限不足 (`FORBIDDEN`)
-- **404 Not Found** – リソースが存在しない (`NOT_FOUND`)
-- **422 Unprocessable Entity** – バリデーション失敗 (`VALIDATION_ERROR`)
-- **500 Internal Server Error** – サーバ内部エラー (`INTERNAL_SERVER_ERROR`)
+* `success` (`boolean`): `true` = 成功 / `false` = 失敗
+* `data` (`T`, 成功時のみ): レスポンス本体
+* `error` (`{ code, details? }`, 失敗時のみ): アプリ固有のエラー情報
+* `message` (`string?`): UI 向けの補助メッセージ
 
 ---
 
-## 3. API エンドポイント設計原則
+## 3. ErrorCode ↔ HTTP ステータスのマッピング
 
-* **命名規則**: URL パスは複数形ケバブケースでリソースを表す（例: `/users`, `/pull-request-articles`）。
-* **HTTP メソッド**:
-  * `GET` – 取得
-  * `POST` – 新規作成
-  * `PATCH` – 部分更新
-  * `DELETE` – 削除
-* **レスポンス**: 本ガイドライン第 2 章の共通スキーマに準拠。
-* **認証**: `Authorization: Bearer <token>` ヘッダに Firebase などで取得した ID トークンを送る。
-* **認可**: ハンドラ内でリソースオーナーシップ・権限を検証する。
+1 ファイルにマッピング表を置き、**`respondError` で自動変換**する。
+
+```typescript
+// packages/common/src/errorStatusMap.ts
+import { ErrorCode } from './errorCodes';
+
+export const errorStatusMap: Record<ErrorCode, number> = {
+  VALIDATION_ERROR:      422,
+  UNAUTHENTICATED:       401,
+  FORBIDDEN:             403,
+  NOT_FOUND:             404,
+  INTERNAL_SERVER_ERROR: 500,
+};
+```
+
+> **ポイント**
+>
+> * ステータス運用を変更したい場合はこのファイルだけ直せば良い。
+> * 未定義コードは 500 にフォールバックさせるなど、デフォルト値を決めておく。
 
 ---
 
-## 4. 共通レスポンスヘルパー
-
-### 4.1 バックエンド (Hono) 実装例
+## 4. 共通レスポンスヘルパ
 
 ```typescript
 // backend/src/utils/apiResponder.ts
 import { Context } from 'hono';
-import { SuccessResponse, ErrorResponse } from '@prnews/common';
+import type { ApiResponse, ErrorCode } from '@prnews/common';
+import { errorStatusMap } from '@prnews/common';
 
-export const respondSuccess = <T>(c: Context, data: T, status = 200, message?: string) =>
-  c.json<SuccessResponse<T>>({ success: true, data, message }, status);
+/** 成功レスポンス */
+export const respondSuccess = <T>(
+  c: Context,
+  data: T,
+  status: number = 200,
+  message?: string,
+) =>
+  c.json<ApiResponse<T>>({ success: true, data, message }, status);
 
+/** 失敗レスポンス（ステータス自動設定） */
 export const respondError = (
   c: Context,
-  code: ErrorResponse['error']['code'],
-  message: string,
-  status: number,
+  code: ErrorCode,
+  message?: string,
   details?: unknown,
-) =>
-  c.json<ErrorResponse>({ success: false, error: { code, message, details } }, status);
+  statusOverride?: number,  // 例外的に上書きしたいときだけ指定
+) => {
+  const status = statusOverride ?? errorStatusMap[code] ?? 500;
+  return c.json<ApiResponse<never>>(
+    { success: false, error: { code, details }, message },
+    status,
+  );
+};
 ```
 
-### 4.2 フロントエンド (Hono Client) 例
+---
+
+## 5. フロントエンド利用例 (Hono Client)
 
 ```typescript
 // frontend/src/services/apiClient.ts
 import { hc } from 'hono/client';
 import type { AppType } from '~/backend/src';
-import type { SuccessResponse, ErrorResponse, User } from '@prnews/common';
-
-type UserApiResponse = SuccessResponse<User> | ErrorResponse;
+import type { ApiResponse, ErrorCode, User } from '@prnews/common';
 
 const client = hc<AppType>('/');
 
 export async function fetchMyProfile(): Promise<User | null> {
-  const res = await client.api.users.me.$get();
-  const json = (await res.json()) as UserApiResponse;
+  const res  = await client.api.users.me.$get();
+  const json = (await res.json()) as ApiResponse<User>;
 
   if (!json.success) {
-    console.error(`API Error(${json.error.code}): ${json.error.message}`);
+    switch (json.error.code) {
+      case ErrorCode.UNAUTHENTICATED:
+        // ログイン画面へ
+        break;
+      case ErrorCode.VALIDATION_ERROR:
+        // フォームエラー表示
+        break;
+      default:
+        alert(json.message ?? 'Unexpected error');
+    }
     return null;
   }
+
   return json.data;
 }
 ```
 
+---
+
+## 6. 運用ガイド
+
+1. **ErrorCode の追加**
+   `packages/common/src/errorCodes.ts` に定義し、`errorStatusMap` に対応ステータスを追加する。
+2. **ステータスの特殊扱い**
+   同じ `ErrorCode` で複数ステータスを使い分けたい場合は、`respondError` の `statusOverride` 引数で上書きする。
+3. **バリデーション失敗の details**
+   `details` を `[{ field: string; reason: string }]` の形で返すと、クライアントのフォームハンドリングが容易になる。
+
+---
