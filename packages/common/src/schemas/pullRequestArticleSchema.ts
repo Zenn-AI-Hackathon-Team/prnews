@@ -16,14 +16,6 @@ const notablePointSchema = z.object({
 	point: z.string().describe("具体的な指摘内容"),
 });
 
-// 技術的な学びの一つを表すスキーマ
-const technicalLearningSchema = z.object({
-	category: z
-		.string()
-		.describe("学びの分類（例: アルゴリズム、デザインパターン）"), // TODO: 具体的な分類が決まったらenum化も検討 (チームで検討)
-	learning: z.string().describe("具体的な学びの内容"),
-});
-
 export const pullRequestArticleSchema = z.object({
 	id: z
 		.string()
@@ -46,10 +38,6 @@ export const pullRequestArticleSchema = z.object({
 		.array(notablePointSchema)
 		.optional()
 		.describe("注目ポイント・重要な変更点のリスト"), // TODO: AIによる生成の安定性や必須度合いを要検証
-	technicalLearnings: z
-		.array(technicalLearningSchema)
-		.optional()
-		.describe("技術的な学び・ポイントのリスト"), // TODO: AIによる生成の安定性や必須度合いを要検証
 
 	// PR自体に関する情報
 	githubPrUrl: z
