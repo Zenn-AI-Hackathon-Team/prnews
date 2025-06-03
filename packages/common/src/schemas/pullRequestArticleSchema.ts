@@ -23,12 +23,14 @@ const categoryEnum = z.enum([
 
 const mainChangeSchema = z.object({
 	fileName: z.string(),
-	changeType: changeTypeEnum,
+	changeTypes: z
+		.array(changeTypeEnum)
+		.min(1, "変更種別は1つ以上選択してください"),
 	description: z.string(),
 });
 
 const notablePointSchema = z.object({
-	category: categoryEnum,
+	categories: z.array(categoryEnum).min(1, "カテゴリは1つ以上選択してください"),
 	point: z.string(),
 });
 

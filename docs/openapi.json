@@ -185,29 +185,39 @@
 						"type": "string",
 						"description": "変更されたファイル名"
 					},
-					"changeType": {
-						"$ref": "#/components/schemas/ChangeTypeEnum"
+					"changeTypes": {
+						"type": "array",
+						"items": {
+							"$ref": "#/components/schemas/ChangeTypeEnum"
+						},
+						"description": "変更の種類（複数選択可）",
+						"minItems": 1
 					},
 					"description": {
 						"type": "string",
 						"description": "変更内容の説明"
 					}
 				},
-				"required": ["fileName", "changeType", "description"]
+				"required": ["fileName", "changeTypes", "description"]
 			},
 			"NotablePoint": {
 				"type": "object",
 				"description": "特筆すべき点を示すスキーマ",
 				"properties": {
-					"category": {
-						"$ref": "#/components/schemas/CategoryEnum"
+					"categories": {
+						"type": "array",
+						"items": {
+							"$ref": "#/components/schemas/CategoryEnum"
+						},
+						"description": "注目ポイントのカテゴリ（複数選択可）",
+						"minItems": 1
 					},
 					"point": {
 						"type": "string",
 						"description": "注目ポイントの内容"
 					}
 				},
-				"required": ["category", "point"]
+				"required": ["categories", "point"]
 			},
 			"PullRequestArticle": {
 				"type": "object",
@@ -1070,7 +1080,7 @@
 										"mainChanges": [
 											{
 												"fileName": "src/widget.ts",
-												"changeType": "FEAT",
+												"changeTypes": ["FEAT"],
 												"description": "Widgetクラスに新しいメソッドを追加"
 											}
 										],
