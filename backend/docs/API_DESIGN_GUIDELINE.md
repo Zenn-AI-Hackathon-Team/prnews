@@ -1,4 +1,3 @@
-```md
 # API設計ガイドライン
 
 ## 1. はじめに
@@ -13,7 +12,7 @@
 
 ### 2.1 成功レスポンス `SuccessResponse`
 
-'''typescript
+```typescript
 // packages/common/src/schemas/apiResponseSchema.ts
 import { z } from 'zod';
 
@@ -25,11 +24,11 @@ export const successResponseSchema = <T extends z.ZodTypeAny>(dataSchema: T) =>
   });
 
 export type SuccessResponse<T> = z.infer<ReturnType<typeof successResponseSchema<T>>>;
-'''
+```
 
 ### 2.2 エラーレスポンス `ErrorResponse`
 
-'''typescript
+```typescript
 // packages/common/src/schemas/apiResponseSchema.ts
 import { z } from 'zod';
 
@@ -43,7 +42,7 @@ export const errorResponseSchema = z.object({
 });
 
 export type ErrorResponse = z.infer<typeof errorResponseSchema>;
-'''
+```
 
 ### 2.3 HTTP ステータスコードと `error.code` の使い分け
 
@@ -76,7 +75,7 @@ export type ErrorResponse = z.infer<typeof errorResponseSchema>;
 
 ### 4.1 バックエンド (Hono) 実装例
 
-'''typescript
+```typescript
 // backend/src/utils/apiResponder.ts
 import { Context } from 'hono';
 import { SuccessResponse, ErrorResponse } from '@prnews/common';
@@ -92,11 +91,11 @@ export const respondError = (
   details?: unknown,
 ) =>
   c.json<ErrorResponse>({ success: false, error: { code, message, details } }, status);
-'''
+```
 
 ### 4.2 フロントエンド (Hono Client) 例
 
-'''typescript
+```typescript
 // frontend/src/services/apiClient.ts
 import { hc } from 'hono/client';
 import type { AppType } from '~/backend/src';
@@ -116,5 +115,5 @@ export async function fetchMyProfile(): Promise<User | null> {
   }
   return json.data;
 }
-'''
+```
 
