@@ -17,4 +17,13 @@ export const githubMock = (): GithubPort => ({
 			createdAt: new Date().toISOString(),
 		};
 	},
+	async getRepositoryByOwnerAndRepo(owner: string, repo: string) {
+		return {
+			githubRepoId: 123456,
+			repositoryFullName: `${owner}/${repo}`,
+			owner,
+			repo,
+			// 必要に応じて追加フィールド
+		};
+	},
 });

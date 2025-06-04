@@ -1,20 +1,26 @@
 import { randomUUID } from "node:crypto";
 import {
 	type AuthSession,
+	type FavoriteRepository,
 	userSchema as UserSchema,
 	type User as UserSchemaType,
 } from "@prnews/common";
+import { favoriteRepositorySchema } from "@prnews/common";
 import {
 	createUser,
 	createUserObjectFromAuthenticatedUser,
 } from "../domain/user";
 import type { AuthSessionRepoPort } from "../ports/authSessionRepoPort";
+import type { FavoriteRepositoryRepoPort } from "../ports/favoriteRepositoryRepoPort.js";
+import type { GithubPort } from "../ports/githubPort.js";
 import type { UserRepoPort } from "../ports/userRepoPort";
 import type { AuthenticatedUser } from "../presentation/middlewares/authMiddleware";
 
 export const createUserService = (deps: {
 	userRepo: UserRepoPort;
 	authSessionRepo: AuthSessionRepoPort;
+	favoriteRepositoryRepo: FavoriteRepositoryRepoPort;
+	githubPort: GithubPort;
 }) => {
 	const getCurrentUser = async (
 		authenticatedUser: AuthenticatedUser | undefined,
@@ -164,11 +170,58 @@ export const createUserService = (deps: {
 		return saved;
 	};
 
+	const registerFavoriteRepository = async (
+		authenticatedUser: AuthenticatedUser | undefined,
+		owner: string,
+		repo: string,
+	): Promise<
+		{ alreadyExists: boolean; favorite: FavoriteRepository } | { error: string }
+	> => {
+		if (!authenticatedUser) {
+			return { error: "User not authenticated" };
+		}
+		// GitHub APIでリポジトリ情報取得
+		let repoInfo: import("../domain/repository.js").RepositoryInfo;
+		try {
+			repoInfo = await deps.githubPort.getRepositoryByOwnerAndRepo(owner, repo);
+		} catch (e) {
+			return { error: "GITHUB_REPO_NOT_FOUND" };
+		}
+		// 既存チェック
+		const existing =
+			await deps.favoriteRepositoryRepo.findByUserIdAndGithubRepoId(
+				authenticatedUser.id,
+				repoInfo.githubRepoId,
+			);
+		if (existing) {
+			return { alreadyExists: true, favorite: existing };
+		}
+		// 新規作成
+		const now = new Date().toISOString();
+		const favorite: FavoriteRepository = {
+			id: randomUUID(),
+			userId: authenticatedUser.id,
+			githubRepoId: repoInfo.githubRepoId,
+			repositoryFullName: repoInfo.repositoryFullName,
+			owner: repoInfo.owner,
+			repo: repoInfo.repo,
+			registeredAt: now,
+		};
+		// バリデーション
+		const validation = favoriteRepositorySchema.safeParse(favorite);
+		if (!validation.success) {
+			return { error: "VALIDATION_ERROR" };
+		}
+		const saved = await deps.favoriteRepositoryRepo.save(favorite);
+		return { alreadyExists: false, favorite: saved };
+	};
+
 	return {
 		getCurrentUser,
 		logoutUser,
 		createUser,
 		createSession,
+		registerFavoriteRepository,
 	};
 };
 

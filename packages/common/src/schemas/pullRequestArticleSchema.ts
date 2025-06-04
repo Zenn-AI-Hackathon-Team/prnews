@@ -44,6 +44,12 @@ const articleContentSchema = z.object({
 	mainChanges: z.array(mainChangeSchema).optional(),
 	notablePoints: z.array(notablePointSchema).optional(),
 	summaryGeneratedAt: z.string().datetime("正しい日時形式で入力してください"),
+	likeCount: z
+		.number()
+		.int()
+		.nonnegative()
+		.default(0)
+		.describe("この言語版の記事のいいね数"),
 });
 export type ArticleContent = z.infer<typeof articleContentSchema>;
 

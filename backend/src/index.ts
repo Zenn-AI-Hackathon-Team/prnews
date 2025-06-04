@@ -7,6 +7,7 @@ import {
 } from "./presentation/middlewares/authMiddleware";
 import generalRoutes from "./presentation/routes/generalRoutes";
 import prRoutes from "./presentation/routes/prRoutes";
+import rankingRoutes from "./presentation/routes/rankingRoutes";
 import userRoutes from "./presentation/routes/userRoutes";
 
 const app = new Hono<{ Variables: Dependencies & AuthVariables }>();
@@ -21,16 +22,19 @@ app.use("*", async (c, next) => {
 	c.set("generalService", deps.generalService);
 	c.set("prService", deps.prService);
 	c.set("userService", deps.userService);
+	c.set("rankingService", deps.rankingService);
 	await next();
 });
 
 app.use("/repos/*", authMiddleware);
 app.use("/users/*", authMiddleware);
 app.use("/auth/*", authMiddleware);
+app.use("/articles/*", authMiddleware);
 
 app.route("/", generalRoutes);
 app.route("/", prRoutes);
 app.route("/", userRoutes);
+app.route("/", rankingRoutes);
 
 serve(
 	{

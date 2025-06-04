@@ -15,4 +15,5 @@ export interface PrRepoPort {
 		prNumber: number,
 	): Promise<PullRequest | null>;
 	findArticleByPrId(prId: string): Promise<PullRequestArticle | null>;
+	findAllArticles(): Promise<PullRequestArticle[]>;
 }
