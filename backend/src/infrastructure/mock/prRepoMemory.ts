@@ -22,5 +22,19 @@ export const prRepoMemory = (): PrRepoPort => {
 		async findByNumber(owner, repo, number) {
 			return prs.get(makeKey(owner, repo, number)) ?? null;
 		},
+
+		async findByOwnerRepoNumber(owner, repo, prNumber) {
+			const targetRepoFullName = `${owner}/${repo}`;
+			for (const pr of prs.values()) {
+				if (pr.repository === targetRepoFullName && pr.prNumber === prNumber) {
+					return pr;
+				}
+			}
+			return null;
+		},
+
+		async findArticleByPrId(prId) {
+			return arts.get(prId) ?? null;
+		},
 	};
 };

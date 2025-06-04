@@ -23,6 +23,24 @@ const articleParamsSchema = z.object({
 		.transform(Number),
 });
 
+const getPrParamsSchema = z.object({
+	owner: z.string().min(1),
+	repo: z.string().min(1),
+	number: z
+		.string()
+		.regex(/^[0-9]+$/)
+		.transform(Number),
+});
+
+const getArticleParamsSchema = z.object({
+	owner: z.string().min(1),
+	repo: z.string().min(1),
+	number: z
+		.string()
+		.regex(/^[0-9]+$/)
+		.transform(Number),
+});
+
 prRoutes.post(
 	"/repos/:owner/:repo/pulls/:number/ingest",
 	validator("param", (value, c) => {
@@ -125,6 +143,117 @@ prRoutes.post(
 				c,
 				ErrorCode.INTERNAL_SERVER_ERROR,
 				"Failed to generate article",
+			);
+		}
+	},
+);
+
+prRoutes.get(
+	"/repos/:owner/:repo/pulls/:number",
+	validator("param", (value, c) => {
+		const parsed = getPrParamsSchema.safeParse(value);
+		if (!parsed.success) {
+			return respondError(
+				c,
+				ErrorCode.VALIDATION_ERROR,
+				"Invalid path parameters for getting PR",
+				parsed.error.flatten().fieldErrors,
+			);
+		}
+		return parsed.data;
+	}),
+	async (c) => {
+		const { prService } = c.var;
+		const params = c.req.valid("param");
+		try {
+			const pr = await prService.getPullRequest(
+				params.owner,
+				params.repo,
+				params.number,
+			);
+			if (!pr) {
+				return respondError(
+					c,
+					ErrorCode.NOT_FOUND,
+					"Pull request not found in cache",
+				);
+			}
+			const validated = pullRequestSchema.safeParse(pr);
+			if (!validated.success) {
+				console.error("PR response validation failed:", validated.error);
+				return respondError(
+					c,
+					ErrorCode.INTERNAL_SERVER_ERROR,
+					"PR response data validation failed",
+				);
+			}
+			return respondSuccess(c, validated.data);
+		} catch (error: unknown) {
+			console.error("Get PR failed:", error);
+			return respondError(
+				c,
+				ErrorCode.INTERNAL_SERVER_ERROR,
+				"Failed to get pull request",
+			);
+		}
+	},
+);
+
+prRoutes.get(
+	"/repos/:owner/:repo/pulls/:number/article",
+	validator("param", (value, c) => {
+		const parsed = getArticleParamsSchema.safeParse(value);
+		if (!parsed.success) {
+			return respondError(
+				c,
+				ErrorCode.VALIDATION_ERROR,
+				"Invalid path parameters for getting article",
+				parsed.error.flatten().fieldErrors,
+			);
+		}
+		return parsed.data;
+	}),
+	async (c) => {
+		const { prService, prRepo } = c.var;
+		const params = c.req.valid("param");
+		try {
+			const pullRequest = await prRepo.findByOwnerRepoNumber(
+				params.owner,
+				params.repo,
+				params.number,
+			);
+			if (!pullRequest) {
+				return respondError(
+					c,
+					ErrorCode.NOT_FOUND,
+					"Original pull request not found",
+				);
+			}
+			const prId = pullRequest.id;
+			const article = await prService.getArticle(prId);
+			if (!article) {
+				return respondError(
+					c,
+					ErrorCode.NOT_FOUND,
+					"Article not found for this pull request",
+				);
+			}
+			const validated = pullRequestArticleSchema.safeParse(article);
+			if (!validated.success) {
+				console.error("Article response validation failed:", validated.error);
+				return respondError(
+					c,
+					ErrorCode.INTERNAL_SERVER_ERROR,
+					"Article response data validation failed",
+				);
+			}
+			return respondSuccess(c, validated.data);
+		} catch (error: unknown) {
+			console.error("Get article failed:", error);
+			return respondError(
+				c,
+				ErrorCode.INTERNAL_SERVER_ERROR,
+				"Failed to get article",
 			);
 		}
 	},

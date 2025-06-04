@@ -1,5 +1,6 @@
 import {
 	type PullRequest as CommonPullRequest,
+	type PullRequestArticle as PullRequestArticleType,
 	pullRequestSchema,
 } from "@prnews/common";
 import { ErrorCode } from "@prnews/common";
@@ -99,5 +100,57 @@ export const createPrService = (deps: {
 
 		return article;
 	};
-	return { ingestPr, generateArticle };
+	const getPullRequest = async (
+		owner: string,
+		repo: string,
+		pullNumber: number,
+	): Promise<CommonPullRequest | null> => {
+		const pr = await deps.prRepo.findByOwnerRepoNumber(owner, repo, pullNumber);
+		if (!pr) {
+			return null;
+		}
+		// APIスキーマに整形
+		return {
+			prNumber: pr.prNumber,
+			repositoryFullName: pr.repository,
+			githubPrUrl: `https://github.com/${pr.repository}/pull/${pr.prNumber}`,
+			title: pr.title,
+			body: null, // 現状bodyはnull固定
+			diff: pr.diff,
+			authorLogin: pr.authorLogin,
+			githubPrCreatedAt: pr.createdAt,
+		};
+	};
+	const getArticle = async (
+		prId: string,
+	): Promise<PullRequestArticleType | null> => {
+		const article = await deps.prRepo.findArticleByPrId(prId);
+		if (!article) {
+			return null;
+		}
+		// APIスキーマに整形して返す
+		return {
+			...article,
+			repositoryFullName: article.repository,
+			githubPrUrl: `https://github.com/${article.repository}/pull/${article.prNumber}`,
+			body: null,
+			githubPrCreatedAt: article.createdAt,
+			// 型変換: 文字列なら配列に変換、なければundefined
+			mainChanges:
+				typeof article.mainChanges === "string"
+					? [
+							{
+								fileName: "N/A",
+								changeTypes: ["CHORE"],
+								description: article.mainChanges,
+							},
+						]
+					: article.mainChanges,
+			notablePoints:
+				typeof article.notablePoints === "string"
+					? [{ categories: ["TECH"], point: article.notablePoints }]
+					: article.notablePoints,
+		};
+	};
+	return { ingestPr, generateArticle, getPullRequest, getArticle };
 };
