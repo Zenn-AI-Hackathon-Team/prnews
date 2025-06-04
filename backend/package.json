@@ -8,7 +8,9 @@
 	},
 	"dependencies": {
 		"@hono/node-server": "^1.14.3",
-		"hono": "^4.7.11"
+		"@prnews/common": "workspace:*",
+		"hono": "^4.7.11",
+		"zod": "^3.25.48"
 	},
 	"devDependencies": {
 		"@types/node": "^20.11.17",
