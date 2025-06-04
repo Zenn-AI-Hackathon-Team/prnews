@@ -75,12 +75,10 @@ prRoutes.post(
 				);
 			}
 			return respondSuccess(c, validatedResponse.data);
-			// TODO: ここのanyをなんとかしたい
-			// biome-ignore lint/suspicious/noExplicitAny: <explanation>
-		} catch (error: any) {
+		} catch (error: unknown) {
 			console.error("Ingest PR failed:", error);
-			if (Object.values(ErrorCode).includes(error.message as ErrorCode)) {
-				return respondError(c, error.message as ErrorCode);
+			if (Object.values(ErrorCode).includes(error as ErrorCode)) {
+				return respondError(c, error as ErrorCode);
 			}
 			return respondError(
 				c,
