@@ -128,28 +128,12 @@ export const createPrService = (deps: {
 		if (!article) {
 			return null;
 		}
-		// APIスキーマに整形して返す
 		return {
 			...article,
 			repositoryFullName: article.repository,
 			githubPrUrl: `https://github.com/${article.repository}/pull/${article.prNumber}`,
 			body: null,
 			githubPrCreatedAt: article.createdAt,
-			// 型変換: 文字列なら配列に変換、なければundefined
-			mainChanges:
-				typeof article.mainChanges === "string"
-					? [
-							{
-								fileName: "N/A",
-								changeTypes: ["CHORE"],
-								description: article.mainChanges,
-							},
-						]
-					: article.mainChanges,
-			notablePoints:
-				typeof article.notablePoints === "string"
-					? [{ categories: ["TECH"], point: article.notablePoints }]
-					: article.notablePoints,
 		};
 	};
 	return { ingestPr, generateArticle, getPullRequest, getArticle };

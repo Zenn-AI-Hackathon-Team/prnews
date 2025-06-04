@@ -34,8 +34,8 @@ const notablePointSchema = z.object({
 	point: z.string(),
 });
 
-export const pullRequestArticleSchema = pullRequestSchema.extend({
-	id: z.string().uuid("記事 ID は UUID 形式で入力してください"),
+// 言語ごとの記事内容のスキーマ
+const articleContentSchema = z.object({
 	aiGeneratedTitle: z
 		.string()
 		.min(1, "AI 生成タイトルは必須です")
@@ -44,6 +44,22 @@ export const pullRequestArticleSchema = pullRequestSchema.extend({
 	mainChanges: z.array(mainChangeSchema).optional(),
 	notablePoints: z.array(notablePointSchema).optional(),
 	summaryGeneratedAt: z.string().datetime("正しい日時形式で入力してください"),
+});
+export type ArticleContent = z.infer<typeof articleContentSchema>;
+
+export const pullRequestArticleSchema = pullRequestSchema.extend({
+	id: z.string().uuid("記事 ID は UUID 形式で入力してください"),
+	contents: z
+		.record(
+			z
+				.string()
+				.length(2, "言語コードは2文字である必要があります (例: ja, en)"),
+			articleContentSchema,
+		)
+		.optional()
+		.describe(
+			"言語コードをキーとした記事内容のオブジェクト。記事がまだない場合はundefined。",
+		),
 	createdAt: z.string().datetime("正しい日時形式で入力してください").optional(),
 	updatedAt: z.string().datetime("正しい日時形式で入力してください").optional(),
 });

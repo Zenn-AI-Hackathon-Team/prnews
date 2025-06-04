@@ -38,7 +38,7 @@
 
     -   認証: 必須
     -   入力: なし
-    -   出力スキーマ: `User`
+    -   出力スキーマ: `User`（`id`, `githubUsername`, `avatarUrl`, `language` など）
     -   典型レスポンス例（成功）:
 
         ```json
@@ -47,7 +47,8 @@
         	"data": {
         		"id": "5f8c9c1d-…",
         		"githubUsername": "octocat",
-        		"avatarUrl": "https://avatars.githubusercontent.com/u/1?v=4"
+        		"avatarUrl": "https://avatars.githubusercontent.com/u/1?v=4",
+        		"language": "ja"
         	}
         }
         ```
@@ -68,6 +69,15 @@
         ```
 
     -   処理: `AuthSession.revokedAt` を現在時刻で更新し、以降のリクエストを 401 で拒否。
+
+### 2‑3. サインアップ
+
+-   **POST /auth/signup**
+
+    -   認証: 必須
+    -   入力: `{ language?: string }`（2文字言語コード、省略時は"ja"）
+    -   出力スキーマ: `User`
+    -   備考: サインアップ時に希望言語を指定可能。未指定時は日本語（ja）で登録。
 
 ---
 

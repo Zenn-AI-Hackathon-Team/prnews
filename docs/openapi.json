@@ -90,6 +90,13 @@
 						"nullable": true,
 						"description": "アバター画像のURL (正しいURL形式)"
 					},
+					"language": {
+						"type": "string",
+						"description": "ユーザーの希望言語コード (例: ja, en)",
+						"minLength": 2,
+						"maxLength": 2,
+						"default": "ja"
+					},
 					"createdAt": {
 						"type": "string",
 						"format": "date-time",
@@ -103,7 +110,7 @@
 						"nullable": true
 					}
 				},
-				"required": ["id", "githubUserId", "githubUsername"]
+				"required": ["id", "githubUserId", "githubUsername", "language"]
 			},
 			"PullRequest": {
 				"type": "object",
@@ -221,64 +228,67 @@
 			},
 			"PullRequestArticle": {
 				"type": "object",
-				"description": "Pull Requestの解説記事を表すスキーマ。PullRequestの基本情報を拡張しています。",
-				"allOf": [
-					{
-						"$ref": "#/components/schemas/PullRequest"
-					}
-				],
+				"description": "Pull Request解説記事（多言語対応）",
 				"properties": {
 					"id": {
 						"type": "string",
 						"format": "uuid",
 						"description": "記事ID (UUID形式)"
 					},
-					"aiGeneratedTitle": {
-						"type": "string",
-						"description": "AIによって生成された記事タイトル (必須、1～80文字)",
-						"minLength": 1,
-						"maxLength": 80
-					},
-					"backgroundAndPurpose": {
-						"type": "string",
-						"nullable": true,
-						"description": "背景と目的"
-					},
-					"mainChanges": {
-						"type": "array",
-						"items": {
-							"$ref": "#/components/schemas/MainChange"
-						},
-						"nullable": true,
-						"description": "主要な変更点のリスト"
-					},
-					"notablePoints": {
-						"type": "array",
-						"items": {
-							"$ref": "#/components/schemas/NotablePoint"
-						},
-						"nullable": true,
-						"description": "特筆すべき点のリスト"
-					},
-					"summaryGeneratedAt": {
-						"type": "string",
-						"format": "date-time",
-						"description": "AIによる要約が生成された日時 (正しい日時形式)"
+					"contents": {
+						"type": "object",
+						"description": "言語コードをキーとした記事内容のオブジェクト。記事がまだない場合はundefined。",
+						"additionalProperties": {
+							"$ref": "#/components/schemas/ArticleContent"
+						}
 					},
 					"createdAt": {
 						"type": "string",
 						"format": "date-time",
-						"description": "記事の作成日時 (正しい日時形式)",
+						"description": "作成日時 (正しい日時形式)",
 						"nullable": true
 					},
 					"updatedAt": {
 						"type": "string",
 						"format": "date-time",
-						"description": "記事の更新日時 (正しい日時形式)",
+						"description": "更新日時 (正しい日時形式)",
 						"nullable": true
 					}
 				},
-				"required": ["id", "aiGeneratedTitle", "summaryGeneratedAt"]
+				"required": ["id"]
+			},
+			"ArticleContent": {
+				"type": "object",
+				"description": "言語ごとの記事内容",
+				"properties": {
+					"aiGeneratedTitle": {
+						"type": "string",
+						"description": "AI生成タイトル"
+					},
+					"backgroundAndPurpose": {
+						"type": "string",
+						"description": "背景・目的",
+						"nullable": true
+					},
+					"mainChanges": {
+						"type": "array",
+						"items": { "$ref": "#/components/schemas/MainChange" },
+						"description": "主要な変更点",
+						"nullable": true
+					},
+					"notablePoints": {
+						"type": "array",
+						"items": { "$ref": "#/components/schemas/NotablePoint" },
+						"description": "注目ポイント",
+						"nullable": true
+					},
+					"summaryGeneratedAt": {
+						"type": "string",
+						"format": "date-time",
+						"description": "要約生成日時"
+					}
+				},
+				"required": ["aiGeneratedTitle", "summaryGeneratedAt"]
 			},
 			"AuthSession": {
 				"type": "object",
@@ -622,6 +632,55 @@
 										"code": "INTERNAL_SERVER_ERROR"
 									},
 									"message": "サーバー内部でエラーが発生しました。"
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+		"/auth/signup": {
+			"post": {
+				"summary": "ユーザーサインアップ",
+				"description": "新規ユーザー登録。language（2文字コード、省略時ja）を指定可能。",
+				"security": [{ "bearerAuth": [] }],
+				"tags": ["User & Auth"],
+				"requestBody": {
+					"required": false,
+					"content": {
+						"application/json": {
+							"schema": {
+								"type": "object",
+								"properties": {
+									"language": {
+										"type": "string",
+										"description": "希望言語コード (例: ja, en)",
+										"minLength": 2,
+										"maxLength": 2,
+										"default": "ja"
+									}
+								}
+							}
+						}
+					}
+				},
+				"responses": {
+					"201": {
+						"description": "ユーザー作成成功",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/User"
+								}
+							}
+						}
+					},
+					"409": {
+						"description": "既存ユーザー",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ErrorObject"
 								}
 							}
 						}

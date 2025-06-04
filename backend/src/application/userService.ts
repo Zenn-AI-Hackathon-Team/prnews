@@ -85,6 +85,7 @@ export const createUserService = (deps: {
 
 	const createUser = async (
 		authenticatedUser: AuthenticatedUser | undefined,
+		language?: string,
 	): Promise<UserSchemaType | null> => {
 		if (!authenticatedUser) {
 			console.error(
@@ -100,8 +101,10 @@ export const createUserService = (deps: {
 			);
 			return null;
 		}
-		const newUserInputData =
-			createUserObjectFromAuthenticatedUser(authenticatedUser);
+		const newUserInputData = createUserObjectFromAuthenticatedUser(
+			authenticatedUser,
+			language ?? "ja",
+		);
 		const userToSave: UserSchemaType = {
 			id: authenticatedUser.id,
 			...newUserInputData,

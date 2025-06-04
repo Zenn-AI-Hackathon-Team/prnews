@@ -73,7 +73,10 @@ userRoutes.post("/auth/signup", async (c) => {
 		return respondError(c, ErrorCode.UNAUTHENTICATED, "User not authenticated");
 	}
 	try {
-		const created = await userService.createUser(authenticatedUser);
+		const body = await c.req.json().catch(() => ({}));
+		const language =
+			typeof body.language === "string" ? body.language : undefined;
+		const created = await userService.createUser(authenticatedUser, language);
 		if (!created) {
 			// 既に存在する場合は409、それ以外は500
 			const already = await userService.getCurrentUser(authenticatedUser);
