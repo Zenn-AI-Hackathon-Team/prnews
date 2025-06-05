@@ -9,4 +9,11 @@ export interface PrRepoPort {
 		repo: string,
 		number: number,
 	): Promise<PullRequest | null>;
+	findByOwnerRepoNumber(
+		owner: string,
+		repo: string,
+		prNumber: number,
+	): Promise<PullRequest | null>;
+	findArticleByPrId(prId: string): Promise<PullRequestArticle | null>;
+	findAllArticles(): Promise<PullRequestArticle[]>;
 }

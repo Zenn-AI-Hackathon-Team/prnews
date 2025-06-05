@@ -6,4 +6,6 @@ export const errorStatusMap: Record<ErrorCode, number> = {
 	FORBIDDEN: 403,
 	NOT_FOUND: 404,
 	INTERNAL_SERVER_ERROR: 500,
+	GITHUB_REPO_NOT_FOUND: 404,
+	ARTICLE_NOT_FOUND: 404,
 };

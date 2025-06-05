@@ -22,6 +22,8 @@ export const ErrorCode = {
   FORBIDDEN:             'FORBIDDEN',
   NOT_FOUND:             'NOT_FOUND',
   INTERNAL_SERVER_ERROR: 'INTERNAL_SERVER_ERROR',
+  GITHUB_REPO_NOT_FOUND: 'GITHUB_REPO_NOT_FOUND',
+  ARTICLE_NOT_FOUND:     'ARTICLE_NOT_FOUND',
 } as const;
 
 export type ErrorCode = typeof ErrorCode[keyof typeof ErrorCode];
@@ -81,6 +83,8 @@ export const errorStatusMap: Record<ErrorCode, number> = {
   FORBIDDEN:             403,
   NOT_FOUND:             404,
   INTERNAL_SERVER_ERROR: 500,
+  GITHUB_REPO_NOT_FOUND: 404,
+  ARTICLE_NOT_FOUND:     404,
 };
 ```
 
@@ -168,5 +172,19 @@ export async function fetchMyProfile(): Promise<User | null> {
    同じ `ErrorCode` で複数ステータスを使い分けたい場合は、`respondError` の `statusOverride` 引数で上書きする。
 3. **バリデーション失敗の details**
    `details` を `[{ field: string; reason: string }]` の形で返すと、クライアントのフォームハンドリングが容易になる。
+4. **ページネーション付き配列レスポンス**
+   `GET /users/me/liked-articles` や `GET /ranking/articles/likes` など、配列＋メタデータ（ページネーション等）を返す場合は、
+   ```json
+   {
+     "success": true,
+     "data": {
+       "data": [ ... ],
+       "pagination": { "totalItems": 100, "limit": 10, "offset": 0 }
+     }
+   }
+   ```
+   のような形式を推奨する。
+5. **言語指定クエリパラメータ**
+   `lang` または `language` を2文字コードで統一する。
 
 ---

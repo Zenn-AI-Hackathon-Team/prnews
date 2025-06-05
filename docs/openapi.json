@@ -90,6 +90,13 @@
 						"nullable": true,
 						"description": "アバター画像のURL (正しいURL形式)"
 					},
+					"language": {
+						"type": "string",
+						"description": "ユーザーの希望言語コード (例: ja, en)",
+						"minLength": 2,
+						"maxLength": 2,
+						"default": "ja"
+					},
 					"createdAt": {
 						"type": "string",
 						"format": "date-time",
@@ -103,7 +110,7 @@
 						"nullable": true
 					}
 				},
-				"required": ["id", "githubUserId", "githubUsername"]
+				"required": ["id", "githubUserId", "githubUsername", "language"]
 			},
 			"PullRequest": {
 				"type": "object",
@@ -185,90 +192,109 @@
 						"type": "string",
 						"description": "変更されたファイル名"
 					},
-					"changeType": {
-						"$ref": "#/components/schemas/ChangeTypeEnum"
+					"changeTypes": {
+						"type": "array",
+						"items": {
+							"$ref": "#/components/schemas/ChangeTypeEnum"
+						},
+						"description": "変更の種類（複数選択可）",
+						"minItems": 1
 					},
 					"description": {
 						"type": "string",
 						"description": "変更内容の説明"
 					}
 				},
-				"required": ["fileName", "changeType", "description"]
+				"required": ["fileName", "changeTypes", "description"]
 			},
 			"NotablePoint": {
 				"type": "object",
 				"description": "特筆すべき点を示すスキーマ",
 				"properties": {
-					"category": {
-						"$ref": "#/components/schemas/CategoryEnum"
+					"categories": {
+						"type": "array",
+						"items": {
+							"$ref": "#/components/schemas/CategoryEnum"
+						},
+						"description": "注目ポイントのカテゴリ（複数選択可）",
+						"minItems": 1
 					},
 					"point": {
 						"type": "string",
 						"description": "注目ポイントの内容"
 					}
 				},
-				"required": ["category", "point"]
+				"required": ["categories", "point"]
 			},
 			"PullRequestArticle": {
 				"type": "object",
-				"description": "Pull Requestの解説記事を表すスキーマ。PullRequestの基本情報を拡張しています。",
-				"allOf": [
-					{
-						"$ref": "#/components/schemas/PullRequest"
-					}
-				],
+				"description": "Pull Request解説記事（多言語対応）",
 				"properties": {
 					"id": {
 						"type": "string",
 						"format": "uuid",
 						"description": "記事ID (UUID形式)"
 					},
-					"aiGeneratedTitle": {
-						"type": "string",
-						"description": "AIによって生成された記事タイトル (必須、1～80文字)",
-						"minLength": 1,
-						"maxLength": 80
-					},
-					"backgroundAndPurpose": {
-						"type": "string",
-						"nullable": true,
-						"description": "背景と目的"
-					},
-					"mainChanges": {
-						"type": "array",
-						"items": {
-							"$ref": "#/components/schemas/MainChange"
-						},
-						"nullable": true,
-						"description": "主要な変更点のリスト"
-					},
-					"notablePoints": {
-						"type": "array",
-						"items": {
-							"$ref": "#/components/schemas/NotablePoint"
-						},
-						"nullable": true,
-						"description": "特筆すべき点のリスト"
-					},
-					"summaryGeneratedAt": {
-						"type": "string",
-						"format": "date-time",
-						"description": "AIによる要約が生成された日時 (正しい日時形式)"
+					"contents": {
+						"type": "object",
+						"description": "言語コードをキーとした記事内容のオブジェクト。記事がまだない場合はundefined。",
+						"additionalProperties": {
+							"$ref": "#/components/schemas/ArticleContent"
+						}
 					},
 					"createdAt": {
 						"type": "string",
 						"format": "date-time",
-						"description": "記事の作成日時 (正しい日時形式)",
+						"description": "作成日時 (正しい日時形式)",
 						"nullable": true
 					},
 					"updatedAt": {
 						"type": "string",
 						"format": "date-time",
-						"description": "記事の更新日時 (正しい日時形式)",
+						"description": "更新日時 (正しい日時形式)",
 						"nullable": true
 					}
 				},
-				"required": ["id", "aiGeneratedTitle", "summaryGeneratedAt"]
+				"required": ["id"]
+			},
+			"ArticleContent": {
+				"type": "object",
+				"description": "言語ごとの記事内容",
+				"properties": {
+					"aiGeneratedTitle": {
+						"type": "string",
+						"description": "AI生成タイトル"
+					},
+					"backgroundAndPurpose": {
+						"type": "string",
+						"description": "背景・目的",
+						"nullable": true
+					},
+					"mainChanges": {
+						"type": "array",
+						"items": { "$ref": "#/components/schemas/MainChange" },
+						"description": "主要な変更点",
+						"nullable": true
+					},
+					"notablePoints": {
+						"type": "array",
+						"items": { "$ref": "#/components/schemas/NotablePoint" },
+						"description": "注目ポイント",
+						"nullable": true
+					},
+					"likeCount": {
+						"type": "integer",
+						"format": "int32",
+						"default": 0,
+						"description": "この言語版の記事のいいね数"
+					},
+					"summaryGeneratedAt": {
+						"type": "string",
+						"format": "date-time",
+						"description": "要約生成日時"
+					}
+				},
+				"required": ["aiGeneratedTitle", "likeCount", "summaryGeneratedAt"]
 			},
 			"AuthSession": {
 				"type": "object",
@@ -332,6 +358,110 @@
 			"LogoutResponseData": {
 				"type": "object",
 				"description": "ログアウト成功時の空のデータオブジェクト"
+			},
+			"FavoriteRepository": {
+				"type": "object",
+				"description": "お気に入りリポジトリ情報",
+				"properties": {
+					"id": {
+						"type": "string",
+						"format": "uuid",
+						"description": "お気に入り登録ID"
+					},
+					"userId": {
+						"type": "string",
+						"format": "uuid",
+						"description": "ユーザーID"
+					},
+					"githubRepoId": {
+						"type": "integer",
+						"description": "GitHubリポジトリの数値ID"
+					},
+					"repositoryFullName": {
+						"type": "string",
+						"description": "リポジトリフルネーム (owner/repo)"
+					},
+					"owner": { "type": "string", "description": "オーナー名" },
+					"repo": { "type": "string", "description": "リポジトリ名" },
+					"registeredAt": {
+						"type": "string",
+						"format": "date-time",
+						"description": "登録日時"
+					}
+				},
+				"required": [
+					"id",
+					"userId",
+					"githubRepoId",
+					"repositoryFullName",
+					"owner",
+					"repo",
+					"registeredAt"
+				]
+			},
+			"ArticleLike": {
+				"type": "object",
+				"description": "記事へのいいね情報",
+				"properties": {
+					"id": { "type": "string", "format": "uuid" },
+					"userId": { "type": "string", "format": "uuid" },
+					"articleId": { "type": "string", "format": "uuid" },
+					"languageCode": { "type": "string", "pattern": "^[a-z]{2}$" },
+					"likedAt": { "type": "string", "format": "date-time" }
+				},
+				"required": ["id", "userId", "articleId", "languageCode", "likedAt"]
+			},
+			"LikedArticleInfo": {
+				"type": "object",
+				"description": "いいねした記事の要約情報",
+				"properties": {
+					"articleId": { "type": "string", "format": "uuid" },
+					"languageCode": { "type": "string", "pattern": "^[a-z]{2}$" },
+					"likedAt": { "type": "string", "format": "date-time" },
+					"aiGeneratedTitle": { "type": "string" },
+					"repositoryFullName": { "type": "string" },
+					"prNumber": { "type": "integer" }
+				},
+				"required": [
+					"articleId",
+					"languageCode",
+					"likedAt",
+					"aiGeneratedTitle",
+					"repositoryFullName",
+					"prNumber"
+				]
+			},
+			"RankedArticleInfo": {
+				"type": "object",
+				"description": "ランキングされた記事の情報",
+				"properties": {
+					"rank": { "type": "integer" },
+					"articleId": { "type": "string", "format": "uuid" },
+					"languageCode": { "type": "string", "pattern": "^[a-z]{2}$" },
+					"aiGeneratedTitle": { "type": "string" },
+					"repositoryFullName": { "type": "string" },
+					"prNumber": { "type": "integer" },
+					"likeCount": { "type": "integer" }
+				},
+				"required": [
+					"rank",
+					"articleId",
+					"languageCode",
+					"aiGeneratedTitle",
+					"repositoryFullName",
+					"prNumber",
+					"likeCount"
+				]
+			},
+			"Pagination": {
+				"type": "object",
+				"description": "ページネーション情報",
+				"properties": {
+					"totalItems": { "type": "integer" },
+					"limit": { "type": "integer" },
+					"offset": { "type": "integer" }
+				},
+				"required": ["totalItems", "limit", "offset"]
 			}
 		}
 	},
@@ -512,6 +642,90 @@
 						}
 					}
 				}
+			},
+			"post": {
+				"summary": "お気に入りリポジトリを登録",
+				"description": "指定されたGitHubリポジトリをユーザーのお気に入りとして登録します。",
+				"tags": ["Favorites"],
+				"security": [{ "bearerAuth": [] }],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"type": "object",
+								"properties": {
+									"owner": {
+										"type": "string",
+										"description": "リポジトリのオーナー名"
+									},
+									"repo": { "type": "string", "description": "リポジトリ名" }
+								},
+								"required": ["owner", "repo"]
+							},
+							"example": { "owner": "octocat", "repo": "Hello-World" }
+						}
+					}
+				},
+				"responses": {
+					"200": {
+						"description": "リポジトリは既にお気に入り登録済み (既存の情報を返却)",
+						"content": {
+							"application/json": {
+								"schema": {
+									"type": "object",
+									"properties": {
+										"success": { "type": "boolean", "example": true },
+										"data": {
+											"$ref": "#/components/schemas/FavoriteRepository"
+										},
+										"message": { "type": "string", "nullable": true }
+									}
+								}
+							}
+						}
+					},
+					"201": {
+						"description": "お気に入りリポジトリの登録成功 (新規登録)",
+						"content": {
+							"application/json": {
+								"schema": {
+									"type": "object",
+									"properties": {
+										"success": { "type": "boolean", "example": true },
+										"data": {
+											"$ref": "#/components/schemas/FavoriteRepository"
+										},
+										"message": { "type": "string", "nullable": true }
+									}
+								}
+							}
+						}
+					},
+					"400": { "$ref": "#/components/responses/BadRequest" },
+					"401": { "$ref": "#/components/responses/Unauthorized" },
+					"404": {
+						"description": "指定されたGitHubリポジトリが見つからない",
+						"content": {
+							"application/json": {
+								"schema": {
+									"type": "object",
+									"properties": {
+										"success": { "type": "boolean", "example": false },
+										"error": { "$ref": "#/components/schemas/ErrorObject" },
+										"message": { "type": "string", "nullable": true }
+									},
+									"example": {
+										"success": false,
+										"error": { "code": "GITHUB_REPO_NOT_FOUND" },
+										"message": "指定されたGitHubリポジトリが見つかりません。"
+									}
+								}
+							}
+						}
+					},
+					"500": { "$ref": "#/components/responses/InternalServerError" }
+				}
 			}
 		},
 		"/auth/logout": {
@@ -612,6 +826,55 @@
 										"code": "INTERNAL_SERVER_ERROR"
 									},
 									"message": "サーバー内部でエラーが発生しました。"
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+		"/auth/signup": {
+			"post": {
+				"summary": "ユーザーサインアップ",
+				"description": "新規ユーザー登録。language（2文字コード、省略時ja）を指定可能。",
+				"security": [{ "bearerAuth": [] }],
+				"tags": ["User & Auth"],
+				"requestBody": {
+					"required": false,
+					"content": {
+						"application/json": {
+							"schema": {
+								"type": "object",
+								"properties": {
+									"language": {
+										"type": "string",
+										"description": "希望言語コード (例: ja, en)",
+										"minLength": 2,
+										"maxLength": 2,
+										"default": "ja"
+									}
+								}
+							}
+						}
+					}
+				},
+				"responses": {
+					"201": {
+						"description": "ユーザー作成成功",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/User"
+								}
+							}
+						}
+					},
+					"409": {
+						"description": "既存ユーザー",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ErrorObject"
 								}
 							}
 						}
@@ -1070,7 +1333,7 @@
 										"mainChanges": [
 											{
 												"fileName": "src/widget.ts",
-												"changeType": "FEAT",
+												"changeTypes": ["FEAT"],
 												"description": "Widgetクラスに新しいメソッドを追加"
 											}
 										],
@@ -1355,6 +1618,309 @@
 					}
 				}
 			}
+		},
+		"/articles/{articleId}/language/{langCode}/like": {
+			"post": {
+				"summary": "記事に「いいね」を付ける",
+				"description": "指定されたAI解説記事の特定言語版に「いいね」を付けます。",
+				"tags": ["Likes"],
+				"security": [{ "bearerAuth": [] }],
+				"parameters": [
+					{
+						"name": "articleId",
+						"in": "path",
+						"required": true,
+						"description": "PullRequestArticleのID",
+						"schema": { "type": "string", "format": "uuid" }
+					},
+					{
+						"name": "langCode",
+						"in": "path",
+						"required": true,
+						"description": "記事の言語コード (例: ja, en)",
+						"schema": { "type": "string", "pattern": "^[a-z]{2}$" }
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "既にいいね済みの場合 (現在のいいね数を返却)",
+						"content": {
+							"application/json": {
+								"schema": {
+									"type": "object",
+									"properties": {
+										"success": { "type": "boolean", "example": true },
+										"data": {
+											"type": "object",
+											"properties": {
+												"message": {
+													"type": "string",
+													"example": "既にいいね済みです"
+												},
+												"likeCount": { "type": "integer", "example": 15 }
+											}
+										},
+										"message": { "type": "string", "nullable": true }
+									}
+								}
+							}
+						}
+					},
+					"201": {
+						"description": "いいね成功 (新規いいね、新しいいいね数を返却)",
+						"content": {
+							"application/json": {
+								"schema": {
+									"type": "object",
+									"properties": {
+										"success": { "type": "boolean", "example": true },
+										"data": {
+											"type": "object",
+											"properties": {
+												"message": {
+													"type": "string",
+													"example": "いいねしました"
+												},
+												"likeCount": { "type": "integer", "example": 16 }
+											}
+										},
+										"message": { "type": "string", "nullable": true }
+									}
+								}
+							}
+						}
+					},
+					"400": { "$ref": "#/components/responses/BadRequest" },
+					"401": { "$ref": "#/components/responses/Unauthorized" },
+					"404": {
+						"description": "指定された記事が見つからない",
+						"content": {
+							"application/json": {
+								"schema": {
+									"type": "object",
+									"properties": {
+										"success": { "type": "boolean", "example": false },
+										"error": { "$ref": "#/components/schemas/ErrorObject" },
+										"message": { "type": "string", "nullable": true }
+									},
+									"example": {
+										"success": false,
+										"error": { "code": "ARTICLE_NOT_FOUND" },
+										"message": "指定された記事が見つかりません。"
+									}
+								}
+							}
+						}
+					},
+					"500": { "$ref": "#/components/responses/InternalServerError" }
+				}
+			},
+			"delete": {
+				"summary": "記事の「いいね」を取り消す",
+				"description": "指定されたAI解説記事の特定言語版への「いいね」を取り消します。",
+				"tags": ["Likes"],
+				"security": [{ "bearerAuth": [] }],
+				"parameters": [
+					{
+						"name": "articleId",
+						"in": "path",
+						"required": true,
+						"description": "PullRequestArticleのID",
+						"schema": { "type": "string", "format": "uuid" }
+					},
+					{
+						"name": "langCode",
+						"in": "path",
+						"required": true,
+						"description": "記事の言語コード (例: ja, en)",
+						"schema": { "type": "string", "pattern": "^[a-z]{2}$" }
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "いいねの取り消し成功、または元々いいねしていなかった場合 (現在のいいね数を返却)",
+						"content": {
+							"application/json": {
+								"schema": {
+									"type": "object",
+									"properties": {
+										"success": { "type": "boolean", "example": true },
+										"data": {
+											"type": "object",
+											"properties": {
+												"likeCount": { "type": "integer", "example": 14 }
+											}
+										},
+										"message": { "type": "string", "nullable": true }
+									}
+								}
+							}
+						}
+					},
+					"400": { "$ref": "#/components/responses/BadRequest" },
+					"401": { "$ref": "#/components/responses/Unauthorized" },
+					"404": {
+						"description": "指定された記事が見つからない (いいね対象の記事自体が存在しない場合)",
+						"content": {
+							"application/json": {
+								"schema": {
+									"type": "object",
+									"properties": {
+										"success": { "type": "boolean", "example": false },
+										"error": { "$ref": "#/components/schemas/ErrorObject" },
+										"message": { "type": "string", "nullable": true }
+									}
+								}
+							}
+						}
+					},
+					"500": { "$ref": "#/components/responses/InternalServerError" }
+				}
+			}
+		},
+		"/users/me/liked-articles": {
+			"get": {
+				"summary": "自分が「いいね」した記事の一覧を取得",
+				"description": "認証ユーザーが過去に「いいね」したAI解説記事の一覧を、絞り込み、ページネーション、ソート指定付きで取得します。",
+				"tags": ["User & Auth", "Likes"],
+				"security": [{ "bearerAuth": [] }],
+				"parameters": [
+					{
+						"name": "lang",
+						"in": "query",
+						"required": false,
+						"description": "特定の言語でいいねした記事に絞り込む (例: ja, en)",
+						"schema": { "type": "string", "pattern": "^[a-z]{2}$" }
+					},
+					{
+						"name": "limit",
+						"in": "query",
+						"required": false,
+						"description": "取得件数 (デフォルトはサーバー側で設定)",
+						"schema": { "type": "integer", "minimum": 1, "default": 10 }
+					},
+					{
+						"name": "offset",
+						"in": "query",
+						"required": false,
+						"description": "開始位置 (デフォルトは0)",
+						"schema": { "type": "integer", "minimum": 0, "default": 0 }
+					},
+					{
+						"name": "sort",
+						"in": "query",
+						"required": false,
+						"description": "ソート順 (例: likedAt_desc, likedAt_asc)",
+						"schema": {
+							"type": "string",
+							"enum": ["likedAt_desc", "likedAt_asc"]
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "自分がいいねした記事一覧の取得成功",
+						"content": {
+							"application/json": {
+								"schema": {
+									"type": "object",
+									"properties": {
+										"success": { "type": "boolean", "example": true },
+										"data": {
+											"type": "array",
+											"items": {
+												"$ref": "#/components/schemas/LikedArticleInfo"
+											}
+										},
+										"message": { "type": "string", "nullable": true },
+										"pagination": {
+											"type": "object",
+											"properties": {
+												"totalItems": { "type": "integer" },
+												"limit": { "type": "integer" },
+												"offset": { "type": "integer" }
+											}
+										}
+									}
+								}
+							}
+						}
+					},
+					"400": { "$ref": "#/components/responses/BadRequest" },
+					"401": { "$ref": "#/components/responses/Unauthorized" },
+					"500": { "$ref": "#/components/responses/InternalServerError" }
+				}
+			}
+		},
+		"/ranking/articles/likes": {
+			"get": {
+				"summary": "いいね数に基づいた記事ランキングを取得",
+				"description": "AI解説記事のいいね数ランキングを、期間や言語で絞り込んで取得します。",
+				"tags": ["Ranking"],
+				"parameters": [
+					{
+						"name": "period",
+						"in": "query",
+						"required": false,
+						"description": "集計期間",
+						"schema": {
+							"type": "string",
+							"enum": ["weekly", "monthly", "all"],
+							"default": "all"
+						}
+					},
+					{
+						"name": "language",
+						"in": "query",
+						"required": false,
+						"description": "言語での絞り込み (ja, en, all)",
+						"schema": {
+							"type": "string",
+							"pattern": "^[a-z]{2}|all$",
+							"default": "all"
+						}
+					},
+					{
+						"name": "limit",
+						"in": "query",
+						"required": false,
+						"description": "取得件数",
+						"schema": { "type": "integer", "minimum": 1, "default": 10 }
+					},
+					{
+						"name": "offset",
+						"in": "query",
+						"required": false,
+						"description": "開始位置",
+						"schema": { "type": "integer", "minimum": 0, "default": 0 }
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "記事ランキングの取得成功",
+						"content": {
+							"application/json": {
+								"schema": {
+									"type": "object",
+									"properties": {
+										"success": { "type": "boolean", "example": true },
+										"data": {
+											"type": "array",
+											"items": {
+												"$ref": "#/components/schemas/RankedArticleInfo"
+											}
+										},
+										"pagination": { "$ref": "#/components/schemas/Pagination" },
+										"message": { "type": "string", "nullable": true }
+									}
+								}
+							}
+						}
+					},
+					"400": { "$ref": "#/components/responses/BadRequest" },
+					"500": { "$ref": "#/components/responses/InternalServerError" }
+				}
+			}
 		}
 	},
 	"tags": [
@@ -1373,6 +1939,18 @@
 		{
 			"name": "Article Generation",
 			"description": "Pull Request解説記事の生成・取得API"
+		},
+		{
+			"name": "Favorites",
+			"description": "お気に入りリポジトリの管理API"
+		},
+		{
+			"name": "Likes",
+			"description": "記事へのいいねAPI"
+		},
+		{
+			"name": "Ranking",
+			"description": "ランキング関連のAPI"
 		}
 	]
 }

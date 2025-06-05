@@ -23,17 +23,19 @@ const categoryEnum = z.enum([
 
 const mainChangeSchema = z.object({
 	fileName: z.string(),
-	changeType: changeTypeEnum,
+	changeTypes: z
+		.array(changeTypeEnum)
+		.min(1, "変更種別は1つ以上選択してください"),
 	description: z.string(),
 });
 
 const notablePointSchema = z.object({
-	category: categoryEnum,
+	categories: z.array(categoryEnum).min(1, "カテゴリは1つ以上選択してください"),
 	point: z.string(),
 });
 
-export const pullRequestArticleSchema = pullRequestSchema.extend({
-	id: z.string().uuid("記事 ID は UUID 形式で入力してください"),
+// 言語ごとの記事内容のスキーマ
+const articleContentSchema = z.object({
 	aiGeneratedTitle: z
 		.string()
 		.min(1, "AI 生成タイトルは必須です")
@@ -42,6 +44,28 @@ export const pullRequestArticleSchema = pullRequestSchema.extend({
 	mainChanges: z.array(mainChangeSchema).optional(),
 	notablePoints: z.array(notablePointSchema).optional(),
 	summaryGeneratedAt: z.string().datetime("正しい日時形式で入力してください"),
+	likeCount: z
+		.number()
+		.int()
+		.nonnegative()
+		.default(0)
+		.describe("この言語版の記事のいいね数"),
+});
+export type ArticleContent = z.infer<typeof articleContentSchema>;
+
+export const pullRequestArticleSchema = pullRequestSchema.extend({
+	id: z.string().uuid("記事 ID は UUID 形式で入力してください"),
+	contents: z
+		.record(
+			z
+				.string()
+				.length(2, "言語コードは2文字である必要があります (例: ja, en)"),
+			articleContentSchema,
+		)
+		.optional()
+		.describe(
+			"言語コードをキーとした記事内容のオブジェクト。記事がまだない場合はundefined。",
+		),
 	createdAt: z.string().datetime("正しい日時形式で入力してください").optional(),
 	updatedAt: z.string().datetime("正しい日時形式で入力してください").optional(),
 });
