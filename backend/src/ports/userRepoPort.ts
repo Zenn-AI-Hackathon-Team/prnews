@@ -4,4 +4,5 @@ export interface UserRepoPort {
 	save: (user: User) => Promise<User | null>;
 	findById: (id: string) => Promise<User | null>;
 	findByGithubUserId: (githubUserId: number) => Promise<User | null>;
+	findByFirebaseUid: (firebaseUid: string) => Promise<User | null>;
 }

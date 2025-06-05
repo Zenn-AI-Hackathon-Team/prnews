@@ -7,8 +7,10 @@
 		"start": "node dist/index.js"
 	},
 	"dependencies": {
+		"@google-cloud/firestore": "^7.11.1",
 		"@hono/node-server": "^1.14.3",
 		"@prnews/common": "workspace:*",
+		"firebase-admin": "^13.4.0",
 		"hono": "^4.7.11",
 		"zod": "^3.25.48"
 	},

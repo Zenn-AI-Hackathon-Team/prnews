@@ -5,6 +5,12 @@ export type User = {
 	githubUserId: number;
 	githubUsername: string;
 	language: string;
+	firebaseUid: string;
+	githubDisplayName?: string | null;
+	email?: string | null;
+	avatarUrl?: string | null;
+	createdAt?: string;
+	updatedAt?: string;
 	// 必要に応じて他のフィールドを追加
 };
 
@@ -22,6 +28,7 @@ export const createUserObjectFromAuthenticatedUser = (
 			Number(authUser.firebaseUid.replace(/\D/g, "").slice(0, 7)) || Date.now(), // ダミー
 		githubUsername: authUser.githubUsername,
 		language,
+		firebaseUid: authUser.firebaseUid,
 		// 必要に応じて他のフィールドも追加
 		// githubDisplayName, email, avatarUrl などはnullやダミーでOK
 	};

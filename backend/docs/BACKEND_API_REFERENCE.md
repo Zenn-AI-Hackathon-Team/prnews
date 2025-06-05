@@ -91,11 +91,11 @@
     - 既に登録済みの場合は200、初回登録時は201。
     - レスポンス例:
 
-      ```json
-      {
-        "success": true,
-        "data": {
-          "id": "uuid",
+        ```json
+        {
+        	"success": true,
+        	"data": {
+        		"id": "uuid",
           "userId": "uuid",
           "githubRepoId": 123456,
           "repositoryFullName": "owner/repo",
@@ -104,8 +104,8 @@
           "registeredAt": "2024-06-08T12:34:56Z"
         },
         "message": "お気に入り登録が完了しました"
-      }
-      ```
+        }
+        ```
 
 - **GET /users/me/favorite-repositories**
     - 実装: 未実装（2024/6/8時点）
@@ -159,10 +159,10 @@
     - 出力: `{ data: LikedArticleInfo[], pagination: Pagination }`
     - レスポンス例:
 
-      ```json
-      {
-        "success": true,
-        "data": {
+        ```json
+        {
+        	"success": true,
+        	"data": {
           "data": [
             {
               "articleId": "uuid",
@@ -178,9 +178,9 @@
             "limit": 10,
             "offset": 0
           }
+        	}
         }
-      }
-      ```
+        ```
 
 ---
 
@@ -192,10 +192,10 @@
     - 出力: `{ data: RankedArticleInfo[], pagination: Pagination }`
     - レスポンス例:
 
-      ```json
-      {
-        "success": true,
-        "data": {
+        ```json
+        {
+        	"success": true,
+        	"data": {
           "data": [
             {
               "rank": 1,
@@ -203,7 +203,7 @@
               "languageCode": "ja",
               "aiGeneratedTitle": "AI生成タイトル",
               "repositoryFullName": "owner/repo",
-              "prNumber": 42,
+        		"prNumber": 42,
               "likeCount": 10
             }
           ],
@@ -212,9 +212,9 @@
             "limit": 10,
             "offset": 0
           }
+        	}
         }
-      }
-      ```
+        ```
 
 ---
 

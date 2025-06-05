@@ -153,7 +153,7 @@ export const createUserService = (deps: {
 		const now = new Date().toISOString();
 		const expires = new Date(Date.now() + 1000 * 60 * 60 * 24).toISOString(); // 24h後
 		const session: AuthSession = {
-			id: "", // save時に採番
+			id: randomUUID(),
 			userId: authenticatedUser.id,
 			firebaseUid: authenticatedUser.firebaseUid,
 			tokenHash: "dummy-token-hash", // 本来はトークンのSHA-256

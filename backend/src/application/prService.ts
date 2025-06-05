@@ -277,9 +277,8 @@ export const createPrService = (deps: {
 		if (existing) {
 			return { alreadyLiked: true, likeCount, message: "既にいいね済みです" };
 		}
-		// likeCountをインクリメント
-		article.contents[langCode].likeCount = likeCount + 1;
-		await deps.prRepo.saveArticle(article);
+		// likeCountをトランザクションでインクリメント
+		await deps.prRepo.incrementLikeCount(articleId, langCode, 1);
 		// ArticleLikeレコード作成
 		const like = {
 			id: randomUUID(),
@@ -293,9 +292,12 @@ export const createPrService = (deps: {
 			return { error: "VALIDATION_ERROR" };
 		}
 		await deps.articleLikeRepo.save(like);
+		// 最新のlikeCountを取得
+		const updated = await deps.prRepo.findArticleByPrId(articleId);
+		const newCount = updated?.contents?.[langCode]?.likeCount ?? likeCount + 1;
 		return {
 			alreadyLiked: false,
-			likeCount: article.contents[langCode].likeCount,
+			likeCount: newCount,
 			message: "いいねしました",
 		};
 	};
@@ -323,10 +325,13 @@ export const createPrService = (deps: {
 				articleId,
 				langCode,
 			);
-			// likeCountをデクリメント
-			article.contents[langCode].likeCount = Math.max(0, likeCount - 1);
-			await deps.prRepo.saveArticle(article);
-			return { likeCount: article.contents[langCode].likeCount };
+			// likeCountをトランザクションでデクリメント
+			await deps.prRepo.incrementLikeCount(articleId, langCode, -1);
+			// 最新のlikeCountを取得
+			const updated = await deps.prRepo.findArticleByPrId(articleId);
+			const newCount =
+				updated?.contents?.[langCode]?.likeCount ?? Math.max(0, likeCount - 1);
+			return { likeCount: newCount };
 		}
 		// もともといいねしていなかった場合も現在のlikeCountを返す
 		return { likeCount };
