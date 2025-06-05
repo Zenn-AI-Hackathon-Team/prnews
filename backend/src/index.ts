@@ -23,6 +23,7 @@ app.use("*", async (c, next) => {
 	c.set("prService", deps.prService);
 	c.set("userService", deps.userService);
 	c.set("rankingService", deps.rankingService);
+	c.set("auth", deps.auth);
 	await next();
 });
 

@@ -99,20 +99,23 @@ export const createUserService = (deps: {
 			);
 			return null;
 		}
-		// 既に存在する場合はnull返す（409用）
-		const existing = await deps.userRepo.findById(authenticatedUser.id);
+		// 既存ユーザーのチェックをfindByFirebaseUidに変更
+		const existing = await deps.userRepo.findByFirebaseUid(
+			authenticatedUser.firebaseUid,
+		);
 		if (existing) {
 			console.warn(
-				`[UserService] User already exists for ID (${authenticatedUser.id})`,
+				`[UserService] User already exists for FirebaseUID (${authenticatedUser.firebaseUid})`,
 			);
 			return null;
 		}
+
 		const newUserInputData = createUserObjectFromAuthenticatedUser(
 			authenticatedUser,
 			language ?? "ja",
 		);
 		const userToSave: UserSchemaType = {
-			id: authenticatedUser.id,
+			id: randomUUID(), // 新しいIDをここで生成
 			...newUserInputData,
 			createdAt: new Date().toISOString(),
 			updatedAt: new Date().toISOString(),

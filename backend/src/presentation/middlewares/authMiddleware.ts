@@ -39,6 +39,17 @@ export const authMiddleware = createMiddleware<{
 		// アプリDBからユーザー検索
 		const appUser = await userRepo.findByFirebaseUid(firebaseUid);
 		if (!appUser) {
+			// ★ サインアップだけはDB未登録ユーザーも通す
+			if (c.req.path === "/auth/signup") {
+				const tempUser = {
+					id: "will_be_generated",
+					githubUsername: decodedToken.name || "unknown",
+					firebaseUid: firebaseUid,
+				};
+				c.set("user", tempUser);
+				await next();
+				return;
+			}
 			console.warn(
 				`User with firebaseUid ${firebaseUid} not found in app database.`,
 			);

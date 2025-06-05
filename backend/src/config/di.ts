@@ -42,7 +42,6 @@ const prRepo = prRepoFirestore(firestore);
 const github = githubMock();
 const gemini = geminiMock();
 const auth = getAuth();
-console.log("[DEBUG] getAuth() result:", auth);
 
 export const buildDependencies = () => {
 	const generalService = createGeneralService({});
