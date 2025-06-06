@@ -164,27 +164,7 @@ userRoutes.post("/users/me/favorite-repositories", async (c) => {
 		repo,
 	);
 	if ("error" in result) {
-		if (result.error === "GITHUB_REPO_NOT_FOUND") {
-			return respondError(
-				c,
-				ErrorCode.GITHUB_REPO_NOT_FOUND,
-				"指定されたGitHubリポジトリが見つかりません。",
-				undefined,
-				404,
-			);
-		}
-		if (result.error === "VALIDATION_ERROR") {
-			return respondError(
-				c,
-				ErrorCode.VALIDATION_ERROR,
-				"バリデーションエラー",
-			);
-		}
-		return respondError(
-			c,
-			ErrorCode.INTERNAL_SERVER_ERROR,
-			"サーバー内部エラー",
-		);
+		return respondError(c, result.error, "お気に入り登録に失敗しました");
 	}
 	if (result.alreadyExists) {
 		return respondSuccess(

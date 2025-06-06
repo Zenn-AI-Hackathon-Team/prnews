@@ -1,4 +1,5 @@
 import { Octokit } from "@octokit/rest";
+import { ErrorCode } from "@prnews/common";
 import type { PullRequest } from "../../domain/pullRequest";
 import type { RepositoryInfo } from "../../domain/repository";
 import type { GithubPort } from "../../ports/githubPort";
@@ -26,12 +27,26 @@ export const githubClient = (): GithubPort => ({
 	},
 	async getRepositoryByOwnerAndRepo(accessToken, owner, repo) {
 		const octokit = getOctokit(accessToken);
-		const { data } = await octokit.repos.get({ owner, repo });
-		return {
-			githubRepoId: data.id,
-			repositoryFullName: data.full_name,
-			owner: data.owner.login,
-			repo: data.name,
-		};
+		try {
+			const { data } = await octokit.repos.get({ owner, repo });
+			return {
+				githubRepoId: data.id,
+				repositoryFullName: data.full_name,
+				owner: data.owner.login,
+				repo: data.name,
+			};
+		} catch (error: unknown) {
+			console.error(`Failed to fetch repository ${owner}/${repo}`, error);
+			if (
+				typeof error === "object" &&
+				error !== null &&
+				"status" in error &&
+				typeof (error as { status?: unknown }).status === "number" &&
+				(error as { status: number }).status === 404
+			) {
+				throw new Error(ErrorCode.GITHUB_REPO_NOT_FOUND);
+			}
+			throw new Error(ErrorCode.INTERNAL_SERVER_ERROR);
+		}
 	},
 });

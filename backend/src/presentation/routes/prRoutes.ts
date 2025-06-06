@@ -64,7 +64,11 @@ prRoutes.post(
 
 		const authenticatedUser = c.var.user;
 		if (!authenticatedUser) {
-			return respondError(c, ErrorCode.UNAUTHENTICATED, "User not found in context.");
+			return respondError(
+				c,
+				ErrorCode.UNAUTHENTICATED,
+				"User not found in context.",
+			);
 		}
 
 		try {

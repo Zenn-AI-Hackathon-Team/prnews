@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import {
 	type AuthSession,
+	ErrorCode,
 	type FavoriteRepository,
 	userSchema as UserSchema,
 	type User as UserSchemaType,
@@ -176,30 +177,30 @@ export const createUserService = (deps: {
 		owner: string,
 		repo: string,
 	): Promise<
-		{ alreadyExists: boolean; favorite: FavoriteRepository } | { error: string }
+		| { alreadyExists: boolean; favorite: FavoriteRepository }
+		| { error: ErrorCode }
 	> => {
 		if (!authenticatedUser) {
-			return { error: "User not authenticated" };
+			return { error: ErrorCode.UNAUTHENTICATED };
 		}
-		// 1. DBから完全なユーザー情報を取得する
 		const user = await deps.userRepo.findById(authenticatedUser.id);
 		if (!user?.encryptedGitHubAccessToken) {
-			return { error: "GITHUB_TOKEN_NOT_FOUND" };
+			return { error: ErrorCode.UNAUTHENTICATED };
 		}
 		const accessToken = decrypt(user.encryptedGitHubAccessToken);
-		// GitHub APIでリポジトリ情報取得
 		let repoInfo: import("../domain/repository.js").RepositoryInfo;
 		try {
-			// 3. 準備したaccessTokenを使ってAPIを呼び出す！
 			repoInfo = await deps.githubPort.getRepositoryByOwnerAndRepo(
 				accessToken,
 				owner,
 				repo,
 			);
-		} catch (e) {
-			return { error: "GITHUB_REPO_NOT_FOUND" };
+		} catch (e: unknown) {
+			if (e instanceof Error && e.message === ErrorCode.GITHUB_REPO_NOT_FOUND) {
+				return { error: ErrorCode.GITHUB_REPO_NOT_FOUND };
+			}
+			return { error: ErrorCode.INTERNAL_SERVER_ERROR };
 		}
-		// 既存チェック
 		const existing =
 			await deps.favoriteRepositoryRepo.findByUserIdAndGithubRepoId(
 				authenticatedUser.id,
@@ -208,7 +209,6 @@ export const createUserService = (deps: {
 		if (existing) {
 			return { alreadyExists: true, favorite: existing };
 		}
-		// 新規作成
 		const now = new Date().toISOString();
 		const favorite: FavoriteRepository = {
 			id: randomUUID(),
@@ -219,10 +219,9 @@ export const createUserService = (deps: {
 			repo: repoInfo.repo,
 			registeredAt: now,
 		};
-		// バリデーション
 		const validation = favoriteRepositorySchema.safeParse(favorite);
 		if (!validation.success) {
-			return { error: "VALIDATION_ERROR" };
+			return { error: ErrorCode.VALIDATION_ERROR };
 		}
 		const saved = await deps.favoriteRepositoryRepo.save(favorite);
 		return { alreadyExists: false, favorite: saved };
