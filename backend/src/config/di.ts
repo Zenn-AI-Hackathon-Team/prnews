@@ -13,8 +13,8 @@ import { createGeneralService } from "../application/generalService";
 import { createPrService } from "../application/prService";
 import { createRankingService } from "../application/rankingService";
 import { createUserService } from "../application/userService";
+import { geminiClient } from "../infrastructure/adapters/geminiClient";
 import { githubClient } from "../infrastructure/adapters/githubClient";
-import { geminiMock } from "../infrastructure/mock/geminiMock";
 import { articleLikeRepoFirestore } from "../infrastructure/repositories/articleLikeRepoFirestore";
 import { authSessionRepoFirestore } from "../infrastructure/repositories/authSessionRepoFirestore";
 import { favoriteRepositoryRepoFirestore } from "../infrastructure/repositories/favoriteRepositoryRepoFirestore";
@@ -40,7 +40,7 @@ const favoriteRepositoryRepo = favoriteRepositoryRepoFirestore(firestore);
 const articleLikeRepo = articleLikeRepoFirestore(firestore);
 const prRepo = prRepoFirestore(firestore);
 const github = githubClient();
-const gemini = geminiMock();
+const gemini = geminiClient();
 const auth = getAuth();
 
 export const buildDependencies = () => {

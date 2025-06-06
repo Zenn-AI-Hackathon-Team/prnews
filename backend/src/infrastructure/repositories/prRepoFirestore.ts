@@ -45,6 +45,8 @@ export const prRepoFirestore = (db: Firestore): PrRepoPort => ({
 			diff: data.diff,
 			authorLogin: data.authorLogin,
 			createdAt: data.createdAt,
+			body: data.body,
+			comments: data.comments,
 		};
 	},
 	async findByOwnerRepoNumber(owner, repo, prNumber) {
