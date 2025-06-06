@@ -7,7 +7,7 @@ export interface GithubPort {
 		owner: string,
 		repo: string,
 		number: number,
-	): Promise<PullRequest>;
+	): Promise<PullRequest | null>;
 	getRepositoryByOwnerAndRepo(
 		accessToken: string,
 		owner: string,

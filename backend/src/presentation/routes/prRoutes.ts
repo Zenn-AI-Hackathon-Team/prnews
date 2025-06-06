@@ -90,8 +90,11 @@ prRoutes.post(
 			return respondSuccess(c, validatedResponse.data);
 		} catch (error: unknown) {
 			console.error("Ingest PR failed:", error);
-			if (Object.values(ErrorCode).includes(error as ErrorCode)) {
-				return respondError(c, error as ErrorCode);
+			if (
+				error instanceof Error &&
+				Object.values(ErrorCode).includes(error.message as ErrorCode)
+			) {
+				return respondError(c, error.message as ErrorCode);
 			}
 			return respondError(
 				c,
