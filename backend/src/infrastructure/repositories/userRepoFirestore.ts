@@ -7,7 +7,6 @@ const COLLECTION = "users";
 function userFromDoc(doc: DocumentSnapshot): User | null {
 	if (!doc.exists) return null;
 	const data = doc.data() as User;
-	// 必要に応じて型変換やデフォルト値を補完
 	return {
 		id: data.id,
 		githubUserId: data.githubUserId,
@@ -19,6 +18,7 @@ function userFromDoc(doc: DocumentSnapshot): User | null {
 		avatarUrl: data.avatarUrl ?? null,
 		createdAt: data.createdAt,
 		updatedAt: data.updatedAt,
+		encryptedGitHubAccessToken: data.encryptedGitHubAccessToken,
 	};
 }
 
@@ -49,5 +49,14 @@ export const userRepoFirestore = (db: Firestore): UserRepoPort => ({
 			.get();
 		if (snap.empty) return null;
 		return userFromDoc(snap.docs[0]);
+	},
+	async update(id, data) {
+		const userRef = db.collection(COLLECTION).doc(id);
+		await userRef.update({
+			...data,
+			updatedAt: new Date().toISOString(),
+		});
+		const updatedDoc = await userRef.get();
+		return userFromDoc(updatedDoc);
 	},
 });

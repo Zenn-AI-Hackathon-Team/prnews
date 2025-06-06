@@ -6,6 +6,7 @@ import { z } from "zod";
 import type { Dependencies } from "../../config/di";
 import { respondError, respondSuccess } from "../../utils/apiResponder";
 import type { AuthVariables } from "../middlewares/authMiddleware";
+import { authMiddleware } from "../middlewares/authMiddleware";
 
 const prRoutes = new Hono<{ Variables: Dependencies & AuthVariables }>();
 
@@ -44,6 +45,7 @@ const getArticleParamsSchema = z.object({
 
 prRoutes.post(
 	"/repos/:owner/:repo/pulls/:number/ingest",
+	authMiddleware,
 	validator("param", (value, c) => {
 		const parsed = ingestParamsSchema.safeParse(value);
 		if (!parsed.success) {
@@ -59,8 +61,15 @@ prRoutes.post(
 	async (c) => {
 		const { prService } = c.var;
 		const params = c.req.valid("param");
+
+		const authenticatedUser = c.var.user;
+		if (!authenticatedUser) {
+			return respondError(c, ErrorCode.UNAUTHENTICATED, "User not found in context.");
+		}
+
 		try {
 			const ingestedPr = await prService.ingestPr(
+				authenticatedUser.id,
 				params.owner,
 				params.repo,
 				params.number,
@@ -91,6 +100,7 @@ prRoutes.post(
 
 prRoutes.post(
 	"/repos/:owner/:repo/pulls/:number/article",
+	authMiddleware,
 	validator("param", (value, c) => {
 		const parsed = articleParamsSchema.safeParse(value);
 		if (!parsed.success) {
@@ -258,112 +268,128 @@ prRoutes.get(
 	},
 );
 
-prRoutes.post("/articles/:articleId/language/:langCode/like", async (c) => {
-	const { prService } = c.var;
-	const authenticatedUser = c.var.user;
-	if (!authenticatedUser) {
-		return respondError(c, ErrorCode.UNAUTHENTICATED, "User not authenticated");
-	}
-	const { articleId, langCode } = c.req.param();
-	if (
-		!articleId ||
-		!langCode ||
-		typeof articleId !== "string" ||
-		typeof langCode !== "string" ||
-		langCode.length !== 2
-	) {
-		return respondError(
-			c,
-			ErrorCode.VALIDATION_ERROR,
-			"パスパラメータが不正です",
-		);
-	}
-	const result = await prService.likeArticle(
-		authenticatedUser.id,
-		articleId,
-		langCode,
-	);
-	if ("error" in result) {
-		if (result.error === "ARTICLE_NOT_FOUND") {
+prRoutes.post(
+	"/articles/:articleId/language/:langCode/like",
+	authMiddleware,
+	async (c) => {
+		const { prService } = c.var;
+		const authenticatedUser = c.var.user;
+		if (!authenticatedUser) {
 			return respondError(
 				c,
-				ErrorCode.ARTICLE_NOT_FOUND,
-				"指定された記事が見つかりません。",
-				undefined,
-				404,
+				ErrorCode.UNAUTHENTICATED,
+				"User not authenticated",
 			);
 		}
-		if (result.error === "VALIDATION_ERROR") {
+		const { articleId, langCode } = c.req.param();
+		if (
+			!articleId ||
+			!langCode ||
+			typeof articleId !== "string" ||
+			typeof langCode !== "string" ||
+			langCode.length !== 2
+		) {
 			return respondError(
 				c,
 				ErrorCode.VALIDATION_ERROR,
-				"バリデーションエラー",
+				"パスパラメータが不正です",
 			);
 		}
-		return respondError(
-			c,
-			ErrorCode.INTERNAL_SERVER_ERROR,
-			"サーバー内部エラー",
+		const result = await prService.likeArticle(
+			authenticatedUser.id,
+			articleId,
+			langCode,
 		);
-	}
-	if (result.alreadyLiked) {
+		if ("error" in result) {
+			if (result.error === "ARTICLE_NOT_FOUND") {
+				return respondError(
+					c,
+					ErrorCode.ARTICLE_NOT_FOUND,
+					"指定された記事が見つかりません。",
+					undefined,
+					404,
+				);
+			}
+			if (result.error === "VALIDATION_ERROR") {
+				return respondError(
+					c,
+					ErrorCode.VALIDATION_ERROR,
+					"バリデーションエラー",
+				);
+			}
+			return respondError(
+				c,
+				ErrorCode.INTERNAL_SERVER_ERROR,
+				"サーバー内部エラー",
+			);
+		}
+		if (result.alreadyLiked) {
+			return respondSuccess(
+				c,
+				{ message: result.message, likeCount: result.likeCount },
+				200,
+				result.message,
+			);
+		}
 		return respondSuccess(
 			c,
 			{ message: result.message, likeCount: result.likeCount },
-			200,
+			201,
 			result.message,
 		);
-	}
-	return respondSuccess(
-		c,
-		{ message: result.message, likeCount: result.likeCount },
-		201,
-		result.message,
-	);
-});
+	},
+);
 
-prRoutes.delete("/articles/:articleId/language/:langCode/like", async (c) => {
-	const { prService } = c.var;
-	const authenticatedUser = c.var.user;
-	if (!authenticatedUser) {
-		return respondError(c, ErrorCode.UNAUTHENTICATED, "User not authenticated");
-	}
-	const { articleId, langCode } = c.req.param();
-	if (
-		!articleId ||
-		!langCode ||
-		typeof articleId !== "string" ||
-		typeof langCode !== "string" ||
-		langCode.length !== 2
-	) {
-		return respondError(
-			c,
-			ErrorCode.VALIDATION_ERROR,
-			"パスパラメータが不正です",
-		);
-	}
-	const result = await prService.unlikeArticle(
-		authenticatedUser.id,
-		articleId,
-		langCode,
-	);
-	if ("error" in result) {
-		if (result.error === "ARTICLE_NOT_FOUND") {
+prRoutes.delete(
+	"/articles/:articleId/language/:langCode/like",
+	authMiddleware,
+	async (c) => {
+		const { prService } = c.var;
+		const authenticatedUser = c.var.user;
+		if (!authenticatedUser) {
 			return respondError(
 				c,
-				ErrorCode.ARTICLE_NOT_FOUND,
-				"指定された記事が見つかりません。",
-				undefined,
-				404,
+				ErrorCode.UNAUTHENTICATED,
+				"User not authenticated",
 			);
 		}
-		return respondError(
-			c,
-			ErrorCode.INTERNAL_SERVER_ERROR,
-			"サーバー内部エラー",
+		const { articleId, langCode } = c.req.param();
+		if (
+			!articleId ||
+			!langCode ||
+			typeof articleId !== "string" ||
+			typeof langCode !== "string" ||
+			langCode.length !== 2
+		) {
+			return respondError(
+				c,
+				ErrorCode.VALIDATION_ERROR,
+				"パスパラメータが不正です",
+			);
+		}
+		const result = await prService.unlikeArticle(
+			authenticatedUser.id,
+			articleId,
+			langCode,
 		);
-	}
-	return respondSuccess(c, { likeCount: result.likeCount }, 200);
-});
+		if ("error" in result) {
+			if (result.error === "ARTICLE_NOT_FOUND") {
+				return respondError(
+					c,
+					ErrorCode.ARTICLE_NOT_FOUND,
+					"指定された記事が見つかりません。",
+					undefined,
+					404,
+				);
+			}
+			return respondError(
+				c,
+				ErrorCode.INTERNAL_SERVER_ERROR,
+				"サーバー内部エラー",
+			);
+		}
+		return respondSuccess(c, { likeCount: result.likeCount }, 200);
+	},
+);
 
 export default prRoutes;

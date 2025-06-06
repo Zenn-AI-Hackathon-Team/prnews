@@ -887,7 +887,7 @@
 		"/repos/{owner}/{repo}/pulls/{number}/ingest": {
 			"post": {
 				"summary": "GitHubから指定されたPull Request情報を取得・保存",
-				"description": "GitHub APIを利用してPull Requestのメタデータ、差分、コメントなどを取得し、データベースにPullRequestとして保存（既に存在する場合は更新）します。",
+				"description": "GitHub APIを利用してPull Requestのメタデータ、差分、コメントなどを取得し、データベースにPullRequestとして保存（既に存在する場合は更新）します。ユーザーごとに保存されたGitHubアクセストークンを利用してAPI通信を行います。認証ユーザーのGitHubトークンを利用してAPIを呼び出します。これは、GitHub APIのレート制限（認証なしでは1時間60回、認証ありでは5000回）をクリアし、差分取得などのリッチな機能を実現するために必須です。",
 				"security": [
 					{
 						"bearerAuth": []
@@ -1442,7 +1442,7 @@
 		"/repos/{owner}/{repo}/pulls/{number}": {
 			"get": {
 				"summary": "データベースにキャッシュされたPull Request本体を取得",
-				"description": "GitHub APIのレート制限対策として、データベースにキャッシュされたPull Request情報を優先して返します。`refresh=true` クエリパラメータで強制的にGitHubから最新情報を取得しキャッシュを更新することも可能です。",
+				"description": "データベースにキャッシュされたPull Request本体を取得します。`refresh=true` クエリパラメータで強制的にGitHubから最新情報を取得しキャッシュを更新することも可能です。認証ユーザーのGitHubトークンを利用してAPIを呼び出します。これは、GitHub APIのレート制限（認証なしでは1時間60回、認証ありでは5000回）をクリアし、安定したサービスを提供するために必須です。",
 				"security": [
 					{
 						"bearerAuth": []
@@ -1921,6 +1921,80 @@
 					},
 					"400": { "$ref": "#/components/responses/BadRequest" },
 					"500": { "$ref": "#/components/responses/InternalServerError" }
+				}
+			}
+		},
+		"/auth/token/exchange": {
+			"post": {
+				"summary": "GitHubアクセストークンを保存",
+				"description": "認証ユーザーのGitHubアクセストークンを暗号化して保存します。以降のGitHub API通信はこのトークンを利用します。",
+				"security": [{ "bearerAuth": [] }],
+				"tags": ["User & Auth"],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"type": "object",
+								"properties": {
+									"githubAccessToken": {
+										"type": "string",
+										"description": "GitHubのアクセストークン"
+									}
+								},
+								"required": ["githubAccessToken"]
+							},
+							"example": { "githubAccessToken": "gho_xxx..." }
+						}
+					}
+				},
+				"responses": {
+					"200": {
+						"description": "トークン保存成功",
+						"content": {
+							"application/json": {
+								"schema": {
+									"type": "object",
+									"properties": {
+										"success": { "type": "boolean", "example": true },
+										"data": {
+											"type": "object",
+											"properties": {
+												"message": {
+													"type": "string",
+													"example": "Token saved successfully."
+												}
+											}
+										}
+									}
+								}
+							}
+						}
+					},
+					"400": {
+						"description": "バリデーションエラー",
+						"content": {
+							"application/json": {
+								"schema": { "$ref": "#/components/schemas/ErrorObject" }
+							}
+						}
+					},
+					"401": {
+						"description": "認証エラー",
+						"content": {
+							"application/json": {
+								"schema": { "$ref": "#/components/schemas/ErrorObject" }
+							}
+						}
+					},
+					"500": {
+						"description": "サーバー内部エラー",
+						"content": {
+							"application/json": {
+								"schema": { "$ref": "#/components/schemas/ErrorObject" }
+							}
+						}
+					}
 				}
 			}
 		}

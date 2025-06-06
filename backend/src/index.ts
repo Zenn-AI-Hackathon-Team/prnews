@@ -27,10 +27,10 @@ app.use("*", async (c, next) => {
 	await next();
 });
 
-app.use("/repos/*", authMiddleware);
+// app.use("/repos/*", authMiddleware);
 app.use("/users/*", authMiddleware);
 app.use("/auth/*", authMiddleware);
-app.use("/articles/*", authMiddleware);
+// app.use("/articles/*", authMiddleware);
 
 app.route("/", generalRoutes);
 app.route("/", prRoutes);

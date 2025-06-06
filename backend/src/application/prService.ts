@@ -13,6 +13,8 @@ import type { ArticleLikeRepoPort } from "../ports/articleLikeRepoPort.js";
 import type { GeminiPort } from "../ports/geminiPort.js";
 import type { GithubPort } from "../ports/githubPort.js";
 import type { PrRepoPort } from "../ports/prRepoPort.js";
+import type { UserRepoPort } from "../ports/userRepoPort";
+import { decrypt } from "../utils/crypto";
 
 const toChangeTypeEnum = (
 	arr: string[],
@@ -62,15 +64,33 @@ export const createPrService = (deps: {
 	gemini: GeminiPort;
 	prRepo: PrRepoPort;
 	articleLikeRepo: ArticleLikeRepoPort;
+	userRepo: UserRepoPort;
 }) => {
-	const ingestPr = async (owner: string, repo: string, number: number) => {
-		// 1. GitHub (モック) からPR情報を取得
-		const rawPr = await deps.github.fetchPullRequest(owner, repo, number);
+	const ingestPr = async (
+		userId: string,
+		owner: string,
+		repo: string,
+		number: number,
+	) => {
+		// 1. ユーザー情報を取得
+		const user = await deps.userRepo.findById(userId);
+		if (!user?.encryptedGitHubAccessToken) {
+			throw new Error("GitHub token not found for this user.");
+		}
+		// 2. トークンを復号
+		const accessToken = decrypt(user.encryptedGitHubAccessToken);
+		// 3. GitHub APIからPR情報を取得
+		const rawPr = await deps.github.fetchPullRequest(
+			accessToken,
+			owner,
+			repo,
+			number,
+		);
 		if (!rawPr) {
 			throw new Error(ErrorCode.NOT_FOUND);
 		}
 
-		// 2. ドメインオブジェクト生成
+		// 4. ドメインオブジェクト生成
 		const prProps = {
 			prNumber: rawPr.prNumber,
 			repository: rawPr.repository,
@@ -81,7 +101,7 @@ export const createPrService = (deps: {
 		};
 		const pr = createPullRequest(prProps);
 
-		// 3. バリデーション
+		// 5. バリデーション
 		const validation = pullRequestSchema.safeParse({
 			prNumber: pr.prNumber,
 			repositoryFullName: pr.repository,
@@ -96,7 +116,7 @@ export const createPrService = (deps: {
 			throw new Error(ErrorCode.VALIDATION_ERROR);
 		}
 
-		// 4. 保存
+		// 6. 保存
 		await deps.prRepo.savePullRequest(pr);
 
 		return {

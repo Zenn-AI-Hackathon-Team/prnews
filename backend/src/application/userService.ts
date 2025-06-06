@@ -15,6 +15,7 @@ import type { FavoriteRepositoryRepoPort } from "../ports/favoriteRepositoryRepo
 import type { GithubPort } from "../ports/githubPort.js";
 import type { UserRepoPort } from "../ports/userRepoPort";
 import type { AuthenticatedUser } from "../presentation/middlewares/authMiddleware";
+import { decrypt, encrypt } from "../utils/crypto";
 
 export const createUserService = (deps: {
 	userRepo: UserRepoPort;
@@ -180,10 +181,21 @@ export const createUserService = (deps: {
 		if (!authenticatedUser) {
 			return { error: "User not authenticated" };
 		}
+		// 1. DBから完全なユーザー情報を取得する
+		const user = await deps.userRepo.findById(authenticatedUser.id);
+		if (!user?.encryptedGitHubAccessToken) {
+			return { error: "GITHUB_TOKEN_NOT_FOUND" };
+		}
+		const accessToken = decrypt(user.encryptedGitHubAccessToken);
 		// GitHub APIでリポジトリ情報取得
 		let repoInfo: import("../domain/repository.js").RepositoryInfo;
 		try {
-			repoInfo = await deps.githubPort.getRepositoryByOwnerAndRepo(owner, repo);
+			// 3. 準備したaccessTokenを使ってAPIを呼び出す！
+			repoInfo = await deps.githubPort.getRepositoryByOwnerAndRepo(
+				accessToken,
+				owner,
+				repo,
+			);
 		} catch (e) {
 			return { error: "GITHUB_REPO_NOT_FOUND" };
 		}
@@ -216,12 +228,32 @@ export const createUserService = (deps: {
 		return { alreadyExists: false, favorite: saved };
 	};
 
+	const saveGitHubToken = async (
+		userId: string,
+		token: string,
+	): Promise<{ success: boolean }> => {
+		try {
+			const encryptedToken = encrypt(token);
+			await deps.userRepo.update(userId, {
+				encryptedGitHubAccessToken: encryptedToken,
+			});
+			return { success: true };
+		} catch (error) {
+			console.error(
+				`[UserService] Failed to save GitHub token for user ${userId}`,
+				error,
+			);
+			return { success: false };
+		}
+	};
+
 	return {
 		getCurrentUser,
 		logoutUser,
 		createUser,
 		createSession,
 		registerFavoriteRepository,
+		saveGitHubToken,
 	};
 };
 

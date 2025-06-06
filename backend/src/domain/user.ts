@@ -11,7 +11,7 @@ export type User = {
 	avatarUrl?: string | null;
 	createdAt?: string;
 	updatedAt?: string;
-	// 必要に応じて他のフィールドを追加
+	encryptedGitHubAccessToken?: string;
 };
 
 export const createUser = (props: Omit<User, "id">): User => ({
