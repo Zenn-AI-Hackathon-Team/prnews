@@ -119,9 +119,6 @@ export const createUserService = (deps: {
 			...newUserInputData,
 			createdAt: new Date().toISOString(),
 			updatedAt: new Date().toISOString(),
-			githubDisplayName: null,
-			email: null,
-			avatarUrl: null,
 		};
 		const validationResult = UserSchema.safeParse(userToSave);
 		if (!validationResult.success) {

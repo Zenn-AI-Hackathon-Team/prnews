@@ -6,6 +6,9 @@ import { respondError } from "../../utils/apiResponder";
 
 export type AuthenticatedUser = Pick<User, "id" | "githubUsername"> & {
 	firebaseUid: string;
+	githubDisplayName?: string | null;
+	email?: string | null;
+	avatarUrl?: string | null;
 };
 
 export type AuthVariables = {
@@ -41,10 +44,13 @@ export const authMiddleware = createMiddleware<{
 		if (!appUser) {
 			// ★ サインアップだけはDB未登録ユーザーも通す
 			if (c.req.path === "/auth/signup") {
-				const tempUser = {
+				const tempUser: AuthenticatedUser = {
 					id: "will_be_generated",
 					githubUsername: decodedToken.name || "unknown",
 					firebaseUid: firebaseUid,
+					githubDisplayName: decodedToken.name || null,
+					email: decodedToken.email || null,
+					avatarUrl: decodedToken.picture || null,
 				};
 				c.set("user", tempUser);
 				await next();
@@ -64,6 +70,9 @@ export const authMiddleware = createMiddleware<{
 			id: appUser.id,
 			githubUsername: appUser.githubUsername,
 			firebaseUid,
+			githubDisplayName: appUser.githubDisplayName,
+			email: appUser.email,
+			avatarUrl: appUser.avatarUrl,
 		};
 		c.set("user", authenticatedUser);
 		await next();

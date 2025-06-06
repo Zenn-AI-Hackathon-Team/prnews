@@ -29,7 +29,8 @@ export const createUserObjectFromAuthenticatedUser = (
 		githubUsername: authUser.githubUsername,
 		language,
 		firebaseUid: authUser.firebaseUid,
-		// 必要に応じて他のフィールドも追加
-		// githubDisplayName, email, avatarUrl などはnullやダミーでOK
+		githubDisplayName: authUser.githubDisplayName,
+		email: authUser.email,
+		avatarUrl: authUser.avatarUrl,
 	};
 };
