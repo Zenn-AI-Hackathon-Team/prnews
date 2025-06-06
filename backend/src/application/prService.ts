@@ -98,6 +98,8 @@ export const createPrService = (deps: {
 			diff: rawPr.diff,
 			authorLogin: rawPr.authorLogin,
 			createdAt: rawPr.createdAt,
+			body: rawPr.body ?? null,
+			comments: rawPr.comments ?? [],
 		};
 		const pr = createPullRequest(prProps);
 
@@ -107,10 +109,11 @@ export const createPrService = (deps: {
 			repositoryFullName: pr.repository,
 			githubPrUrl: `https://github.com/${pr.repository}/pull/${pr.prNumber}`,
 			title: pr.title,
-			body: null,
+			body: pr.body,
 			diff: pr.diff,
 			authorLogin: pr.authorLogin,
 			githubPrCreatedAt: pr.createdAt,
+			comments: pr.comments,
 		});
 		if (!validation.success) {
 			throw new Error(ErrorCode.VALIDATION_ERROR);
@@ -124,10 +127,11 @@ export const createPrService = (deps: {
 			repositoryFullName: pr.repository,
 			githubPrUrl: `https://github.com/${pr.repository}/pull/${pr.prNumber}`,
 			title: pr.title,
-			body: null,
+			body: pr.body,
 			diff: pr.diff,
 			authorLogin: pr.authorLogin,
 			githubPrCreatedAt: pr.createdAt,
+			comments: pr.comments,
 		};
 	};
 	const generateArticle = async (
@@ -141,8 +145,17 @@ export const createPrService = (deps: {
 			throw new Error(ErrorCode.NOT_FOUND);
 		}
 
-		// 2. Geminiで要約生成
-		const aiResult = await deps.gemini.summarizeDiff(pr.diff);
+		// コメントを一つのテキストにまとめる
+		const conversationText = [
+			`PR本文:\n${pr.body || "本文なし"}`,
+			...pr.comments.map((c) => `\n--- コメント (${c.author}) ---\n${c.body}`),
+		].join("\n");
+
+		// diffとconversationを結合
+		const inputTextForAI = `## 差分情報\n\n${pr.diff}\n\n## 会話の履歴\n${conversationText}`;
+
+		// 2. Geminiで要約生成（入力情報を変更）
+		const aiResult = await deps.gemini.summarizeDiff(inputTextForAI);
 		if (!aiResult || !aiResult.aiGeneratedTitle) {
 			throw new Error(ErrorCode.INTERNAL_SERVER_ERROR);
 		}
@@ -168,9 +181,10 @@ export const createPrService = (deps: {
 			createdAt: now,
 			repositoryFullName: pr.repository,
 			githubPrUrl: `https://github.com/${pr.repository}/pull/${pr.prNumber}`,
-			body: null,
+			body: pr.body,
 			githubPrCreatedAt: pr.createdAt,
 			updatedAt: now,
+			comments: pr.comments,
 			contents: {
 				ja: {
 					aiGeneratedTitle: aiResult.aiGeneratedTitle,
@@ -203,10 +217,11 @@ export const createPrService = (deps: {
 			repositoryFullName: pr.repository,
 			githubPrUrl: `https://github.com/${pr.repository}/pull/${pr.prNumber}`,
 			title: pr.title,
-			body: null, // 現状bodyはnull固定
+			body: pr.body,
 			diff: pr.diff,
 			authorLogin: pr.authorLogin,
 			githubPrCreatedAt: pr.createdAt,
+			comments: pr.comments,
 		};
 	};
 	const getArticle = async (
@@ -266,8 +281,9 @@ export const createPrService = (deps: {
 			...article,
 			repositoryFullName: article.repository,
 			githubPrUrl: `https://github.com/${article.repository}/pull/${article.prNumber}`,
-			body: null,
+			body: article.body,
 			githubPrCreatedAt: article.createdAt,
+			comments: article.comments,
 			contents:
 				Object.keys(transformedContents).length > 0
 					? transformedContents

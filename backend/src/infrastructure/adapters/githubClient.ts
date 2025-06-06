@@ -15,14 +15,58 @@ export const githubClient = (): GithubPort => ({
 				repo,
 				pull_number: number,
 			});
+
+			const diffResponse = await octokit.pulls.get({
+				owner,
+				repo,
+				pull_number: number,
+				headers: {
+					Accept: "application/vnd.github.v3.diff",
+				},
+			});
+			const diff = String(diffResponse.data);
+
+			// 4. Issue形式のコメントを取得
+			const { data: issueComments } = await octokit.issues.listComments({
+				owner,
+				repo,
+				issue_number: number,
+			});
+
+			// 5. レビューコメントを取得
+			const { data: reviewComments } = await octokit.pulls.listReviewComments({
+				owner,
+				repo,
+				pull_number: number,
+			});
+
+			// 6. 取得したコメントを整形・結合して時系列にソート
+			const allComments = [
+				...issueComments.map((c) => ({
+					author: c.user?.login || "unknown",
+					body: c.body || "",
+					createdAt: c.created_at,
+				})),
+				...reviewComments.map((c) => ({
+					author: c.user?.login || "unknown",
+					body: c.body,
+					createdAt: c.created_at,
+				})),
+			].sort(
+				(a, b) =>
+					new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+			);
+
 			const pr: PullRequest = {
 				id: String(prData.id),
 				prNumber: prData.number,
 				repository: prData.base.repo.full_name,
 				title: prData.title,
-				diff: "", // 必要に応じて取得
+				body: prData.body,
+				diff,
 				authorLogin: prData.user?.login || "",
 				createdAt: prData.created_at,
+				comments: allComments,
 			};
 			return pr;
 		} catch (error: unknown) {
