@@ -5,6 +5,18 @@ import {
 } from "@google/generative-ai";
 import type { GeminiPort } from "../../ports/geminiPort";
 
+/**
+ * 'ja' -> 'Japanese' のように、プロンプトでAIに分かりやすい言語名に変換するヘルパー関数
+ */
+const getLanguageName = (code: string): string => {
+	const langMap: Record<string, string> = {
+		ja: "Japanese",
+		en: "English",
+		// 今後サポートする言語が増えたらここに追加する
+	};
+	return langMap[code] || "English"; // 不明なコードの場合は英語をデフォルトにする
+};
+
 // 環境変数からAPIキーを読み込む
 const apiKey = process.env.GEMINI_API_KEY;
 if (!apiKey) {
@@ -15,15 +27,13 @@ export const geminiClient = (): GeminiPort => {
 	const genAI = new GoogleGenerativeAI(apiKey);
 
 	const generationConfig = {
-		// responseMimeTypeに'application/json'を指定するとJSONモードになる
 		responseMimeType: "application/json",
-		temperature: 0.2, // 出力のランダム性を少し下げる
+		temperature: 0.2,
 	};
 
 	const model = genAI.getGenerativeModel({
 		model: "gemini-1.5-flash",
-		generationConfig, // ここで設定をモデルに適用
-		// 安全設定（今回はデバッグしやすいように一旦OFFに）
+		generationConfig,
 		safetySettings: [
 			{
 				category: HarmCategory.HARM_CATEGORY_HARASSMENT,
@@ -46,17 +56,27 @@ export const geminiClient = (): GeminiPort => {
 
 	return {
 		async summarizeDiff(inputTextForAI: string) {
-			// プロンプトも、より明確な指示に改善しよう（次のセクションで解説）
+			const language = "ja";
+			const targetLanguage = getLanguageName(language);
+
 			const prompt = `
-                あなたの唯一のタスクは、シニアソフトウェアエンジニアとして提供されたプルリクエストの情報を分析し、分析結果をJSONオブジェクトとして返すことです。
-                説明文、Markdown、その他JSONオブジェクト以外のテキストは一切含めないでください。
+                Your sole task is to act as a senior software engineer. Analyze the provided pull request data and return your analysis strictly as a single, valid JSON object.
 
-                以下のルールに厳密に従ってください:
-                - "mainChanges"の"changeTypes"には、必ず["FEAT", "FIX", "REFACTOR", "DOCS", "TEST", "PERF", "BUILD", "CHORE"]のいずれか1つ以上を含めてください。該当しない場合は["CHORE"]としてください。
-                - "notablePoints"の"categories"には、必ず["TECH", "RISK", "UX", "PERF", "SECURITY"]のいずれか1つ以上を含めてください。
-                - もし"notablePoints"に該当する情報がない場合は、空の配列[]を返してください。
+                **CRITICAL RULES:**
+                1.  Your entire response MUST be only the JSON object. Do not include any explanatory text, markdown fences (\`\`\`), or any other characters outside of the JSON structure.
+                2.  All string values within the JSON object (e.g., titles, descriptions, points) MUST be written in the following language: **${targetLanguage}**.
 
-                返すべきJSONの構造:
+                **JSON Structure and Content Rules:**
+                - "aiGeneratedTitle": A catchy, concise title summarizing the PR. Max 80 characters.
+                - "backgroundAndPurpose": A 2-3 sentence summary of the PR's background and purpose.
+                - "mainChanges": An array of objects detailing the main file changes.
+                    - "changeTypes": Must be a non-empty array containing one or more of the following strings: "FEAT", "FIX", "REFACTOR", "DOCS", "TEST", "PERF", "BUILD", "CHORE". If no other type fits, use ["CHORE"].
+                - "notablePoints": An array of objects highlighting important aspects.
+                    - "categories": Must be a non-empty array containing one or more of the following strings: "TECH", "RISK", "UX", "PERF", "SECURITY".
+                    - If there are no notable points to mention, this field MUST be an empty array: \`[]\`.
+
+                **JSON Schema to adhere to:**
+                \`\`\`json
                 {
                   "aiGeneratedTitle": "string",
                   "backgroundAndPurpose": "string",
@@ -74,8 +94,9 @@ export const geminiClient = (): GeminiPort => {
                     }
                   ]
                 }
+                \`\`\`
 
-                --- 分析対象のプルリクエスト情報 ---
+                --- Pull Request Data to Analyze ---
                 ${inputTextForAI}
             `;
 
@@ -83,7 +104,6 @@ export const geminiClient = (): GeminiPort => {
 				const result = await model.generateContent(prompt);
 				const response = result.response;
 				const jsonText = response.text();
-
 				const parsed = JSON.parse(jsonText);
 
 				return {
