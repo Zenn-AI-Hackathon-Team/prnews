@@ -2,6 +2,7 @@ import { z } from "zod";
 
 export const userSchema = z.object({
 	id: z.string().uuid("ユーザーIDは UUID 形式で入力してください"),
+	firebaseUid: z.string().min(1, "Firebase UIDは必須です"),
 	githubUserId: z
 		.number()
 		.int("GitHub ユーザーIDは整数で入力してください")
