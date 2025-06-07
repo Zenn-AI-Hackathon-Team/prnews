@@ -1,6 +1,4 @@
 import { Hono } from "hono";
-import { createGeneralService } from "../../application/generalService";
-import { respondSuccess } from "../../utils/apiResponder";
 import generalRoutes from "./generalRoutes";
 
 describe("/healthz endpoint", () => {

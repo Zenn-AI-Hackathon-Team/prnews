@@ -20,8 +20,6 @@ import { authSessionRepoFirestore } from "../infrastructure/repositories/authSes
 import { favoriteRepositoryRepoFirestore } from "../infrastructure/repositories/favoriteRepositoryRepoFirestore";
 import { prRepoFirestore } from "../infrastructure/repositories/prRepoFirestore";
 import { userRepoFirestore } from "../infrastructure/repositories/userRepoFirestore";
-import type { AuthSessionRepoPort } from "../ports/authSessionRepoPort";
-import type { UserRepoPort } from "../ports/userRepoPort";
 
 // [注意] このグローバルインスタンスは開発・検証用の仮実装です。
 // 本番運用時は必ず外部DB（Firestore等）に置き換えてください。

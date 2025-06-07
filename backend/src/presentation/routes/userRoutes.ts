@@ -1,8 +1,4 @@
-import {
-	ErrorCode,
-	favoriteRepositorySchema,
-	userSchema,
-} from "@prnews/common";
+import { ErrorCode, userSchema } from "@prnews/common";
 import { Hono } from "hono";
 import { validator } from "hono/validator";
 import { z } from "zod";

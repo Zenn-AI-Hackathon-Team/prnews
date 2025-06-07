@@ -1,5 +1,4 @@
 import { createUser } from "./user";
-import type { User } from "./user";
 
 beforeAll(() => {
 	if (!globalThis.crypto) {

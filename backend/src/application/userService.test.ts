@@ -1,4 +1,3 @@
-import { ErrorCode } from "@prnews/common";
 import type { AuthSession } from "../domain/authSession";
 import type { User } from "../domain/user";
 import type { AuthSessionRepoPort } from "../ports/authSessionRepoPort";

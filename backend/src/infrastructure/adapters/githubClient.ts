@@ -1,7 +1,6 @@
 import { Octokit } from "@octokit/rest";
 import { ErrorCode } from "@prnews/common";
 import type { PullRequest } from "../../domain/pullRequest";
-import type { RepositoryInfo } from "../../domain/repository";
 import type { GithubPort } from "../../ports/githubPort";
 
 const getOctokit = (accessToken: string) => new Octokit({ auth: accessToken });

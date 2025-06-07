@@ -7,7 +7,6 @@ import {
 	type User as UserSchemaType,
 } from "@prnews/common";
 import { favoriteRepositorySchema } from "@prnews/common";
-import { createUser } from "../domain/user";
 import type { AuthSessionRepoPort } from "../ports/authSessionRepoPort";
 import type { FavoriteRepositoryRepoPort } from "../ports/favoriteRepositoryRepoPort.js";
 import type { GithubPort } from "../ports/githubPort.js";

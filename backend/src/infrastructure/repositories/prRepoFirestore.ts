@@ -4,7 +4,6 @@ import type {
 	Firestore,
 	Query,
 } from "firebase-admin/firestore";
-import type { PullRequest } from "../../domain/pullRequest";
 import type { PullRequestArticle } from "../../domain/pullRequestArticle";
 import type { PrRepoPort } from "../../ports/prRepoPort";
 

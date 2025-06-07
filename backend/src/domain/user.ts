@@ -1,5 +1,3 @@
-import type { AuthenticatedUser } from "../presentation/middlewares/authMiddleware";
-
 export type User = {
 	id: string;
 	githubUserId: number;

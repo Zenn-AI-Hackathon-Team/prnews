@@ -3,7 +3,6 @@ import {
 	type PullRequest as CommonPullRequest,
 	type LikedArticleInfo,
 	type PullRequestArticle as PullRequestArticleType,
-	likedArticleInfoSchema,
 	pullRequestSchema,
 } from "@prnews/common";
 import { ErrorCode } from "@prnews/common";
