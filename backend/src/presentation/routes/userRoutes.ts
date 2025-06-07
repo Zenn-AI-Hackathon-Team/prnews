@@ -4,12 +4,18 @@ import {
 	userSchema,
 } from "@prnews/common";
 import { Hono } from "hono";
+import { validator } from "hono/validator";
+import { z } from "zod";
 import type { Dependencies } from "../../config/di";
 import { respondError, respondSuccess } from "../../utils/apiResponder";
 import type { AuthVariables } from "../middlewares/authMiddleware";
 import { authMiddleware } from "../middlewares/authMiddleware";
 
 const userRoutes = new Hono<{ Variables: Dependencies & AuthVariables }>();
+
+const deleteFavoriteParamsSchema = z.object({
+	favoriteId: z.string().min(1, "favoriteId is required"),
+});
 
 userRoutes.get("/users/me", async (c) => {
 	const { userService } = c.var;
@@ -207,6 +213,33 @@ userRoutes.get("/users/me/liked-articles", async (c) => {
 	});
 });
 
+userRoutes.get("/users/me/favorite-repositories", async (c) => {
+	const { userService } = c.var;
+	const authenticatedUser = c.var.user;
+	if (!authenticatedUser) {
+		return respondError(c, ErrorCode.UNAUTHENTICATED, "User not authenticated");
+	}
+	const limit = c.req.query("limit") ? Number(c.req.query("limit")) : 20;
+	const offset = c.req.query("offset") ? Number(c.req.query("offset")) : 0;
+	try {
+		const { favorites, total } = await userService.getFavoriteRepositories(
+			authenticatedUser.id,
+			{ limit, offset },
+		);
+		return respondSuccess(c, {
+			data: favorites,
+			pagination: { totalItems: total, limit, offset },
+		});
+	} catch (error) {
+		console.error("Get /users/me/favorite-repositories failed:", error);
+		return respondError(
+			c,
+			ErrorCode.INTERNAL_SERVER_ERROR,
+			"Failed to get favorite repositories",
+		);
+	}
+});
+
 userRoutes.post(
 	"/auth/token/exchange",
 	authMiddleware, // どのユーザーのトークンか特定するために認証は必須
@@ -240,6 +273,72 @@ userRoutes.post(
 			ErrorCode.INTERNAL_SERVER_ERROR,
 			"Failed to save token.",
 		);
+	},
+);
+
+userRoutes.delete(
+	"/users/me/favorite-repositories/:favoriteId",
+	validator("param", (value, c) => {
+		const parsed = deleteFavoriteParamsSchema.safeParse(value);
+		if (!parsed.success) {
+			return respondError(
+				c,
+				ErrorCode.VALIDATION_ERROR,
+				"Invalid favoriteId",
+				parsed.error.flatten().fieldErrors,
+				422,
+			);
+		}
+		return parsed.data;
+	}),
+	async (c) => {
+		const { userService } = c.var;
+		const authenticatedUser = c.var.user;
+		if (!authenticatedUser) {
+			return respondError(
+				c,
+				ErrorCode.UNAUTHENTICATED,
+				"User not authenticated",
+			);
+		}
+		const { favoriteId } = c.req.valid("param");
+		try {
+			const result = await userService.deleteFavoriteRepository(
+				authenticatedUser.id,
+				favoriteId,
+			);
+			if (!result.success) {
+				if (result.error === "FORBIDDEN") {
+					return respondError(
+						c,
+						ErrorCode.FORBIDDEN,
+						"Forbidden",
+						undefined,
+						403,
+					);
+				}
+				return respondError(
+					c,
+					ErrorCode.NOT_FOUND,
+					"Favorite repository not found",
+					undefined,
+					404,
+				);
+			}
+			return respondSuccess(c, {
+				message: "Favorite repository deleted successfully.",
+			});
+		} catch (error) {
+			console.error(
+				"Delete /users/me/favorite-repositories/:favoriteId failed:",
+				error,
+			);
+			return respondError(
+				c,
+				ErrorCode.INTERNAL_SERVER_ERROR,
+				"Failed to delete favorite repository",
+			);
+		}
 	},
 );
 

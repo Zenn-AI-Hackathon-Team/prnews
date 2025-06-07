@@ -246,6 +246,31 @@ export const createUserService = (deps: {
 		}
 	};
 
+	const getFavoriteRepositories = async (
+		userId: string,
+		options: { limit: number; offset: number },
+	): Promise<{ favorites: FavoriteRepository[]; total: number }> => {
+		return deps.favoriteRepositoryRepo.findByUserId(userId, options);
+	};
+
+	const deleteFavoriteRepository = async (
+		userId: string,
+		favoriteId: string,
+	): Promise<{ success: boolean; error?: "NOT_FOUND" | "FORBIDDEN" }> => {
+		const favorite = await deps.favoriteRepositoryRepo.findById(favoriteId);
+		if (!favorite) {
+			return { success: false, error: "NOT_FOUND" };
+		}
+		if (favorite.userId !== userId) {
+			return { success: false, error: "FORBIDDEN" };
+		}
+		const deleted = await deps.favoriteRepositoryRepo.delete(favoriteId);
+		if (!deleted) {
+			return { success: false, error: "NOT_FOUND" };
+		}
+		return { success: true };
+	};
+
 	return {
 		getCurrentUser,
 		logoutUser,
@@ -253,6 +278,8 @@ export const createUserService = (deps: {
 		createSession,
 		registerFavoriteRepository,
 		saveGitHubToken,
+		getFavoriteRepositories,
+		deleteFavoriteRepository,
 	};
 };
 

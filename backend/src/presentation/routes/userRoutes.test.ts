@@ -32,6 +32,8 @@ describe("userRoutes", () => {
 			registerFavoriteRepository: jest.fn(),
 			createSession: jest.fn(),
 			saveGitHubToken: jest.fn(),
+			getFavoriteRepositories: jest.fn(),
+			deleteFavoriteRepository: jest.fn(),
 		} as unknown as jest.Mocked<UserService>;
 		mockPrService = {
 			getLikedArticles: jest.fn(),
@@ -181,5 +183,143 @@ describe("userRoutes", () => {
 		const json = await res.json();
 		expect(json.success).toBe(true);
 		expect(Array.isArray(json.data.data)).toBe(true);
+	});
+
+	describe("GET /users/me/favorite-repositories", () => {
+		const mockFavoriteRepo = {
+			id: "fav-uuid-1",
+			userId: "user-uuid-1",
+			githubRepoId: 12345,
+			repositoryFullName: "owner/repo-1",
+			owner: "owner",
+			repo: "repo-1",
+			registeredAt: new Date().toISOString(),
+		};
+
+		it("正常系: 認証済みユーザーに正しいリストとページネーションを返す", async () => {
+			mockUserService.getFavoriteRepositories = jest.fn().mockResolvedValue({
+				favorites: [mockFavoriteRepo],
+				total: 1,
+			});
+			const req = new Request(
+				"http://localhost/users/me/favorite-repositories",
+			);
+			const res = await app.request(req);
+			const json = await res.json();
+			expect(res.status).toBe(200);
+			expect(json.success).toBe(true);
+			expect(Array.isArray(json.data.data)).toBe(true);
+			expect(json.data.data[0].id).toBe("fav-uuid-1");
+			expect(json.data.pagination.totalItems).toBe(1);
+		});
+
+		it("正常系: limit/offsetクエリが正しく渡る", async () => {
+			const spy = jest
+				.spyOn(mockUserService, "getFavoriteRepositories")
+				.mockResolvedValue({ favorites: [], total: 0 });
+			const req = new Request(
+				"http://localhost/users/me/favorite-repositories?limit=5&offset=10",
+			);
+			await app.request(req);
+			expect(spy).toHaveBeenCalledWith(testUser.id, { limit: 5, offset: 10 });
+		});
+
+		it("正常系: 空配列でも正常レスポンス", async () => {
+			mockUserService.getFavoriteRepositories = jest
+				.fn()
+				.mockResolvedValue({ favorites: [], total: 0 });
+			const req = new Request(
+				"http://localhost/users/me/favorite-repositories",
+			);
+			const res = await app.request(req);
+			const json = await res.json();
+			expect(res.status).toBe(200);
+			expect(json.success).toBe(true);
+			expect(Array.isArray(json.data.data)).toBe(true);
+			expect(json.data.data.length).toBe(0);
+		});
+
+		it("異常系: 未認証の場合は401", async () => {
+			const unauthApp = new Hono();
+			unauthApp.route("/", userRoutes);
+			const req = new Request(
+				"http://localhost/users/me/favorite-repositories",
+			);
+			const res = await unauthApp.request(req);
+			expect(res.status).toBe(401);
+			const json = await res.json();
+			expect(json.success).toBe(false);
+			expect(json.error.code).toBeDefined();
+		});
+	});
+
+	describe("DELETE /users/me/favorite-repositories/:favoriteId", () => {
+		const validId = "fav-uuid-1";
+
+		it("正常系: 認証済みユーザーが自分のfavoriteIdを削除できる", async () => {
+			mockUserService.deleteFavoriteRepository.mockResolvedValue({
+				success: true,
+			});
+
+			const req = new Request(
+				`http://localhost/users/me/favorite-repositories/${validId}`,
+				{ method: "DELETE" },
+			);
+			const res = await app.request(req);
+			const json = await res.json();
+
+			expect(res.status).toBe(200);
+			expect(json.success).toBe(true);
+			expect(json.data.message).toMatch(/deleted successfully/);
+			expect(mockUserService.deleteFavoriteRepository).toHaveBeenCalledWith(
+				testUser.id,
+				validId,
+			);
+		});
+
+		it("異常系: サービスがNOT_FOUNDを返す場合は404", async () => {
+			mockUserService.deleteFavoriteRepository.mockResolvedValue({
+				success: false,
+				error: "NOT_FOUND",
+			});
+
+			const req = new Request(
+				`http://localhost/users/me/favorite-repositories/${validId}`,
+				{ method: "DELETE" },
+			);
+			const res = await app.request(req);
+
+			expect(res.status).toBe(404);
+			const json = await res.json();
+			expect(json.success).toBe(false);
+			expect(json.error.code).toBe("NOT_FOUND");
+		});
+
+		it("異常系: サービスがFORBIDDENを返す場合は403", async () => {
+			mockUserService.deleteFavoriteRepository.mockResolvedValue({
+				success: false,
+				error: "FORBIDDEN",
+			});
+
+			const req = new Request(
+				`http://localhost/users/me/favorite-repositories/${validId}`,
+				{ method: "DELETE" },
+			);
+			const res = await app.request(req);
+
+			expect(res.status).toBe(403);
+			const json = await res.json();
+			expect(json.success).toBe(false);
+			expect(json.error.code).toBe("FORBIDDEN");
+		});
+
+		it("異常系: favoriteIdが空文字など不正なら422", async () => {
+			const req = new Request(
+				"http://localhost/users/me/favorite-repositories/",
+				{ method: "DELETE" },
+			);
+			const res = await app.request(req);
+			expect([404, 422]).toContain(res.status);
+		});
 	});
 });
