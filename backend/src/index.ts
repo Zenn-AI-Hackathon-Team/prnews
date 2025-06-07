@@ -28,6 +28,7 @@ app.use("*", async (c, next) => {
 });
 
 // app.use("/repos/*", authMiddleware);
+app.use("/repos/:owner/:repo/pulls/*", authMiddleware);
 app.use("/users/*", authMiddleware);
 app.use("/auth/*", authMiddleware);
 // app.use("/articles/*", authMiddleware);

@@ -45,7 +45,6 @@ const getArticleParamsSchema = z.object({
 
 prRoutes.post(
 	"/repos/:owner/:repo/pulls/:number/ingest",
-	authMiddleware,
 	validator("param", (value, c) => {
 		const parsed = ingestParamsSchema.safeParse(value);
 		if (!parsed.success) {
@@ -107,7 +106,6 @@ prRoutes.post(
 
 prRoutes.post(
 	"/repos/:owner/:repo/pulls/:number/article",
-	authMiddleware,
 	validator("param", (value, c) => {
 		const parsed = articleParamsSchema.safeParse(value);
 		if (!parsed.success) {
