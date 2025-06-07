@@ -6,7 +6,13 @@ import type { FavoriteRepositoryRepoPort } from "../ports/favoriteRepositoryRepo
 import type { GithubPort } from "../ports/githubPort";
 import type { UserRepoPort } from "../ports/userRepoPort";
 import type { AuthenticatedUser } from "../presentation/middlewares/authMiddleware";
+import { decrypt } from "../utils/crypto";
 import { createUserService } from "./userService";
+
+// cryptoモジュールをモック化
+jest.mock("../utils/crypto", () => ({
+	decrypt: jest.fn(),
+}));
 
 describe("userService", () => {
 	let userRepo: jest.Mocked<UserRepoPort>;
@@ -38,6 +44,7 @@ describe("userService", () => {
 		githubPort = {
 			fetchPullRequest: jest.fn(),
 			getRepositoryByOwnerAndRepo: jest.fn(),
+			getAuthenticatedUserInfo: jest.fn(),
 		} as unknown as jest.Mocked<GithubPort>;
 		service = createUserService({
 			userRepo,
@@ -94,22 +101,42 @@ describe("userService", () => {
 
 	describe("createUser", () => {
 		it("新規ユーザーが正常に作成される", async () => {
-			userRepo.findByFirebaseUid.mockResolvedValue(null);
+			userRepo.findByFirebaseUid.mockResolvedValueOnce(null);
+			userRepo.findByFirebaseUid.mockResolvedValueOnce({
+				id: "u2",
+				firebaseUid: "f2",
+				githubUsername: "bar",
+				githubUserId: 54321,
+				language: "en",
+				createdAt: "2024-01-01T00:00:00Z",
+				updatedAt: "2024-01-01T00:00:00Z",
+				encryptedGitHubAccessToken: "encrypted-token-string",
+			});
+
+			(decrypt as jest.Mock).mockReturnValue("decrypted-access-token");
+
+			(githubPort.getAuthenticatedUserInfo as jest.Mock).mockResolvedValue({
+				id: 54321,
+				login: "bar_from_github",
+				name: "Bar Display Name",
+				email: "bar@github.com",
+				avatar_url: "http://example.com/bar.png",
+			});
+
 			userRepo.save.mockImplementation(async (u: User) => u);
+
 			const authUser: AuthenticatedUser = {
 				id: "u2",
 				firebaseUid: "f2",
 				githubUsername: "bar",
-				githubDisplayName: "Bar",
-				email: "bar@example.com",
-				avatarUrl: "http://example.com/avatar.png",
 			};
 			const result = await service.createUser(authUser, "en");
-			expect(result).toMatchObject({
-				githubUsername: "bar",
-				language: "en",
-				firebaseUid: "f2",
-			});
+
+			expect(result).not.toBeNull();
+			expect(result?.githubUserId).toBe(54321);
+			expect(result?.githubUsername).toBe("bar_from_github");
+			expect(result?.language).toBe("en");
+			expect(result?.firebaseUid).toBe("f2");
 		});
 		it("既存ユーザーがいる場合はnull", async () => {
 			const existingUser: User = {

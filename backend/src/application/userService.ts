@@ -7,10 +7,7 @@ import {
 	type User as UserSchemaType,
 } from "@prnews/common";
 import { favoriteRepositorySchema } from "@prnews/common";
-import {
-	createUser,
-	createUserObjectFromAuthenticatedUser,
-} from "../domain/user";
+import { createUser } from "../domain/user";
 import type { AuthSessionRepoPort } from "../ports/authSessionRepoPort";
 import type { FavoriteRepositoryRepoPort } from "../ports/favoriteRepositoryRepoPort.js";
 import type { GithubPort } from "../ports/githubPort.js";
@@ -112,15 +109,55 @@ export const createUserService = (deps: {
 			return null;
 		}
 
-		const newUserInputData = createUserObjectFromAuthenticatedUser(
-			authenticatedUser,
-			language ?? "ja",
+		// 1. DBから暗号化済みGitHubアクセストークンを取得
+		const userTokenRecord = await deps.userRepo.findByFirebaseUid(
+			authenticatedUser.firebaseUid,
 		);
-		const userToSave: UserSchemaType = {
-			id: randomUUID(), // 新しいIDをここで生成
-			...newUserInputData,
-			createdAt: new Date().toISOString(),
-			updatedAt: new Date().toISOString(),
+		if (!userTokenRecord?.encryptedGitHubAccessToken) {
+			console.error(
+				"[UserService] No encrypted GitHub access token found for user",
+				authenticatedUser.firebaseUid,
+			);
+			throw new Error(ErrorCode.UNAUTHENTICATED);
+		}
+		let githubAccessToken: string;
+		try {
+			githubAccessToken = decrypt(userTokenRecord.encryptedGitHubAccessToken);
+		} catch (e) {
+			console.error("[UserService] Failed to decrypt GitHub access token", e);
+			throw new Error(ErrorCode.UNAUTHENTICATED);
+		}
+
+		// 2. GitHub APIから正規ユーザー情報を取得
+		let githubUserInfo: {
+			id: number;
+			login: string;
+			name: string | null;
+			email: string | null;
+			avatar_url: string | null;
+		};
+		try {
+			githubUserInfo =
+				await deps.githubPort.getAuthenticatedUserInfo(githubAccessToken);
+		} catch (e) {
+			console.error("[UserService] Failed to fetch GitHub user info", e);
+			throw new Error(ErrorCode.INTERNAL_SERVER_ERROR);
+		}
+
+		// 3. Userオブジェクトを生成
+		const now = new Date().toISOString();
+		const userToSave: import("../domain/user").User = {
+			id: randomUUID(),
+			githubUserId: githubUserInfo.id,
+			githubUsername: githubUserInfo.login,
+			language: language ?? "ja",
+			firebaseUid: authenticatedUser.firebaseUid,
+			githubDisplayName: githubUserInfo.name,
+			email: githubUserInfo.email,
+			avatarUrl: githubUserInfo.avatar_url,
+			createdAt: now,
+			updatedAt: now,
+			encryptedGitHubAccessToken: userTokenRecord.encryptedGitHubAccessToken,
 		};
 		const validationResult = UserSchema.safeParse(userToSave);
 		if (!validationResult.success) {

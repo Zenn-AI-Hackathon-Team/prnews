@@ -105,4 +105,20 @@ export const githubClient = (): GithubPort => ({
 			throw new Error(ErrorCode.INTERNAL_SERVER_ERROR);
 		}
 	},
+	async getAuthenticatedUserInfo(accessToken) {
+		const octokit = getOctokit(accessToken);
+		try {
+			const { data } = await octokit.users.getAuthenticated();
+			return {
+				id: data.id,
+				login: data.login,
+				name: data.name ?? null,
+				email: data.email ?? null,
+				avatar_url: data.avatar_url ?? null,
+			};
+		} catch (error) {
+			console.error("Failed to fetch authenticated GitHub user info", error);
+			throw new Error(ErrorCode.INTERNAL_SERVER_ERROR);
+		}
+	},
 });

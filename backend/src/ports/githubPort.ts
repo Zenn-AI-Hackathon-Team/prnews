@@ -13,4 +13,11 @@ export interface GithubPort {
 		owner: string,
 		repo: string,
 	): Promise<RepositoryInfo>;
+	getAuthenticatedUserInfo(accessToken: string): Promise<{
+		id: number;
+		login: string;
+		name: string | null;
+		email: string | null;
+		avatar_url: string | null;
+	}>;
 }
