@@ -20,8 +20,14 @@ describe("rankingService", () => {
 	it("getArticleLikeRanking 正常系", async () => {
 		prRepo.getRanking.mockResolvedValue([
 			{
-				id: "pr1",
-				contents: {},
+				id: "11111111-1111-1111-1111-111111111111",
+				contents: {
+					ja: {
+						aiGeneratedTitle: "AIによるテストタイトル",
+						summaryGeneratedAt: new Date().toISOString(),
+						likeCount: 10,
+					},
+				},
 				prNumber: 1,
 				repository: "",
 				title: "",
@@ -34,7 +40,9 @@ describe("rankingService", () => {
 		]);
 		const result = await service.getArticleLikeRanking();
 		expect(Array.isArray(result.data)).toBe(true);
-		expect(result.data[0].articleId).toBe("pr1");
+		expect(result.data[0].articleId).toBe(
+			"11111111-1111-1111-1111-111111111111",
+		);
 	});
 
 	it("getArticleLikeRanking 異常系: リポジトリエラー", async () => {

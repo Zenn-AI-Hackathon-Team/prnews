@@ -54,7 +54,7 @@ describe("userService", () => {
 				firebaseUid: "f1",
 				githubDisplayName: "Foo",
 				email: "foo@example.com",
-				avatarUrl: "",
+				avatarUrl: "http://example.com/avatar.png",
 				createdAt: "2024-01-01T00:00:00Z",
 				updatedAt: "2024-01-01T00:00:00Z",
 			};
@@ -65,7 +65,7 @@ describe("userService", () => {
 				githubUsername: "foo",
 				githubDisplayName: "Foo",
 				email: "foo@example.com",
-				avatarUrl: "",
+				avatarUrl: "http://example.com/avatar.png",
 			};
 			const result = await service.getCurrentUser(authUser);
 			expect(result).toEqual(user);
@@ -78,7 +78,7 @@ describe("userService", () => {
 				githubUsername: "bar",
 				githubDisplayName: "Bar",
 				email: "bar@example.com",
-				avatarUrl: "",
+				avatarUrl: "http://example.com/avatar.png",
 			};
 			const result = await service.getCurrentUser(authUser);
 			expect(result).toBeNull();
@@ -99,7 +99,7 @@ describe("userService", () => {
 				githubUsername: "bar",
 				githubDisplayName: "Bar",
 				email: "bar@example.com",
-				avatarUrl: "",
+				avatarUrl: "http://example.com/avatar.png",
 			};
 			const result = await service.createUser(authUser, "en");
 			expect(result).toMatchObject({
@@ -117,7 +117,7 @@ describe("userService", () => {
 				firebaseUid: "f2",
 				githubDisplayName: "Bar",
 				email: "bar@example.com",
-				avatarUrl: "",
+				avatarUrl: "http://example.com/avatar.png",
 				createdAt: "2024-01-01T00:00:00Z",
 				updatedAt: "2024-01-01T00:00:00Z",
 			};
@@ -128,7 +128,7 @@ describe("userService", () => {
 				githubUsername: "bar",
 				githubDisplayName: "Bar",
 				email: "bar@example.com",
-				avatarUrl: "",
+				avatarUrl: "http://example.com/avatar.png",
 			};
 			const result = await service.createUser(authUser, "en");
 			expect(result).toBeNull();
@@ -152,7 +152,7 @@ describe("userService", () => {
 				githubUsername: "baz",
 				githubDisplayName: "Baz",
 				email: "baz@example.com",
-				avatarUrl: "",
+				avatarUrl: "http://example.com/avatar.png",
 			};
 			const result = await service.logoutUser(authUser);
 			expect(result.success).toBe(true);
@@ -178,7 +178,7 @@ describe("userService", () => {
 				githubUsername: "baz2",
 				githubDisplayName: "Baz2",
 				email: "baz2@example.com",
-				avatarUrl: "",
+				avatarUrl: "http://example.com/avatar.png",
 			};
 			const result = await service.logoutUser(authUser);
 			expect(result.success).toBe(true);
@@ -201,7 +201,7 @@ describe("userService", () => {
 				githubUsername: "baz3",
 				githubDisplayName: "Baz3",
 				email: "baz3@example.com",
-				avatarUrl: "",
+				avatarUrl: "http://example.com/avatar.png",
 			};
 			const result = await service.logoutUser(authUser);
 			expect(result.success).toBe(false);

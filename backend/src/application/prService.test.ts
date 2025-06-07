@@ -14,6 +14,7 @@ describe("prService", () => {
 	beforeEach(() => {
 		prRepo = {
 			findByNumber: jest.fn(),
+			findByOwnerRepoNumber: jest.fn(),
 			savePullRequest: jest.fn(),
 		} as unknown as jest.Mocked<PrRepoPort>;
 		githubPort = {

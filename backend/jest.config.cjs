@@ -10,18 +10,24 @@ module.exports = {
 	preset: "ts-jest/presets/default-esm",
 	testEnvironment: "node",
 	extensionsToTreatAsEsm: [".ts"],
-	globals: {
-		"ts-jest": {
-			useESM: true,
-			tsconfig: "./tsconfig.jest.json",
-		},
+	moduleNameMapper: {
+		// ESMを使ってる場合、ts-jestが推奨する設定を追加
+		"^(\\.{1,2}/.*)\\.js$": "$1",
+		// 元々あったpathsの設定はそのまま活かす
+		...pathsToModuleNameMapper(tsconfig.compilerOptions.paths || {}, {
+			prefix: "<rootDir>/",
+		}),
 	},
-	moduleNameMapper: pathsToModuleNameMapper(
-		tsconfig.compilerOptions.paths || {},
-		{ prefix: "<rootDir>/" },
-	),
+	transform: {
+		"^.+\\.tsx?$": [
+			"ts-jest",
+			{
+				useESM: true,
+				tsconfig: "./tsconfig.jest.json",
+			},
+		],
+	},
 	moduleFileExtensions: ["ts", "js", "json"],
 	testMatch: ["<rootDir>/src/**/*.test.ts"],
-	transform: {},
 	setupFiles: ["dotenv/config"],
 };

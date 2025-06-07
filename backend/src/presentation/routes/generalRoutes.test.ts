@@ -10,6 +10,14 @@ describe("/healthz endpoint", () => {
 	type TestVariables = { generalService: typeof mockGeneralService };
 	const app = new Hono<{ Variables: TestVariables }>();
 
+	let errorSpy: jest.SpyInstance;
+	beforeEach(() => {
+		errorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
+	});
+	afterEach(() => {
+		errorSpy.mockRestore();
+	});
+
 	// DI変数をセットするミドルウェア
 	app.use("*", async (c, next) => {
 		c.set("generalService", mockGeneralService);
