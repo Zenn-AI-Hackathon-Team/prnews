@@ -23,13 +23,14 @@ app.use("*", async (c, next) => {
 	c.set("prService", deps.prService);
 	c.set("userService", deps.userService);
 	c.set("rankingService", deps.rankingService);
+	c.set("auth", deps.auth);
 	await next();
 });
 
-app.use("/repos/*", authMiddleware);
+// app.use("/repos/*", authMiddleware);
 app.use("/users/*", authMiddleware);
 app.use("/auth/*", authMiddleware);
-app.use("/articles/*", authMiddleware);
+// app.use("/articles/*", authMiddleware);
 
 app.route("/", generalRoutes);
 app.route("/", prRoutes);

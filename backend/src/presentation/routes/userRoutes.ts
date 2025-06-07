@@ -7,6 +7,7 @@ import { Hono } from "hono";
 import type { Dependencies } from "../../config/di";
 import { respondError, respondSuccess } from "../../utils/apiResponder";
 import type { AuthVariables } from "../middlewares/authMiddleware";
+import { authMiddleware } from "../middlewares/authMiddleware";
 
 const userRoutes = new Hono<{ Variables: Dependencies & AuthVariables }>();
 
@@ -163,27 +164,7 @@ userRoutes.post("/users/me/favorite-repositories", async (c) => {
 		repo,
 	);
 	if ("error" in result) {
-		if (result.error === "GITHUB_REPO_NOT_FOUND") {
-			return respondError(
-				c,
-				ErrorCode.GITHUB_REPO_NOT_FOUND,
-				"指定されたGitHubリポジトリが見つかりません。",
-				undefined,
-				404,
-			);
-		}
-		if (result.error === "VALIDATION_ERROR") {
-			return respondError(
-				c,
-				ErrorCode.VALIDATION_ERROR,
-				"バリデーションエラー",
-			);
-		}
-		return respondError(
-			c,
-			ErrorCode.INTERNAL_SERVER_ERROR,
-			"サーバー内部エラー",
-		);
+		return respondError(c, result.error, "お気に入り登録に失敗しました");
 	}
 	if (result.alreadyExists) {
 		return respondSuccess(
@@ -225,5 +206,41 @@ userRoutes.get("/users/me/liked-articles", async (c) => {
 		pagination: { totalItems, limit: limit ?? 10, offset: offset ?? 0 },
 	});
 });
+
+userRoutes.post(
+	"/auth/token/exchange",
+	authMiddleware, // どのユーザーのトークンか特定するために認証は必須
+	async (c) => {
+		const { userService } = c.var;
+		const authenticatedUser = c.var.user;
+		let githubAccessToken: string | undefined;
+		try {
+			const body = await c.req.json();
+			if (body && typeof body.githubAccessToken === "string") {
+				githubAccessToken = body.githubAccessToken;
+			}
+		} catch {
+			// パース失敗時はundefinedのまま
+		}
+
+		if (!authenticatedUser || !githubAccessToken) {
+			return respondError(c, ErrorCode.VALIDATION_ERROR, "Invalid request");
+		}
+
+		const result = await userService.saveGitHubToken(
+			authenticatedUser.id,
+			githubAccessToken,
+		);
+
+		if (result.success) {
+			return respondSuccess(c, { message: "Token saved successfully." });
+		}
+		return respondError(
+			c,
+			ErrorCode.INTERNAL_SERVER_ERROR,
+			"Failed to save token.",
+		);
+	},
+);
 
 export default userRoutes;

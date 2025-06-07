@@ -91,11 +91,11 @@
     - 既に登録済みの場合は200、初回登録時は201。
     - レスポンス例:
 
-      ```json
-      {
-        "success": true,
-        "data": {
-          "id": "uuid",
+        ```json
+        {
+        	"success": true,
+        	"data": {
+        		"id": "uuid",
           "userId": "uuid",
           "githubRepoId": 123456,
           "repositoryFullName": "owner/repo",
@@ -104,8 +104,8 @@
           "registeredAt": "2024-06-08T12:34:56Z"
         },
         "message": "お気に入り登録が完了しました"
-      }
-      ```
+        }
+        ```
 
 - **GET /users/me/favorite-repositories**
     - 実装: 未実装（2024/6/8時点）
@@ -159,10 +159,10 @@
     - 出力: `{ data: LikedArticleInfo[], pagination: Pagination }`
     - レスポンス例:
 
-      ```json
-      {
-        "success": true,
-        "data": {
+        ```json
+        {
+        	"success": true,
+        	"data": {
           "data": [
             {
               "articleId": "uuid",
@@ -178,9 +178,9 @@
             "limit": 10,
             "offset": 0
           }
+        	}
         }
-      }
-      ```
+        ```
 
 ---
 
@@ -192,10 +192,10 @@
     - 出力: `{ data: RankedArticleInfo[], pagination: Pagination }`
     - レスポンス例:
 
-      ```json
-      {
-        "success": true,
-        "data": {
+        ```json
+        {
+        	"success": true,
+        	"data": {
           "data": [
             {
               "rank": 1,
@@ -203,7 +203,7 @@
               "languageCode": "ja",
               "aiGeneratedTitle": "AI生成タイトル",
               "repositoryFullName": "owner/repo",
-              "prNumber": 42,
+        		"prNumber": 42,
               "likeCount": 10
             }
           ],
@@ -212,9 +212,9 @@
             "limit": 10,
             "offset": 0
           }
+        	}
         }
-      }
-      ```
+        ```
 
 ---
 
@@ -225,6 +225,15 @@
     -   認証: 必須
     -   入力: なし
     -   出力スキーマ: `PullRequest`
+
+> **【💡 なぜ認証が必須なのか】**
+> このエンドポイントでは、GitHub APIを呼び出す際に認証ユーザーのトークンを利用します。これには2つの重要な理由があります。
+>
+> 1.  **APIレート制限の回避**: GitHub APIは、認証なしのリクエストに対して**1時間あたり60回**という厳しい制限を設けています。しかし、ユーザーのトークンで認証すると、この制限が**1時間あたり5,000回**に大幅に緩和されます。これにより、多くのユーザーが同時に利用しても安定したサービスを提供できます。
+> 2.  **リッチな機能の実現**: PRのコード差分(`diff`)を取得するなど、本アプリのコア機能はAPIリクエスト数を消費します。認証によって緩和されたレート制限を確保することで、初めて詳細な分析や解説記事の生成といった価値を提供できます。
+>
+> そのため、PR情報の取得はログインユーザー限定の機能となっています。
+
     -   典型レスポンス例（成功）:
 
         ```json

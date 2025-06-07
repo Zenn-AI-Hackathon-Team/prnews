@@ -13,6 +13,8 @@ import type { ArticleLikeRepoPort } from "../ports/articleLikeRepoPort.js";
 import type { GeminiPort } from "../ports/geminiPort.js";
 import type { GithubPort } from "../ports/githubPort.js";
 import type { PrRepoPort } from "../ports/prRepoPort.js";
+import type { UserRepoPort } from "../ports/userRepoPort";
+import { decrypt } from "../utils/crypto";
 
 const toChangeTypeEnum = (
 	arr: string[],
@@ -62,15 +64,33 @@ export const createPrService = (deps: {
 	gemini: GeminiPort;
 	prRepo: PrRepoPort;
 	articleLikeRepo: ArticleLikeRepoPort;
+	userRepo: UserRepoPort;
 }) => {
-	const ingestPr = async (owner: string, repo: string, number: number) => {
-		// 1. GitHub (モック) からPR情報を取得
-		const rawPr = await deps.github.fetchPullRequest(owner, repo, number);
+	const ingestPr = async (
+		userId: string,
+		owner: string,
+		repo: string,
+		number: number,
+	) => {
+		// 1. ユーザー情報を取得
+		const user = await deps.userRepo.findById(userId);
+		if (!user?.encryptedGitHubAccessToken) {
+			throw new Error("GitHub token not found for this user.");
+		}
+		// 2. トークンを復号
+		const accessToken = decrypt(user.encryptedGitHubAccessToken);
+		// 3. GitHub APIからPR情報を取得
+		const rawPr = await deps.github.fetchPullRequest(
+			accessToken,
+			owner,
+			repo,
+			number,
+		);
 		if (!rawPr) {
 			throw new Error(ErrorCode.NOT_FOUND);
 		}
 
-		// 2. ドメインオブジェクト生成
+		// 4. ドメインオブジェクト生成
 		const prProps = {
 			prNumber: rawPr.prNumber,
 			repository: rawPr.repository,
@@ -78,25 +98,28 @@ export const createPrService = (deps: {
 			diff: rawPr.diff,
 			authorLogin: rawPr.authorLogin,
 			createdAt: rawPr.createdAt,
+			body: rawPr.body ?? null,
+			comments: rawPr.comments ?? [],
 		};
 		const pr = createPullRequest(prProps);
 
-		// 3. バリデーション
+		// 5. バリデーション
 		const validation = pullRequestSchema.safeParse({
 			prNumber: pr.prNumber,
 			repositoryFullName: pr.repository,
 			githubPrUrl: `https://github.com/${pr.repository}/pull/${pr.prNumber}`,
 			title: pr.title,
-			body: null,
+			body: pr.body,
 			diff: pr.diff,
 			authorLogin: pr.authorLogin,
 			githubPrCreatedAt: pr.createdAt,
+			comments: pr.comments,
 		});
 		if (!validation.success) {
 			throw new Error(ErrorCode.VALIDATION_ERROR);
 		}
 
-		// 4. 保存
+		// 6. 保存
 		await deps.prRepo.savePullRequest(pr);
 
 		return {
@@ -104,10 +127,11 @@ export const createPrService = (deps: {
 			repositoryFullName: pr.repository,
 			githubPrUrl: `https://github.com/${pr.repository}/pull/${pr.prNumber}`,
 			title: pr.title,
-			body: null,
+			body: pr.body,
 			diff: pr.diff,
 			authorLogin: pr.authorLogin,
 			githubPrCreatedAt: pr.createdAt,
+			comments: pr.comments,
 		};
 	};
 	const generateArticle = async (
@@ -121,8 +145,17 @@ export const createPrService = (deps: {
 			throw new Error(ErrorCode.NOT_FOUND);
 		}
 
-		// 2. Geminiで要約生成
-		const aiResult = await deps.gemini.summarizeDiff(pr.diff);
+		// コメントを一つのテキストにまとめる
+		const conversationText = [
+			`PR本文:\n${pr.body || "本文なし"}`,
+			...pr.comments.map((c) => `\n--- コメント (${c.author}) ---\n${c.body}`),
+		].join("\n");
+
+		// diffとconversationを結合
+		const inputTextForAI = `## 差分情報\n\n${pr.diff}\n\n## 会話の履歴\n${conversationText}`;
+
+		// 2. Geminiで要約生成（入力情報を変更）
+		const aiResult = await deps.gemini.summarizeDiff(inputTextForAI);
 		if (!aiResult || !aiResult.aiGeneratedTitle) {
 			throw new Error(ErrorCode.INTERNAL_SERVER_ERROR);
 		}
@@ -148,9 +181,10 @@ export const createPrService = (deps: {
 			createdAt: now,
 			repositoryFullName: pr.repository,
 			githubPrUrl: `https://github.com/${pr.repository}/pull/${pr.prNumber}`,
-			body: null,
+			body: pr.body,
 			githubPrCreatedAt: pr.createdAt,
 			updatedAt: now,
+			comments: pr.comments,
 			contents: {
 				ja: {
 					aiGeneratedTitle: aiResult.aiGeneratedTitle,
@@ -183,10 +217,11 @@ export const createPrService = (deps: {
 			repositoryFullName: pr.repository,
 			githubPrUrl: `https://github.com/${pr.repository}/pull/${pr.prNumber}`,
 			title: pr.title,
-			body: null, // 現状bodyはnull固定
+			body: pr.body,
 			diff: pr.diff,
 			authorLogin: pr.authorLogin,
 			githubPrCreatedAt: pr.createdAt,
+			comments: pr.comments,
 		};
 	};
 	const getArticle = async (
@@ -246,8 +281,9 @@ export const createPrService = (deps: {
 			...article,
 			repositoryFullName: article.repository,
 			githubPrUrl: `https://github.com/${article.repository}/pull/${article.prNumber}`,
-			body: null,
+			body: article.body,
 			githubPrCreatedAt: article.createdAt,
+			comments: article.comments,
 			contents:
 				Object.keys(transformedContents).length > 0
 					? transformedContents
@@ -277,9 +313,8 @@ export const createPrService = (deps: {
 		if (existing) {
 			return { alreadyLiked: true, likeCount, message: "既にいいね済みです" };
 		}
-		// likeCountをインクリメント
-		article.contents[langCode].likeCount = likeCount + 1;
-		await deps.prRepo.saveArticle(article);
+		// likeCountをトランザクションでインクリメント
+		await deps.prRepo.incrementLikeCount(articleId, langCode, 1);
 		// ArticleLikeレコード作成
 		const like = {
 			id: randomUUID(),
@@ -293,9 +328,12 @@ export const createPrService = (deps: {
 			return { error: "VALIDATION_ERROR" };
 		}
 		await deps.articleLikeRepo.save(like);
+		// 最新のlikeCountを取得
+		const updated = await deps.prRepo.findArticleByPrId(articleId);
+		const newCount = updated?.contents?.[langCode]?.likeCount ?? likeCount + 1;
 		return {
 			alreadyLiked: false,
-			likeCount: article.contents[langCode].likeCount,
+			likeCount: newCount,
 			message: "いいねしました",
 		};
 	};
@@ -323,10 +361,13 @@ export const createPrService = (deps: {
 				articleId,
 				langCode,
 			);
-			// likeCountをデクリメント
-			article.contents[langCode].likeCount = Math.max(0, likeCount - 1);
-			await deps.prRepo.saveArticle(article);
-			return { likeCount: article.contents[langCode].likeCount };
+			// likeCountをトランザクションでデクリメント
+			await deps.prRepo.incrementLikeCount(articleId, langCode, -1);
+			// 最新のlikeCountを取得
+			const updated = await deps.prRepo.findArticleByPrId(articleId);
+			const newCount =
+				updated?.contents?.[langCode]?.likeCount ?? Math.max(0, likeCount - 1);
+			return { likeCount: newCount };
 		}
 		// もともといいねしていなかった場合も現在のlikeCountを返す
 		return { likeCount };
@@ -406,3 +447,5 @@ export const createPrService = (deps: {
 		getLikedArticles,
 	};
 };
+
+export type PrService = ReturnType<typeof createPrService>;
