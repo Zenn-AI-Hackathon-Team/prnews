@@ -4,11 +4,9 @@ export type HealthStatus = {
 	// database?: 'connected' | 'disconnected';
 };
 
-// biome-ignore lint/complexity/noBannedTypes: 依存オブジェクトがないため {} で定義
+// biome-ignore lint/complexity/noBannedTypes: <explanation>
 export const createGeneralService = (deps: {}) => {
 	const checkHealth = async (): Promise<HealthStatus> => {
-		// 今は単純に成功を返す
-		// 将来的には、DB接続確認などのチェック処理をここに追加できる
 		return { ok: true };
 	};
 

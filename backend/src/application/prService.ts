@@ -139,7 +139,6 @@ export const createPrService = (deps: {
 		repo: string,
 		number: number,
 	) => {
-		// 1. PR取得
 		const pr = await deps.prRepo.findByNumber(owner, repo, number);
 		if (!pr) {
 			throw new Error(ErrorCode.NOT_FOUND);
@@ -154,13 +153,11 @@ export const createPrService = (deps: {
 		// diffとconversationを結合
 		const inputTextForAI = `## 差分情報\n\n${pr.diff}\n\n## 会話の履歴\n${conversationText}`;
 
-		// 2. Geminiで要約生成（入力情報を変更）
 		const aiResult = await deps.gemini.summarizeDiff(inputTextForAI);
 		if (!aiResult || !aiResult.aiGeneratedTitle) {
 			throw new Error(ErrorCode.INTERNAL_SERVER_ERROR);
 		}
 
-		// 3. PullRequestArticle生成
 		const now = new Date().toISOString();
 		const mainChanges = Array.isArray(aiResult.mainChanges)
 			? aiResult.mainChanges.map((mc) => ({
@@ -197,7 +194,6 @@ export const createPrService = (deps: {
 			},
 		};
 
-		// 4. 保存
 		await deps.prRepo.saveArticle(article);
 
 		return article;
