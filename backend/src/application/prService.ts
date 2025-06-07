@@ -447,3 +447,5 @@ export const createPrService = (deps: {
 		getLikedArticles,
 	};
 };
+
+export type PrService = ReturnType<typeof createPrService>;
