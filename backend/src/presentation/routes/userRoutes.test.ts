@@ -180,6 +180,6 @@ describe("userRoutes", () => {
 		expect(res.status).toBe(200);
 		const json = await res.json();
 		expect(json.success).toBe(true);
-		expect(Array.isArray(json.data)).toBe(true);
+		expect(Array.isArray(json.data.data)).toBe(true);
 	});
 });
