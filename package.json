@@ -20,7 +20,11 @@
 	"devDependencies": {
 		"@biomejs/biome": "^1.9.4",
 		"concurrently": "^9.1.2",
-		"husky": "^9.1.7"
+		"husky": "^9.1.7",
+		"lint-staged": "^16.1.0"
 	},
-	"workspaces": ["packages/*", "frontend", "backend"]
+	"workspaces": ["packages/*", "frontend", "backend"],
+	"lint-staged": {
+		"*.{js,ts,jsx,tsx,json}": ["biome check --apply"]
+	}
 }
