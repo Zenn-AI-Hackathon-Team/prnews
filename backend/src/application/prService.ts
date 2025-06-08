@@ -5,9 +5,12 @@ import {
 	type PullRequestArticle as PullRequestArticleType,
 	pullRequestSchema,
 } from "@prnews/common";
-import { ErrorCode } from "@prnews/common";
 import { articleLikeSchema } from "@prnews/common";
+import { ForbiddenError } from "src/errors/ForbiddenError";
 import { createPullRequest } from "../domain/pullRequest";
+import { AppError } from "../errors/AppError";
+import { NotFoundError } from "../errors/NotFoundError";
+import { ValidationError } from "../errors/ValidationError";
 import type { ArticleLikeRepoPort } from "../ports/articleLikeRepoPort.js";
 import type { GeminiPort } from "../ports/geminiPort.js";
 import type { GithubPort } from "../ports/githubPort.js";
@@ -74,7 +77,10 @@ export const createPrService = (deps: {
 		// 1. ユーザー情報を取得
 		const user = await deps.userRepo.findById(userId);
 		if (!user?.encryptedGitHubAccessToken) {
-			throw new Error("GitHub token not found for this user.");
+			throw new ForbiddenError(
+				"UNAUTHENTICATED",
+				"GitHub token not found for this user.",
+			);
 		}
 		// 2. トークンを復号
 		const accessToken = decrypt(user.encryptedGitHubAccessToken);
@@ -86,7 +92,9 @@ export const createPrService = (deps: {
 			number,
 		);
 		if (!rawPr) {
-			throw new Error(ErrorCode.NOT_FOUND);
+			throw new NotFoundError(
+				`Pull request #${number} not found in ${owner}/${repo}`,
+			);
 		}
 
 		// 4. ドメインオブジェクト生成
@@ -116,7 +124,10 @@ export const createPrService = (deps: {
 			comments: pr.comments,
 		});
 		if (!validation.success) {
-			throw new Error(ErrorCode.VALIDATION_ERROR);
+			throw new ValidationError(
+				"PullRequest validation failed",
+				validation.error.flatten().fieldErrors,
+			);
 		}
 
 		// 6. 保存
@@ -141,7 +152,9 @@ export const createPrService = (deps: {
 	) => {
 		const pr = await deps.prRepo.findByNumber(owner, repo, number);
 		if (!pr) {
-			throw new Error(ErrorCode.NOT_FOUND);
+			throw new NotFoundError(
+				`Pull request #${number} not found in ${owner}/${repo}`,
+			);
 		}
 
 		// コメントを一つのテキストにまとめる
@@ -155,7 +168,10 @@ export const createPrService = (deps: {
 
 		const aiResult = await deps.gemini.summarizeDiff(inputTextForAI);
 		if (!aiResult || !aiResult.aiGeneratedTitle) {
-			throw new Error(ErrorCode.INTERNAL_SERVER_ERROR);
+			throw new AppError(
+				"INTERNAL_SERVER_ERROR",
+				"AI summary generation failed",
+			);
 		}
 
 		const now = new Date().toISOString();

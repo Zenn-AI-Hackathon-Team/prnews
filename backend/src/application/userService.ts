@@ -7,6 +7,10 @@ import {
 	type User as UserSchemaType,
 } from "@prnews/common";
 import { favoriteRepositorySchema } from "@prnews/common";
+import { NotFoundError } from "src/errors/NotFoundError";
+import { AppError } from "../errors/AppError";
+import { ForbiddenError } from "../errors/ForbiddenError";
+import { ValidationError } from "../errors/ValidationError";
 import type { AuthSessionRepoPort } from "../ports/authSessionRepoPort";
 import type { FavoriteRepositoryRepoPort } from "../ports/favoriteRepositoryRepoPort.js";
 import type { GithubPort } from "../ports/githubPort.js";
@@ -117,14 +121,20 @@ export const createUserService = (deps: {
 				"[UserService] No encrypted GitHub access token found for user",
 				authenticatedUser.firebaseUid,
 			);
-			throw new Error(ErrorCode.UNAUTHENTICATED);
+			throw new ForbiddenError(
+				"UNAUTHENTICATED",
+				"No encrypted GitHub access token found for user",
+			);
 		}
 		let githubAccessToken: string;
 		try {
 			githubAccessToken = decrypt(userTokenRecord.encryptedGitHubAccessToken);
 		} catch (e) {
 			console.error("[UserService] Failed to decrypt GitHub access token", e);
-			throw new Error(ErrorCode.UNAUTHENTICATED);
+			throw new ForbiddenError(
+				"UNAUTHENTICATED",
+				"Failed to decrypt GitHub access token",
+			);
 		}
 
 		// 2. GitHub APIから正規ユーザー情報を取得
@@ -140,7 +150,10 @@ export const createUserService = (deps: {
 				await deps.githubPort.getAuthenticatedUserInfo(githubAccessToken);
 		} catch (e) {
 			console.error("[UserService] Failed to fetch GitHub user info", e);
-			throw new Error(ErrorCode.INTERNAL_SERVER_ERROR);
+			throw new AppError(
+				"INTERNAL_SERVER_ERROR",
+				"Failed to fetch GitHub user info",
+			);
 		}
 
 		// 3. Userオブジェクトを生成
@@ -164,7 +177,10 @@ export const createUserService = (deps: {
 				"[UserService] New user data validation failed before saving:",
 				validationResult.error.flatten().fieldErrors,
 			);
-			return null;
+			throw new ValidationError(
+				"User data validation failed",
+				validationResult.error.flatten().fieldErrors,
+			);
 		}
 		const validatedNewUser = validationResult.data;
 		const savedUser = await deps.userRepo.save(validatedNewUser);
@@ -173,7 +189,10 @@ export const createUserService = (deps: {
 				"[UserService] Failed to save new user to DB for ID:",
 				authenticatedUser.id,
 			);
-			return null;
+			throw new AppError(
+				"INTERNAL_SERVER_ERROR",
+				"Failed to save new user to DB",
+			);
 		}
 		console.log("[UserService] Successfully saved new user to DB:", savedUser);
 		return savedUser;
@@ -206,16 +225,15 @@ export const createUserService = (deps: {
 		authenticatedUser: AuthenticatedUser | undefined,
 		owner: string,
 		repo: string,
-	): Promise<
-		| { alreadyExists: boolean; favorite: FavoriteRepository }
-		| { error: ErrorCode }
-	> => {
+	): Promise<{ alreadyExists: boolean; favorite: FavoriteRepository }> => {
 		if (!authenticatedUser) {
-			return { error: ErrorCode.UNAUTHENTICATED };
+			throw new ForbiddenError("User is not authenticated.");
 		}
 		const user = await deps.userRepo.findById(authenticatedUser.id);
 		if (!user?.encryptedGitHubAccessToken) {
-			return { error: ErrorCode.UNAUTHENTICATED };
+			throw new ForbiddenError(
+				"GitHub access token is not registered. Please connect your GitHub account.",
+			);
 		}
 		const accessToken = decrypt(user.encryptedGitHubAccessToken);
 		let repoInfo: import("../domain/repository.js").RepositoryInfo;
@@ -227,9 +245,15 @@ export const createUserService = (deps: {
 			);
 		} catch (e: unknown) {
 			if (e instanceof Error && e.message === ErrorCode.GITHUB_REPO_NOT_FOUND) {
-				return { error: ErrorCode.GITHUB_REPO_NOT_FOUND };
+				throw new NotFoundError(
+					"GITHUB_REPO_NOT_FOUND",
+					"GitHub repository not found",
+				);
 			}
-			return { error: ErrorCode.INTERNAL_SERVER_ERROR };
+			throw new AppError(
+				"INTERNAL_SERVER_ERROR",
+				"Failed to fetch repository info",
+			);
 		}
 		const existing =
 			await deps.favoriteRepositoryRepo.findByUserIdAndGithubRepoId(
@@ -251,7 +275,10 @@ export const createUserService = (deps: {
 		};
 		const validation = favoriteRepositorySchema.safeParse(favorite);
 		if (!validation.success) {
-			return { error: ErrorCode.VALIDATION_ERROR };
+			throw new ValidationError(
+				"FavoriteRepository validation failed",
+				validation.error.flatten().fieldErrors,
+			);
 		}
 		const saved = await deps.favoriteRepositoryRepo.save(favorite);
 		return { alreadyExists: false, favorite: saved };
