@@ -166,7 +166,11 @@ userRoutes.post("/users/me/favorite-repositories", async (c) => {
 		repo,
 	);
 	if ("error" in result) {
-		return respondError(c, result.error, "お気に入り登録に失敗しました");
+		return respondError(
+			c,
+			ErrorCode.INTERNAL_SERVER_ERROR,
+			"お気に入り登録に失敗しました",
+		);
 	}
 	if (result.alreadyExists) {
 		return respondSuccess(

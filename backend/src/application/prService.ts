@@ -6,9 +6,9 @@ import {
 	pullRequestSchema,
 } from "@prnews/common";
 import { articleLikeSchema } from "@prnews/common";
-import { ForbiddenError } from "src/errors/ForbiddenError";
 import { createPullRequest } from "../domain/pullRequest";
 import { AppError } from "../errors/AppError";
+import { ForbiddenError } from "../errors/ForbiddenError";
 import { NotFoundError } from "../errors/NotFoundError";
 import { ValidationError } from "../errors/ValidationError";
 import type { ArticleLikeRepoPort } from "../ports/articleLikeRepoPort.js";

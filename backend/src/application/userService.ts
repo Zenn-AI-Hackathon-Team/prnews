@@ -7,9 +7,9 @@ import {
 	type User as UserSchemaType,
 } from "@prnews/common";
 import { favoriteRepositorySchema } from "@prnews/common";
-import { NotFoundError } from "src/errors/NotFoundError";
 import { AppError } from "../errors/AppError";
 import { ForbiddenError } from "../errors/ForbiddenError";
+import { NotFoundError } from "../errors/NotFoundError";
 import { ValidationError } from "../errors/ValidationError";
 import type { AuthSessionRepoPort } from "../ports/authSessionRepoPort";
 import type { FavoriteRepositoryRepoPort } from "../ports/favoriteRepositoryRepoPort.js";
