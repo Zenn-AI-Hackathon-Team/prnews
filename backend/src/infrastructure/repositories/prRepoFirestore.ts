@@ -69,6 +69,7 @@ export const prRepoFirestore = (db: Firestore): PrRepoPort => ({
 		const ref = db.collection(COLLECTION).doc(prId);
 		const updatePayload = {
 			[`contents.${lang}.likeCount`]: FieldValue.increment(delta),
+			totalLikeCount: FieldValue.increment(delta),
 		};
 		if (tx) {
 			tx.update(ref, updatePayload);
@@ -102,6 +103,9 @@ export const prRepoFirestore = (db: Firestore): PrRepoPort => ({
 		// 言語指定がある場合はその言語のlikeCountでorderBy
 		if (language && language !== "all") {
 			query = query.orderBy(`contents.${language}.likeCount`, "desc");
+		} else {
+			// "all" または指定なしの場合は totalLikeCount でソート
+			query = query.orderBy("totalLikeCount", "desc");
 		}
 		// ページング
 		query = query.limit(limit + (offset || 0));
@@ -111,23 +115,6 @@ export const prRepoFirestore = (db: Firestore): PrRepoPort => ({
 			.filter((a): a is PullRequestArticle => !!a);
 		// offset対応
 		if (offset) articles = articles.slice(offset);
-		// 全言語合算ランキングの場合は手動で合計likeCountでソート
-		if (!language || language === "all") {
-			type ArticleWithLike = PullRequestArticle & { _likeCount: number };
-			const articlesWithLike: ArticleWithLike[] = articles.map((a) => ({
-				...a,
-				_likeCount: a.contents
-					? Object.values(a.contents).reduce(
-							(sum, c) => sum + ((c as { likeCount?: number }).likeCount || 0),
-							0,
-						)
-					: 0,
-			}));
-			articlesWithLike.sort((a, b) => b._likeCount - a._likeCount);
-			articles = articlesWithLike.map(
-				({ _likeCount, ...rest }) => rest as PullRequestArticle,
-			);
-		}
 		return articles;
 	},
 	async findArticlesByIds(ids: string[]): Promise<PullRequestArticle[]> {

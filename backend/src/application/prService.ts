@@ -303,6 +303,7 @@ export const createPrService = (deps: {
 				Object.keys(transformedContents).length > 0
 					? transformedContents
 					: undefined,
+			totalLikeCount: article.totalLikeCount ?? 0,
 		};
 	};
 	const likeArticle = async (
