@@ -23,3 +23,6 @@ export const apiResponseSchema = <T extends z.ZodTypeAny>(dataSchema: T) =>
 export type ApiResponse<T extends z.ZodTypeAny> = z.infer<
 	ReturnType<typeof apiResponseSchema<T>>
 >;
+
+export const errorResponseSchema = errorPart;
+export type ErrorResponse = z.infer<typeof errorResponseSchema>;

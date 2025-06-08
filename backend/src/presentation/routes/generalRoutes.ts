@@ -1,18 +1,63 @@
-import { Hono } from "hono";
+import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
+import {
+	ErrorCode,
+	apiResponseSchema,
+	errorResponseSchema,
+} from "@prnews/common";
 import type { Dependencies } from "../../config/di";
-import { respondSuccess } from "../../utils/apiResponder";
+import {
+	respondOpenApiError,
+	respondOpenApiSuccess,
+} from "../../utils/apiResponder";
 
-const generalRoutes = new Hono<{ Variables: Dependencies }>();
+const generalRoutes = new OpenAPIHono<{ Variables: Dependencies }>();
 
-generalRoutes.get("/healthz", async (c) => {
+// レスポンスの "data" プロパティに入る部分のスキーマを定義
+const healthzResponseDataSchema = z.object({
+	ok: z.boolean().openapi({ description: "ヘルスチェック結果 (true=正常)" }),
+});
+
+// APIルートの定義
+const healthzRoute = createRoute({
+	method: "get",
+	path: "/healthz",
+	summary: "ヘルスチェック",
+	description:
+		"サービスの稼働状況を確認します。コンテナやロードバランサのliveness/readiness probeに使用されます。",
+	tags: ["General"],
+	responses: {
+		200: {
+			description: "サービス正常稼働",
+			content: {
+				"application/json": {
+					schema: apiResponseSchema(healthzResponseDataSchema),
+				},
+			},
+		},
+		500: {
+			description: "サーバー内部エラー",
+			content: {
+				"application/json": {
+					schema: errorResponseSchema,
+				},
+			},
+		},
+	},
+});
+
+generalRoutes.openapi(healthzRoute, async (c) => {
 	const { generalService } = c.var;
 	try {
 		const healthStatus = await generalService.checkHealth();
-		return respondSuccess(c, healthStatus);
+		return respondOpenApiSuccess(c, healthStatus, 200);
 	} catch (error) {
 		console.error("Health check failed:", error);
-		return c.json(
-			{ success: false, error: { code: "INTERNAL_SERVER_ERROR" } },
+		return respondOpenApiError(
+			c,
+			{
+				code: ErrorCode.INTERNAL_SERVER_ERROR,
+				details: "Health check failed",
+			},
 			500,
 		);
 	}
