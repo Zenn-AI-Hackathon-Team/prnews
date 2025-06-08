@@ -49,6 +49,7 @@ export const buildDependencies = () => {
 		prRepo,
 		articleLikeRepo,
 		userRepo,
+		db: firestore,
 	});
 	const userService = createUserService({
 		userRepo,

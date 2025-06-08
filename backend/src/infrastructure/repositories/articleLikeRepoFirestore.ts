@@ -19,34 +19,54 @@ function likeFromDoc(doc: DocumentSnapshot): ArticleLike | null {
 export const articleLikeRepoFirestore = (
 	db: Firestore,
 ): ArticleLikeRepoPort => ({
-	async findByUserIdAndArticleIdAndLang(userId, articleId, lang) {
-		const snap = await db
-			.collection(COLLECTION)
+	async findByUserIdAndArticleIdAndLang(userId, articleId, lang, tx) {
+		const colRef = db.collection(COLLECTION);
+		const query = colRef
 			.where("userId", "==", userId)
 			.where("articleId", "==", articleId)
 			.where("languageCode", "==", lang)
-			.limit(1)
-			.get();
+			.limit(1);
+		let snap: FirebaseFirestore.QuerySnapshot;
+		if (tx) {
+			snap = await tx.get(query);
+		} else {
+			snap = await query.get();
+		}
 		if (snap.empty) return null;
 		return likeFromDoc(snap.docs[0]);
 	},
-	async save(like) {
-		await db.collection(COLLECTION).doc(like.id).set(like, { merge: true });
-		const saved = await db.collection(COLLECTION).doc(like.id).get();
+	async save(like, tx) {
+		const docRef = db.collection(COLLECTION).doc(like.id);
+		if (tx) {
+			tx.set(docRef, like, { merge: true });
+			return like;
+		}
+		await docRef.set(like, { merge: true });
+		const saved = await docRef.get();
 		const result = likeFromDoc(saved);
 		if (!result) throw new Error("Failed to save article like");
 		return result;
 	},
-	async deleteByUserIdAndArticleIdAndLang(userId, articleId, lang) {
-		const snap = await db
-			.collection(COLLECTION)
+	async deleteByUserIdAndArticleIdAndLang(userId, articleId, lang, tx) {
+		const colRef = db.collection(COLLECTION);
+		const query = colRef
 			.where("userId", "==", userId)
 			.where("articleId", "==", articleId)
 			.where("languageCode", "==", lang)
-			.limit(1)
-			.get();
+			.limit(1);
+		let snap: FirebaseFirestore.QuerySnapshot;
+		if (tx) {
+			snap = await tx.get(query);
+		} else {
+			snap = await query.get();
+		}
 		if (snap.empty) return false;
-		await db.collection(COLLECTION).doc(snap.docs[0].id).delete();
+		const docRef = colRef.doc(snap.docs[0].id);
+		if (tx) {
+			tx.delete(docRef);
+			return true;
+		}
+		await docRef.delete();
 		return true;
 	},
 	async findByUserId(userId) {

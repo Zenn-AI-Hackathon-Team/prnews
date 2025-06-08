@@ -1,3 +1,4 @@
+import type { Firestore } from "firebase-admin/firestore";
 import type { ArticleLikeRepoPort } from "../ports/articleLikeRepoPort";
 import type { GeminiPort } from "../ports/geminiPort";
 import type { GithubPort } from "../ports/githubPort";
@@ -29,6 +30,7 @@ describe("prService", () => {
 			gemini: geminiPort,
 			articleLikeRepo: {} as jest.Mocked<ArticleLikeRepoPort>,
 			userRepo: {} as jest.Mocked<UserRepoPort>,
+			db: {} as Firestore,
 		});
 	});
 

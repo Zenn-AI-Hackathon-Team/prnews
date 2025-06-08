@@ -6,6 +6,7 @@ import {
 	pullRequestSchema,
 } from "@prnews/common";
 import { articleLikeSchema } from "@prnews/common";
+import type { Firestore } from "firebase-admin/firestore";
 import { createPullRequest } from "../domain/pullRequest";
 import type { PullRequestArticle } from "../domain/pullRequestArticle";
 import { AppError } from "../errors/AppError";
@@ -68,6 +69,7 @@ export const createPrService = (deps: {
 	prRepo: PrRepoPort;
 	articleLikeRepo: ArticleLikeRepoPort;
 	userRepo: UserRepoPort;
+	db: Firestore;
 }) => {
 	const ingestPr = async (
 		userId: string,
@@ -311,79 +313,82 @@ export const createPrService = (deps: {
 		| { alreadyLiked: boolean; likeCount: number; message: string }
 		| { error: string }
 	> => {
-		// 記事取得
-		const article = await deps.prRepo.findArticleByPrId(articleId);
-		if (!article || !article.contents || !article.contents[langCode]) {
-			return { error: "ARTICLE_NOT_FOUND" };
-		}
-		// 既にいいね済みか確認
-		const existing = await deps.articleLikeRepo.findByUserIdAndArticleIdAndLang(
-			userId,
-			articleId,
-			langCode,
-		);
-		const likeCount = article.contents[langCode].likeCount ?? 0;
-		if (existing) {
-			return { alreadyLiked: true, likeCount, message: "既にいいね済みです" };
-		}
-		// likeCountをトランザクションでインクリメント
-		await deps.prRepo.incrementLikeCount(articleId, langCode, 1);
-		// ArticleLikeレコード作成
-		const like = {
-			id: randomUUID(),
-			userId,
-			articleId,
-			languageCode: langCode,
-			likedAt: new Date().toISOString(),
-		};
-		const validation = articleLikeSchema.safeParse(like);
-		if (!validation.success) {
-			return { error: "VALIDATION_ERROR" };
-		}
-		await deps.articleLikeRepo.save(like);
-		// 最新のlikeCountを取得
-		const updated = await deps.prRepo.findArticleByPrId(articleId);
-		const newCount = updated?.contents?.[langCode]?.likeCount ?? likeCount + 1;
-		return {
-			alreadyLiked: false,
-			likeCount: newCount,
-			message: "いいねしました",
-		};
+		const { db, prRepo, articleLikeRepo } = deps;
+		return await db.runTransaction(async (tx) => {
+			const article = await prRepo.findArticleByPrId(articleId, tx);
+			if (!article || !article.contents || !article.contents[langCode]) {
+				throw new NotFoundError(
+					"ARTICLE_NOT_FOUND",
+					"指定された記事または言語版が見つかりません。",
+				);
+			}
+			const existing = await articleLikeRepo.findByUserIdAndArticleIdAndLang(
+				userId,
+				articleId,
+				langCode,
+				tx,
+			);
+			const likeCount = article.contents[langCode].likeCount ?? 0;
+			if (existing) {
+				return { alreadyLiked: true, likeCount, message: "既にいいね済みです" };
+			}
+			await prRepo.incrementLikeCount(articleId, langCode, 1, tx);
+			const like = {
+				id: randomUUID(),
+				userId,
+				articleId,
+				languageCode: langCode,
+				likedAt: new Date().toISOString(),
+			};
+			const validation = articleLikeSchema.safeParse(like);
+			if (!validation.success) {
+				throw new AppError(
+					"VALIDATION_ERROR",
+					"Likeデータのバリデーションに失敗しました",
+				);
+			}
+			await articleLikeRepo.save(like, tx);
+			return {
+				alreadyLiked: false,
+				likeCount: likeCount + 1,
+				message: "いいねしました",
+			};
+		});
 	};
 	const unlikeArticle = async (
 		userId: string,
 		articleId: string,
 		langCode: string,
 	): Promise<{ likeCount: number } | { error: string }> => {
-		// 記事取得
-		const article = await deps.prRepo.findArticleByPrId(articleId);
-		if (!article || !article.contents || !article.contents[langCode]) {
-			return { error: "ARTICLE_NOT_FOUND" };
-		}
-		const likeCount = article.contents[langCode].likeCount ?? 0;
-		// いいねレコードが存在するか確認
-		const existing = await deps.articleLikeRepo.findByUserIdAndArticleIdAndLang(
-			userId,
-			articleId,
-			langCode,
-		);
-		if (existing) {
-			// レコード削除
-			await deps.articleLikeRepo.deleteByUserIdAndArticleIdAndLang(
+		const { db, prRepo, articleLikeRepo } = deps;
+		return await db.runTransaction(async (tx) => {
+			const article = await prRepo.findArticleByPrId(articleId, tx);
+			if (!article || !article.contents || !article.contents[langCode]) {
+				throw new NotFoundError(
+					"ARTICLE_NOT_FOUND",
+					"指定された記事または言語版が見つかりません。",
+				);
+			}
+			const likeCount = article.contents[langCode].likeCount ?? 0;
+			const existing = await articleLikeRepo.findByUserIdAndArticleIdAndLang(
 				userId,
 				articleId,
 				langCode,
+				tx,
 			);
-			// likeCountをトランザクションでデクリメント
-			await deps.prRepo.incrementLikeCount(articleId, langCode, -1);
-			// 最新のlikeCountを取得
-			const updated = await deps.prRepo.findArticleByPrId(articleId);
-			const newCount =
-				updated?.contents?.[langCode]?.likeCount ?? Math.max(0, likeCount - 1);
-			return { likeCount: newCount };
-		}
-		// もともといいねしていなかった場合も現在のlikeCountを返す
-		return { likeCount };
+			if (existing) {
+				await articleLikeRepo.deleteByUserIdAndArticleIdAndLang(
+					userId,
+					articleId,
+					langCode,
+					tx,
+				);
+				await prRepo.incrementLikeCount(articleId, langCode, -1, tx);
+				return { likeCount: likeCount > 0 ? likeCount - 1 : 0 };
+			}
+			// もともといいねしていなかった場合も現在のlikeCountを返す
+			return { likeCount };
+		});
 	};
 	const getLikedArticles = async (
 		userId: string,

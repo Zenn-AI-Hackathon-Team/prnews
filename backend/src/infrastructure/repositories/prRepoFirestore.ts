@@ -52,22 +52,29 @@ export const prRepoFirestore = (db: Firestore): PrRepoPort => ({
 		// findByNumberと同じ
 		return await this.findByNumber(owner, repo, prNumber);
 	},
-	async findArticleByPrId(prId) {
-		const doc = await db.collection(COLLECTION).doc(prId).get();
+	async findArticleByPrId(
+		prId: string,
+		tx?: import("firebase-admin/firestore").Transaction,
+	) {
+		const docRef = db.collection(COLLECTION).doc(prId);
+		const doc = tx ? await tx.get(docRef) : await docRef.get();
 		return articleFromDoc(doc);
 	},
-	async incrementLikeCount(prId: string, lang: string, delta: number) {
+	async incrementLikeCount(
+		prId: string,
+		lang: string,
+		delta: number,
+		tx?: import("firebase-admin/firestore").Transaction,
+	) {
 		const ref = db.collection(COLLECTION).doc(prId);
-		await db.runTransaction(async (tx) => {
-			const doc = await tx.get(ref);
-			if (!doc.exists) throw new Error("PR Article not found");
-			const data = doc.data();
-			if (!data || !data.contents || !data.contents[lang])
-				throw new Error("Article content for language not found");
-			tx.update(ref, {
-				[`contents.${lang}.likeCount`]: FieldValue.increment(delta),
-			});
-		});
+		const updatePayload = {
+			[`contents.${lang}.likeCount`]: FieldValue.increment(delta),
+		};
+		if (tx) {
+			tx.update(ref, updatePayload);
+		} else {
+			await ref.update(updatePayload);
+		}
 	},
 	async getRanking({
 		period = "all",
