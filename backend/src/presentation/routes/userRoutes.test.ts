@@ -2,7 +2,10 @@ import { Hono } from "hono";
 import type { PrService } from "../../application/prService";
 import type { UserService } from "../../application/userService";
 import type { User } from "../../domain/user";
+import { ForbiddenError } from "../../errors/ForbiddenError";
+import { NotFoundError } from "../../errors/NotFoundError";
 import type { AuthenticatedUser } from "../middlewares/authMiddleware";
+import { errorHandlerMiddleware } from "../middlewares/errorHandler";
 import userRoutes from "./userRoutes";
 
 type TestVariables = {
@@ -39,6 +42,7 @@ describe("userRoutes", () => {
 			getLikedArticles: jest.fn(),
 		} as unknown as jest.Mocked<PrService>;
 		app = new Hono<{ Variables: TestVariables }>();
+		app.use("*", errorHandlerMiddleware);
 		app.use("*", async (c, next) => {
 			c.set("userService", mockUserService);
 			c.set("prService", mockPrService);
@@ -278,10 +282,9 @@ describe("userRoutes", () => {
 		});
 
 		it("異常系: サービスがNOT_FOUNDを返す場合は404", async () => {
-			mockUserService.deleteFavoriteRepository.mockResolvedValue({
-				success: false,
-				error: "NOT_FOUND",
-			});
+			mockUserService.deleteFavoriteRepository.mockRejectedValue(
+				new NotFoundError("NOT_FOUND", "Not found"),
+			);
 
 			const req = new Request(
 				`http://localhost/users/me/favorite-repositories/${validId}`,
@@ -296,10 +299,9 @@ describe("userRoutes", () => {
 		});
 
 		it("異常系: サービスがFORBIDDENを返す場合は403", async () => {
-			mockUserService.deleteFavoriteRepository.mockResolvedValue({
-				success: false,
-				error: "FORBIDDEN",
-			});
+			mockUserService.deleteFavoriteRepository.mockRejectedValue(
+				new ForbiddenError("FORBIDDEN", "Forbidden"),
+			);
 
 			const req = new Request(
 				`http://localhost/users/me/favorite-repositories/${validId}`,
@@ -320,6 +322,35 @@ describe("userRoutes", () => {
 			);
 			const res = await app.request(req);
 			expect([404, 422]).toContain(res.status);
+		});
+	});
+
+	describe("POST /users/me/favorite-repositories", () => {
+		const owner = "unknown-owner";
+		const repo = "unknown-repo";
+
+		it("異常系: サービスがNotFoundErrorをスローした場合、404を返す", async () => {
+			mockUserService.registerFavoriteRepository.mockRejectedValue(
+				new NotFoundError(
+					"GITHUB_REPO_NOT_FOUND",
+					"GitHub repository not found",
+				),
+			);
+
+			const req = new Request(
+				"http://localhost/users/me/favorite-repositories",
+				{
+					method: "POST",
+					body: JSON.stringify({ owner, repo }),
+					headers: { "Content-Type": "application/json" },
+				},
+			);
+			const res = await app.request(req);
+
+			expect(res.status).toBe(404);
+			const json = await res.json();
+			expect(json.success).toBe(false);
+			expect(json.error.code).toBe("GITHUB_REPO_NOT_FOUND");
 		});
 	});
 });

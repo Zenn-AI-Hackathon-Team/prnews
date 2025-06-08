@@ -1,5 +1,6 @@
 import type { AuthSession } from "../domain/authSession";
 import type { User } from "../domain/user";
+import { NotFoundError } from "../errors/NotFoundError";
 import type { AuthSessionRepoPort } from "../ports/authSessionRepoPort";
 import type { FavoriteRepositoryRepoPort } from "../ports/favoriteRepositoryRepoPort";
 import type { GithubPort } from "../ports/githubPort";
@@ -301,41 +302,57 @@ describe("userService", () => {
 		});
 
 		it("異常系: 所有者でない場合はFORBIDDENエラーを返す", async () => {
-			// 1. findByIdではお気に入りは見つかるが...
 			favoriteRepositoryRepo.findById.mockResolvedValue(mockFavorite);
 
-			// 2. 別のユーザーIDで削除しようとする
-			const result = await service.deleteFavoriteRepository(
-				anotherUserId,
-				favoriteId,
-			);
+			await expect(
+				service.deleteFavoriteRepository(anotherUserId, favoriteId),
+			).rejects.toThrow("Forbidden to delete this favorite repository");
 
-			// 3. 所有者ではないので、deleteは呼ばれずにFORBIDDENエラーが返ることを確認
 			expect(favoriteRepositoryRepo.delete).not.toHaveBeenCalled();
-			expect(result).toEqual({ success: false, error: "FORBIDDEN" });
 		});
 
 		it("異常系: 削除対象のお気に入りが存在しない場合はNOT_FOUNDエラーを返す", async () => {
-			// 1. findByIdがお気に入りを見つけられない（nullを返す）ように設定
 			favoriteRepositoryRepo.findById.mockResolvedValue(null);
 
-			const result = await service.deleteFavoriteRepository(userId, favoriteId);
+			await expect(
+				service.deleteFavoriteRepository(userId, favoriteId),
+			).rejects.toThrow("Favorite repository not found");
 
-			// 2. deleteは呼ばれずにNOT_FOUNDエラーが返ることを確認
 			expect(favoriteRepositoryRepo.delete).not.toHaveBeenCalled();
-			expect(result).toEqual({ success: false, error: "NOT_FOUND" });
 		});
 
 		it("異常系: DBからの削除に失敗した場合はNOT_FOUNDエラーを返す", async () => {
-			// 1. findByIdでは見つかる
 			favoriteRepositoryRepo.findById.mockResolvedValue(mockFavorite);
-			// 2. しかし、delete処理自体が失敗（falseを返す）するように設定
 			favoriteRepositoryRepo.delete.mockResolvedValue(false);
 
-			const result = await service.deleteFavoriteRepository(userId, favoriteId);
+			await expect(
+				service.deleteFavoriteRepository(userId, favoriteId),
+			).rejects.toThrow("Favorite repository not found");
+		});
+	});
 
-			// 3. NOT_FOUNDエラーが返ることを確認
-			expect(result).toEqual({ success: false, error: "NOT_FOUND" });
+	describe("registerFavoriteRepository", () => {
+		const authUser: AuthenticatedUser = {
+			id: "u1",
+			firebaseUid: "f1",
+			githubUsername: "testuser",
+		};
+		it("異常系: GitHubリポジトリが見つからない場合、NotFoundErrorをスローする", async () => {
+			userRepo.findById.mockResolvedValue({
+				id: authUser.id,
+				encryptedGitHubAccessToken: "valid-encrypted-token",
+			} as User | null);
+			(decrypt as jest.Mock).mockReturnValue("decrypted-token");
+			githubPort.getRepositoryByOwnerAndRepo.mockRejectedValue(
+				new NotFoundError(
+					"GITHUB_REPO_NOT_FOUND",
+					"GitHub repository not found",
+				),
+			);
+			await expect(
+				service.registerFavoriteRepository(authUser, "unknown", "repo"),
+			).rejects.toThrow(NotFoundError);
+			expect(favoriteRepositoryRepo.save).not.toHaveBeenCalled();
 		});
 	});
 });

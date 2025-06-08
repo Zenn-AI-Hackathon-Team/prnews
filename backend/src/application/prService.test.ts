@@ -1,3 +1,6 @@
+import type { Transaction } from "firebase-admin/firestore";
+import type { User } from "../domain/user";
+import { ForbiddenError } from "../errors/ForbiddenError";
 import { NotFoundError } from "../errors/NotFoundError";
 import type { ArticleLikeRepoPort } from "../ports/articleLikeRepoPort";
 import type { GeminiPort } from "../ports/geminiPort";
@@ -10,6 +13,8 @@ describe("prService", () => {
 	let prRepo: jest.Mocked<PrRepoPort>;
 	let githubPort: jest.Mocked<GithubPort>;
 	let geminiPort: jest.Mocked<GeminiPort>;
+	let userRepo: jest.Mocked<UserRepoPort>;
+	let articleLikeRepo: jest.Mocked<ArticleLikeRepoPort>;
 	let service: ReturnType<typeof createPrService>;
 
 	beforeEach(() => {
@@ -17,6 +22,9 @@ describe("prService", () => {
 			findByNumber: jest.fn(),
 			findByOwnerRepoNumber: jest.fn(),
 			savePullRequest: jest.fn(),
+			executeTransaction: jest.fn(),
+			findArticleByPrId: jest.fn(),
+			incrementLikeCount: jest.fn(),
 		} as unknown as jest.Mocked<PrRepoPort>;
 		githubPort = {
 			fetchPullRequest: jest.fn(),
@@ -24,12 +32,21 @@ describe("prService", () => {
 		geminiPort = {
 			summarizeDiff: jest.fn(),
 		} as unknown as jest.Mocked<GeminiPort>;
+		userRepo = {
+			findById: jest.fn(),
+		} as unknown as jest.Mocked<UserRepoPort>;
+		articleLikeRepo = {
+			findByUserIdAndArticleIdAndLang: jest.fn(),
+			save: jest.fn(),
+			deleteByUserIdAndArticleIdAndLang: jest.fn(),
+			findByUserId: jest.fn(),
+		} as unknown as jest.Mocked<ArticleLikeRepoPort>;
 		service = createPrService({
 			prRepo,
 			github: githubPort,
 			gemini: geminiPort,
-			articleLikeRepo: {} as jest.Mocked<ArticleLikeRepoPort>,
-			userRepo: {} as jest.Mocked<UserRepoPort>,
+			articleLikeRepo,
+			userRepo,
 		});
 	});
 
@@ -68,5 +85,77 @@ describe("prService", () => {
 		// PullRequest型のテストデータは不要なので、findByNumberのモックは削除
 		// 実際のlikeArticleのテストは別途型安全に記述すること
 		expect(true).toBe(true);
+	});
+
+	describe("ingestPr", () => {
+		it("異常系: ユーザーにGitHubアクセストークンがない場合、ForbiddenErrorをスローする", async () => {
+			const userId = "user-without-token";
+			const user = { id: userId, githubUsername: "testuser" };
+			userRepo.findById.mockResolvedValue(user as User | null);
+			await expect(
+				service.ingestPr(userId, "owner", "repo", 123),
+			).rejects.toThrow(ForbiddenError);
+			expect(githubPort.fetchPullRequest).not.toHaveBeenCalled();
+		});
+	});
+
+	describe("generateArticle", () => {
+		it("異常系: Pull RequestがDBに存在しない場合、NotFoundErrorをスローする", async () => {
+			// 1. 準備: prRepoがnullを返すように設定
+			prRepo.findByNumber.mockResolvedValue(null);
+
+			const owner = "test-owner";
+			const repo = "test-repo";
+			const number = 123;
+
+			// 2. 実行と検証:
+			await expect(
+				service.generateArticle(owner, repo, number),
+			).rejects.toThrow(NotFoundError);
+
+			// 3. 副作用の検証:
+			expect(geminiPort.summarizeDiff).not.toHaveBeenCalled();
+		});
+	});
+
+	describe("likeArticle", () => {
+		const userId = "user-1";
+		const articleId = "article-not-exist";
+		const langCode = "ja";
+
+		it("異常系: 対象の記事が存在しない場合、NotFoundErrorをスローする", async () => {
+			prRepo.executeTransaction.mockImplementation(async (callback) => {
+				prRepo.findArticleByPrId.mockResolvedValue(null);
+				return callback({} as Transaction);
+			});
+
+			await expect(
+				service.likeArticle(userId, articleId, langCode),
+			).rejects.toThrow(NotFoundError);
+
+			expect(prRepo.incrementLikeCount).not.toHaveBeenCalled();
+			expect(articleLikeRepo.save).not.toHaveBeenCalled();
+		});
+	});
+
+	describe("unlikeArticle", () => {
+		const userId = "user-1";
+		const articleId = "article-not-exist";
+		const langCode = "ja";
+
+		it("異常系: 対象の記事が存在しない場合、NotFoundErrorをスローする", async () => {
+			prRepo.executeTransaction.mockImplementation(async (callback) => {
+				prRepo.findArticleByPrId.mockResolvedValue(null);
+				return callback({} as Transaction);
+			});
+
+			await expect(
+				service.unlikeArticle(userId, articleId, langCode),
+			).rejects.toThrow(NotFoundError);
+
+			expect(
+				articleLikeRepo.deleteByUserIdAndArticleIdAndLang,
+			).not.toHaveBeenCalled();
+		});
 	});
 });
