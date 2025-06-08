@@ -123,4 +123,21 @@ export const prRepoFirestore = (db: Firestore): PrRepoPort => ({
 		}
 		return articles;
 	},
+	async findArticlesByIds(ids: string[]): Promise<PullRequestArticle[]> {
+		if (!ids || ids.length === 0) return [];
+		const BATCH_SIZE = 30;
+		const results: PullRequestArticle[] = [];
+		for (let i = 0; i < ids.length; i += BATCH_SIZE) {
+			const batchIds = ids.slice(i, i + BATCH_SIZE);
+			const snap = await db
+				.collection(COLLECTION)
+				.where("id", "in", batchIds)
+				.get();
+			const articles = snap.docs
+				.map((doc) => articleFromDoc(doc))
+				.filter((a): a is PullRequestArticle => !!a);
+			results.push(...articles);
+		}
+		return results;
+	},
 });

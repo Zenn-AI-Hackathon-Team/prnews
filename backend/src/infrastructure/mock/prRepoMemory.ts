@@ -114,5 +114,11 @@ export const prRepoMemory = (): PrRepoPort => {
 			if (offset) articles = articles.slice(offset);
 			return articles.slice(0, limit);
 		},
+
+		async findArticlesByIds(ids) {
+			return ids
+				.map((id) => arts.get(id))
+				.filter((a): a is PullRequestArticle => !!a);
+		},
 	};
 };

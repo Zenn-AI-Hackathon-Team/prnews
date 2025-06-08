@@ -7,6 +7,7 @@ import {
 } from "@prnews/common";
 import { articleLikeSchema } from "@prnews/common";
 import { createPullRequest } from "../domain/pullRequest";
+import type { PullRequestArticle } from "../domain/pullRequestArticle";
 import { AppError } from "../errors/AppError";
 import { ForbiddenError } from "../errors/ForbiddenError";
 import { NotFoundError } from "../errors/NotFoundError";
@@ -399,54 +400,49 @@ export const createPrService = (deps: {
 		}
 		if (options.sort === "likedAt_asc") {
 			likes = likes.sort((a, b) => a.likedAt.localeCompare(b.likedAt));
-			const totalItems = likes.length;
-			const offset = options.offset ?? 0;
-			const limit = options.limit ?? 10;
-			const pagedLikes = likes.slice(offset, offset + limit);
-			const result: LikedArticleInfo[] = [];
-			for (const like of pagedLikes) {
-				const article = await deps.prRepo.findArticleByPrId(like.articleId);
+		} else {
+			likes = likes.sort((a, b) => b.likedAt.localeCompare(a.likedAt));
+		}
+		const totalItems = likes.length;
+		const offset = options.offset ?? 0;
+		const limit = options.limit ?? 10;
+		const pagedLikes = likes.slice(offset, offset + limit);
+		const articleIds = pagedLikes.map((like) => like.articleId);
+		if (articleIds.length === 0) {
+			return { data: [], totalItems };
+		}
+		let articles: PullRequestArticle[] = [];
+		try {
+			articles = await deps.prRepo.findArticlesByIds(articleIds);
+		} catch (e) {
+			console.error("findArticlesByIds error", e);
+			throw new AppError(
+				"INTERNAL_SERVER_ERROR",
+				"記事情報の取得に失敗しました",
+			);
+		}
+		const articleMap = new Map(articles.map((a) => [a.id, a]));
+		const result: LikedArticleInfo[] = pagedLikes
+			.map((like) => {
+				const article = articleMap.get(like.articleId);
 				if (
 					!article ||
 					!article.contents ||
 					!article.contents[like.languageCode]
-				)
-					continue;
+				) {
+					return undefined;
+				}
 				const content = article.contents[like.languageCode];
-				result.push({
+				return {
 					articleId: like.articleId,
 					languageCode: like.languageCode,
 					likedAt: like.likedAt,
 					aiGeneratedTitle: content.aiGeneratedTitle,
 					repositoryFullName: article.repository,
 					prNumber: article.prNumber,
-					// articleUrl: ... 必要なら生成
-				});
-			}
-			return { data: result, totalItems };
-		}
-		// desc（デフォルト）
-		likes = likes.sort((a, b) => b.likedAt.localeCompare(a.likedAt));
-		const totalItems = likes.length;
-		const offset = options.offset ?? 0;
-		const limit = options.limit ?? 10;
-		const pagedLikes = likes.slice(offset, offset + limit);
-		const result: LikedArticleInfo[] = [];
-		for (const like of pagedLikes) {
-			const article = await deps.prRepo.findArticleByPrId(like.articleId);
-			if (!article || !article.contents || !article.contents[like.languageCode])
-				continue;
-			const content = article.contents[like.languageCode];
-			result.push({
-				articleId: like.articleId,
-				languageCode: like.languageCode,
-				likedAt: like.likedAt,
-				aiGeneratedTitle: content.aiGeneratedTitle,
-				repositoryFullName: article.repository,
-				prNumber: article.prNumber,
-				// articleUrl: ... 必要なら生成
-			});
-		}
+				};
+			})
+			.filter((info): info is LikedArticleInfo => info !== undefined);
 		return { data: result, totalItems };
 	};
 	return {

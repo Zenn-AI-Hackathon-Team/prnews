@@ -22,4 +22,5 @@ export interface PrRepoPort {
 		limit?: number;
 		offset?: number;
 	}): Promise<PullRequestArticle[]>;
+	findArticlesByIds(ids: string[]): Promise<PullRequestArticle[]>;
 }
