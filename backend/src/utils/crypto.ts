@@ -8,15 +8,20 @@ import {
 const ALGORITHM = "aes-256-cbc";
 const IV_LENGTH = 16;
 const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY;
-const SALT = "prnews-super-secret-salt-string";
+const ENCRYPTION_SALT = process.env.ENCRYPTION_SALT;
 
 if (!ENCRYPTION_KEY) {
 	throw new Error(
 		"ENCRYPTION_KEY is not defined in .env. Please set a 32-byte secret key.",
 	);
 }
+if (!ENCRYPTION_SALT) {
+	throw new Error(
+		"ENCRYPTION_SALT is not defined in .env. Please set a salt string.",
+	);
+}
 
-const key = scryptSync(ENCRYPTION_KEY, SALT, 32);
+const key = scryptSync(ENCRYPTION_KEY, ENCRYPTION_SALT, 32);
 
 export function encrypt(text: string): string {
 	const iv = randomBytes(IV_LENGTH);

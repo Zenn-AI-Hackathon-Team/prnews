@@ -1,6 +1,11 @@
 import { decrypt, encrypt } from "./crypto";
 
 describe("crypto utils", () => {
+	beforeAll(() => {
+		process.env.ENCRYPTION_KEY = "test-encryption-key-32bytes-long-1234";
+		process.env.ENCRYPTION_SALT = "test-salt-string";
+	});
+
 	const plain = "test-data";
 
 	it("encrypt/decrypt 正常系", () => {
