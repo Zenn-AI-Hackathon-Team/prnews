@@ -101,18 +101,17 @@ export const createUserService = (deps: {
 			);
 			return null;
 		}
-		// 既存ユーザーのチェックをfindByFirebaseUidに変更
-		const existing = await deps.userRepo.findByFirebaseUid(
+		// 既存ユーザーのチェック
+		const existingUser = await deps.userRepo.findByFirebaseUid(
 			authenticatedUser.firebaseUid,
 		);
-		if (existing) {
+		if (existingUser) {
 			console.warn(
 				`[UserService] User already exists for FirebaseUID (${authenticatedUser.firebaseUid})`,
 			);
 			return null;
 		}
-
-		// 1. DBから暗号化済みGitHubアクセストークンを取得
+		// トークン取得
 		const userTokenRecord = await deps.userRepo.findByFirebaseUid(
 			authenticatedUser.firebaseUid,
 		);
@@ -121,20 +120,14 @@ export const createUserService = (deps: {
 				"[UserService] No encrypted GitHub access token found for user",
 				authenticatedUser.firebaseUid,
 			);
-			throw new ForbiddenError(
-				"UNAUTHENTICATED",
-				"No encrypted GitHub access token found for user",
-			);
+			throw new ForbiddenError("GitHub access token is not registered.");
 		}
 		let githubAccessToken: string;
 		try {
 			githubAccessToken = decrypt(userTokenRecord.encryptedGitHubAccessToken);
 		} catch (e) {
 			console.error("[UserService] Failed to decrypt GitHub access token", e);
-			throw new ForbiddenError(
-				"UNAUTHENTICATED",
-				"Failed to decrypt GitHub access token",
-			);
+			throw new ForbiddenError("Failed to decrypt GitHub access token");
 		}
 
 		// 2. GitHub APIから正規ユーザー情報を取得

@@ -119,7 +119,7 @@ describe("prRoutes", () => {
 	});
 
 	it("GET /repos/:owner/:repo/pulls/:number 異常系: PRが存在しない", async () => {
-		mockPrService.getPullRequest.mockResolvedValue(null);
+		(mockPrService.getPullRequest as jest.Mock).mockResolvedValue(null);
 		mockPrRepo.findByOwnerRepoNumber.mockResolvedValue(null);
 		const req = new Request("http://localhost/repos/owner/repo/pulls/999");
 		const res = await app.request(req);

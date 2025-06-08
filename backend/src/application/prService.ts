@@ -221,10 +221,10 @@ export const createPrService = (deps: {
 		owner: string,
 		repo: string,
 		pullNumber: number,
-	): Promise<CommonPullRequest | null> => {
+	): Promise<CommonPullRequest> => {
 		const pr = await deps.prRepo.findByOwnerRepoNumber(owner, repo, pullNumber);
 		if (!pr) {
-			return null;
+			throw new NotFoundError("指定されたプルリクエストが見つかりません。");
 		}
 		// APIスキーマに整形
 		return {
@@ -239,12 +239,10 @@ export const createPrService = (deps: {
 			comments: pr.comments,
 		};
 	};
-	const getArticle = async (
-		prId: string,
-	): Promise<PullRequestArticleType | null> => {
+	const getArticle = async (prId: string): Promise<PullRequestArticleType> => {
 		const article = await deps.prRepo.findArticleByPrId(prId);
 		if (!article) {
-			return null;
+			throw new NotFoundError("指定された記事が見つかりません。");
 		}
 
 		// Transform contents to match the expected type
@@ -310,18 +308,12 @@ export const createPrService = (deps: {
 		userId: string,
 		articleId: string,
 		langCode: string,
-	): Promise<
-		| { alreadyLiked: boolean; likeCount: number; message: string }
-		| { error: string }
-	> => {
+	): Promise<{ alreadyLiked: boolean; likeCount: number; message: string }> => {
 		const { db, prRepo, articleLikeRepo } = deps;
 		return await db.runTransaction(async (tx) => {
 			const article = await prRepo.findArticleByPrId(articleId, tx);
 			if (!article || !article.contents || !article.contents[langCode]) {
-				throw new NotFoundError(
-					"ARTICLE_NOT_FOUND",
-					"指定された記事または言語版が見つかりません。",
-				);
+				throw new NotFoundError("指定された記事または言語版が見つかりません。");
 			}
 			const existing = await articleLikeRepo.findByUserIdAndArticleIdAndLang(
 				userId,
@@ -343,9 +335,9 @@ export const createPrService = (deps: {
 			};
 			const validation = articleLikeSchema.safeParse(like);
 			if (!validation.success) {
-				throw new AppError(
-					"VALIDATION_ERROR",
+				throw new ValidationError(
 					"Likeデータのバリデーションに失敗しました",
+					validation.error.flatten().fieldErrors,
 				);
 			}
 			await articleLikeRepo.save(like, tx);
@@ -360,15 +352,12 @@ export const createPrService = (deps: {
 		userId: string,
 		articleId: string,
 		langCode: string,
-	): Promise<{ likeCount: number } | { error: string }> => {
+	): Promise<{ likeCount: number }> => {
 		const { db, prRepo, articleLikeRepo } = deps;
 		return await db.runTransaction(async (tx) => {
 			const article = await prRepo.findArticleByPrId(articleId, tx);
 			if (!article || !article.contents || !article.contents[langCode]) {
-				throw new NotFoundError(
-					"ARTICLE_NOT_FOUND",
-					"指定された記事または言語版が見つかりません。",
-				);
+				throw new NotFoundError("指定された記事または言語版が見つかりません。");
 			}
 			const likeCount = article.contents[langCode].likeCount ?? 0;
 			const existing = await articleLikeRepo.findByUserIdAndArticleIdAndLang(

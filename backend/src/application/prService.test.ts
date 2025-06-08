@@ -1,4 +1,5 @@
 import type { Firestore } from "firebase-admin/firestore";
+import { NotFoundError } from "../errors/NotFoundError";
 import type { ArticleLikeRepoPort } from "../ports/articleLikeRepoPort";
 import type { GeminiPort } from "../ports/geminiPort";
 import type { GithubPort } from "../ports/githubPort";
@@ -57,8 +58,9 @@ describe("prService", () => {
 
 	it("getPullRequest 異常系: PRが存在しない", async () => {
 		prRepo.findByNumber.mockResolvedValue(null);
-		const result = await service.getPullRequest("owner", "repo", 1);
-		expect(result).toBeNull();
+		await expect(service.getPullRequest("owner", "repo", 1)).rejects.toThrow(
+			NotFoundError,
+		);
 	});
 
 	it("likeArticle 正常系", async () => {
