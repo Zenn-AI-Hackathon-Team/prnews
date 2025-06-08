@@ -1,4 +1,3 @@
-import type { Firestore } from "firebase-admin/firestore";
 import { NotFoundError } from "../errors/NotFoundError";
 import type { ArticleLikeRepoPort } from "../ports/articleLikeRepoPort";
 import type { GeminiPort } from "../ports/geminiPort";
@@ -31,7 +30,6 @@ describe("prService", () => {
 			gemini: geminiPort,
 			articleLikeRepo: {} as jest.Mocked<ArticleLikeRepoPort>,
 			userRepo: {} as jest.Mocked<UserRepoPort>,
-			db: {} as Firestore,
 		});
 	});
 

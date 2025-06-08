@@ -32,4 +32,5 @@ export interface PrRepoPort {
 		offset?: number;
 	}): Promise<PullRequestArticle[]>;
 	findArticlesByIds(ids: string[]): Promise<PullRequestArticle[]>;
+	executeTransaction<T>(operation: (tx: Transaction) => Promise<T>): Promise<T>;
 }

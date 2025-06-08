@@ -134,4 +134,11 @@ export const prRepoFirestore = (db: Firestore): PrRepoPort => ({
 		}
 		return results;
 	},
+	executeTransaction: async <T>(
+		operation: (
+			tx: import("firebase-admin/firestore").Transaction,
+		) => Promise<T>,
+	): Promise<T> => {
+		return db.runTransaction(operation);
+	},
 });
