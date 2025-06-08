@@ -12,7 +12,6 @@ export type User = {
 	encryptedGitHubAccessToken?: string;
 };
 
-export const createUser = (props: Omit<User, "id">): User => ({
-	id: crypto.randomUUID(),
+export const createUser = (props: User): User => ({
 	...props,
 });

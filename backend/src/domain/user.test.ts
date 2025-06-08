@@ -7,8 +7,9 @@ beforeAll(() => {
 });
 
 describe("createUser", () => {
-	it("idが自動生成され、propsが正しく反映される", () => {
+	it("idがpropsで渡され、propsが正しく反映される", () => {
 		const props = {
+			id: "test-id-123",
 			githubUserId: 12345,
 			githubUsername: "testuser",
 			language: "ja",
@@ -22,7 +23,6 @@ describe("createUser", () => {
 		};
 		const user = createUser(props);
 		expect(user).toMatchObject(props);
-		expect(typeof user.id).toBe("string");
-		expect(user.id.length).toBeGreaterThan(0);
+		expect(user.id).toBe("test-id-123");
 	});
 });

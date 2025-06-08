@@ -91,6 +91,7 @@ export const createPrService = (deps: {
 
 		// 4. ドメインオブジェクト生成
 		const prProps = {
+			id: randomUUID(),
 			prNumber: rawPr.prNumber,
 			repository: rawPr.repository,
 			title: rawPr.title,
