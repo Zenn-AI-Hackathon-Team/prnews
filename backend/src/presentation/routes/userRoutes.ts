@@ -165,13 +165,6 @@ userRoutes.post("/users/me/favorite-repositories", async (c) => {
 		owner,
 		repo,
 	);
-	if ("error" in result) {
-		return respondError(
-			c,
-			ErrorCode.INTERNAL_SERVER_ERROR,
-			"お気に入り登録に失敗しました",
-		);
-	}
 	if (result.alreadyExists) {
 		return respondSuccess(
 			c,
@@ -302,43 +295,13 @@ userRoutes.delete(
 			);
 		}
 		const { favoriteId } = c.req.valid("param");
-		try {
-			const result = await userService.deleteFavoriteRepository(
-				authenticatedUser.id,
-				favoriteId,
-			);
-			if (!result.success) {
-				if (result.error === "FORBIDDEN") {
-					return respondError(
-						c,
-						ErrorCode.FORBIDDEN,
-						"Forbidden",
-						undefined,
-						403,
-					);
-				}
-				return respondError(
-					c,
-					ErrorCode.NOT_FOUND,
-					"Favorite repository not found",
-					undefined,
-					404,
-				);
-			}
-			return respondSuccess(c, {
-				message: "Favorite repository deleted successfully.",
-			});
-		} catch (error) {
-			console.error(
-				"Delete /users/me/favorite-repositories/:favoriteId failed:",
-				error,
-			);
-			return respondError(
-				c,
-				ErrorCode.INTERNAL_SERVER_ERROR,
-				"Failed to delete favorite repository",
-			);
-		}
+		await userService.deleteFavoriteRepository(
+			authenticatedUser.id,
+			favoriteId,
+		);
+		return respondSuccess(c, {
+			message: "Favorite repository deleted successfully.",
+		});
 	},
 );
 

@@ -306,17 +306,17 @@ export const createUserService = (deps: {
 	const deleteFavoriteRepository = async (
 		userId: string,
 		favoriteId: string,
-	): Promise<{ success: boolean; error?: "NOT_FOUND" | "FORBIDDEN" }> => {
+	): Promise<{ success: boolean }> => {
 		const favorite = await deps.favoriteRepositoryRepo.findById(favoriteId);
 		if (!favorite) {
-			return { success: false, error: "NOT_FOUND" };
+			throw new NotFoundError("Favorite repository not found");
 		}
 		if (favorite.userId !== userId) {
-			return { success: false, error: "FORBIDDEN" };
+			throw new ForbiddenError("Forbidden to delete this favorite repository");
 		}
 		const deleted = await deps.favoriteRepositoryRepo.delete(favoriteId);
 		if (!deleted) {
-			return { success: false, error: "NOT_FOUND" };
+			throw new NotFoundError("Favorite repository not found");
 		}
 		return { success: true };
 	};
