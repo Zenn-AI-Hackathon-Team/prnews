@@ -13,7 +13,16 @@ import type { AuthVariables } from "../middlewares/authMiddleware";
 
 const userRoutes = new OpenAPIHono<{
 	Variables: Dependencies & AuthVariables;
-}>();
+}>({
+	defaultHook: (result, c) => {
+		if (!result.success) {
+			throw new HTTPException(422, {
+				message: "Validation Failed",
+				cause: result.error,
+			});
+		}
+	},
+});
 
 // --- GET /users/me ---
 const getMyProfileRoute = createRoute({

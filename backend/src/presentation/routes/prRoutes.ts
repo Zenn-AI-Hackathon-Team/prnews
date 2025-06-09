@@ -9,9 +9,17 @@ import {
 import { HTTPException } from "hono/http-exception";
 import type { Dependencies } from "../../config/di";
 import type { AuthVariables } from "../middlewares/authMiddleware";
-import { authMiddleware } from "../middlewares/authMiddleware";
 
-const prRoutes = new OpenAPIHono<{ Variables: Dependencies & AuthVariables }>();
+const prRoutes = new OpenAPIHono<{ Variables: Dependencies & AuthVariables }>({
+	defaultHook: (result, c) => {
+		if (!result.success) {
+			throw new HTTPException(422, {
+				message: "Validation Failed",
+				cause: result.error,
+			});
+		}
+	},
+});
 
 // --- POST /repos/{owner}/{repo}/pulls/{number}/ingest ---
 const ingestPrRoute = createRoute({
@@ -51,7 +59,6 @@ const ingestPrRoute = createRoute({
 	},
 });
 prRoutes.openapi(ingestPrRoute, async (c) => {
-	await authMiddleware(c, async () => {});
 	const { prService } = c.var;
 	const params = c.req.valid("param");
 	const authenticatedUser = c.var.user;
@@ -101,7 +108,6 @@ const generateArticleRoute = createRoute({
 	},
 });
 prRoutes.openapi(generateArticleRoute, async (c) => {
-	await authMiddleware(c, async () => {});
 	const { prService } = c.var;
 	const params = c.req.valid("param");
 	const articleRaw = await prService.generateArticle(
@@ -147,7 +153,6 @@ const getPrRoute = createRoute({
 	},
 });
 prRoutes.openapi(getPrRoute, async (c) => {
-	await authMiddleware(c, async () => {});
 	const { prService } = c.var;
 	const params = c.req.valid("param");
 	const pr = await prService.getPullRequest(
@@ -270,7 +275,6 @@ const listRepoPullsRoute = createRoute({
 	},
 });
 prRoutes.openapi(listRepoPullsRoute, async (c) => {
-	await authMiddleware(c, async () => {});
 	const { prService } = c.var;
 	const authenticatedUser = c.var.user;
 	if (!authenticatedUser) {
@@ -285,6 +289,83 @@ prRoutes.openapi(listRepoPullsRoute, async (c) => {
 		query,
 	);
 	return c.json({ success: true as const, data: prList }, 200);
+});
+
+// --- POST /articles/{articleId}/language/{langCode}/like ---
+const likeArticleRoute = createRoute({
+	method: "post",
+	path: "/articles/{articleId}/language/{langCode}/like",
+	summary: "記事に「いいね」を付ける",
+	description: "指定されたAI解説記事の特定言語版に「いいね」を付けます。",
+	security: [{ bearerAuth: [] }],
+	tags: ["Likes"],
+	request: {
+		params: z.object({
+			articleId: z.string().min(1, "記事IDは必須です。"),
+			langCode: z.string().length(2, "言語コードは2文字である必要があります。"),
+		}),
+	},
+	responses: {
+		200: {
+			description: "既にいいね済みの場合",
+			content: {
+				"application/json": {
+					schema: successResponseSchema(
+						z.object({
+							likeCount: z.number().int().nonnegative(),
+							message: z.string(),
+						}),
+					),
+				},
+			},
+		},
+		201: {
+			description: "いいね成功（新規いいね）",
+			content: {
+				"application/json": {
+					schema: successResponseSchema(
+						z.object({
+							likeCount: z.number().int().nonnegative(),
+							message: z.string(),
+						}),
+					),
+				},
+			},
+		},
+		401: {
+			description: "認証エラー",
+			content: { "application/json": { schema: errorResponseSchema } },
+		},
+		404: {
+			description: "記事が見つからない",
+			content: { "application/json": { schema: errorResponseSchema } },
+		},
+	},
+});
+
+prRoutes.openapi(likeArticleRoute, async (c) => {
+	const { prService } = c.var;
+	const authenticatedUser = c.var.user;
+	if (!authenticatedUser) {
+		throw new HTTPException(401, { message: "Unauthenticated" });
+	}
+	const { articleId, langCode } = c.req.valid("param");
+
+	const result = await prService.likeArticle(
+		authenticatedUser.id,
+		articleId,
+		langCode,
+	);
+
+	const responseData = {
+		likeCount: result.likeCount,
+		message: result.message,
+	};
+
+	if (result.alreadyLiked) {
+		return c.json({ success: true as const, data: responseData }, 200);
+	}
+	return c.json({ success: true as const, data: responseData }, 201);
 });
 
 export default prRoutes;

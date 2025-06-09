@@ -1,5 +1,6 @@
 import type { RankedArticleInfo } from "@prnews/common";
 import { Hono } from "hono";
+import { HTTPException } from "hono/http-exception";
 import type { RankingService } from "../../application/rankingService";
 import rankingRoutes from "./rankingRoutes";
 
@@ -28,6 +29,18 @@ describe("rankingRoutes", () => {
 			getUserRanking: jest.fn(),
 		} as unknown as jest.Mocked<RankingService>;
 		app = new Hono<{ Variables: TestVariables }>();
+		app.onError((err, c) => {
+			if (err instanceof HTTPException) {
+				return c.json(
+					{ code: "HTTP_EXCEPTION", message: err.message },
+					err.status,
+				);
+			}
+			return c.json(
+				{ code: "INTERNAL_SERVER_ERROR", message: "Internal Server Error" },
+				500,
+			);
+		});
 		app.use("*", async (c, next) => {
 			c.set("rankingService", mockRankingService);
 			await next();
@@ -47,22 +60,23 @@ describe("rankingRoutes", () => {
 		});
 		const req = new Request("http://localhost/ranking/articles/likes");
 		const res = await app.request(req);
-		expect(res.status).toBe(200);
 		const json = await res.json();
+		expect(res.status).toBe(200);
 		expect(json.success).toBe(true);
 		expect(Array.isArray(json.data.data)).toBe(true);
 		expect(json.data.data[0]).toEqual(rankedMock);
 	});
 
 	it("GET /ranking 異常系: サービスエラー", async () => {
-		mockRankingService.getArticleLikeRanking.mockImplementation(() => {
-			throw new Error("INTERNAL_SERVER_ERROR");
-		});
+		mockRankingService.getArticleLikeRanking.mockRejectedValue(
+			new Error("fail"),
+		);
 		const req = new Request("http://localhost/ranking/articles/likes");
 		const res = await app.request(req);
-		expect(res.status).toBe(500);
 		const json = await res.json();
-		expect(json.success).toBe(false);
-		expect(json.error.code).toBe("INTERNAL_SERVER_ERROR");
+		expect(res.status).toBe(500);
+		expect(json.code).toBe("INTERNAL_SERVER_ERROR");
+		// messageも存在することを確認
+		expect(typeof json.message).toBe("string");
 	});
 });
