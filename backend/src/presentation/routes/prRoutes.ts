@@ -5,9 +5,13 @@ import {
 	apiResponseSchema,
 	errorResponseSchema,
 	pullRequestArticleSchema,
+	pullRequestListItemSchema,
 	pullRequestSchema,
 } from "@prnews/common";
+import { errorStatusMap } from "@prnews/common";
+import type { ContentfulStatusCode } from "hono/utils/http-status";
 import type { Dependencies } from "../../config/di";
+import { AppError } from "../../errors/AppError";
 import { NotFoundError } from "../../errors/NotFoundError";
 import {
 	respondOpenApiError,
@@ -318,6 +322,110 @@ prRoutes.openapi(getArticleRoute, async (c) => {
 			},
 			200,
 		);
+	}
+});
+
+// --- GET /repos/{owner}/{repo}/pulls ---
+const listRepoPullsRoute = createRoute({
+	method: "get",
+	path: "/repos/{owner}/{repo}/pulls",
+	summary: "リポジトリのプルリクエスト一覧を取得",
+	description:
+		"指定されたリポジトリのPR一覧を、解説記事の有無と合わせて取得します。",
+	security: [{ bearerAuth: [] }],
+	tags: ["Pull Request"],
+	request: {
+		params: z.object({
+			owner: z.string().openapi({ example: "masa-massara" }),
+			repo: z.string().openapi({ example: "NotiPal" }),
+		}),
+		query: z.object({
+			state: z
+				.enum(["open", "closed", "all"])
+				.optional()
+				.openapi({ description: "PRの状態" }),
+			per_page: z
+				.string()
+				.optional()
+				.transform(Number)
+				.openapi({ description: "1ページあたりの件数" }),
+			page: z
+				.string()
+				.optional()
+				.transform(Number)
+				.openapi({ description: "ページ番号" }),
+		}),
+	},
+	responses: {
+		200: {
+			description: "PR一覧の取得成功",
+			content: {
+				"application/json": {
+					schema: apiResponseSchema(z.array(pullRequestListItemSchema)),
+				},
+			},
+		},
+		404: {
+			description: "リポジトリが見つからない等",
+			content: { "application/json": { schema: errorResponseSchema } },
+		},
+		500: {
+			description: "サーバーエラー",
+			content: { "application/json": { schema: errorResponseSchema } },
+		},
+	},
+});
+prRoutes.openapi(listRepoPullsRoute, async (c) => {
+	const authResult = await authMiddleware(c, async () => {});
+	if (authResult)
+		return authResult as unknown as RouteConfigToTypedResponse<
+			typeof listRepoPullsRoute
+		>;
+	const { prService } = c.var;
+	const authenticatedUser = c.var.user;
+	if (!authenticatedUser) {
+		return respondOpenApiError(
+			c,
+			{ code: ErrorCode.UNAUTHENTICATED },
+			200,
+		) as unknown as RouteConfigToTypedResponse<typeof listRepoPullsRoute>;
+	}
+	const { owner, repo } = c.req.valid("param");
+	const query = c.req.valid("query");
+	try {
+		const prList = await prService.getPullRequestListForRepo(
+			authenticatedUser.id,
+			owner,
+			repo,
+			query,
+		);
+		return respondOpenApiSuccess(
+			c,
+			prList,
+			200,
+		) as unknown as RouteConfigToTypedResponse<typeof listRepoPullsRoute>;
+	} catch (error) {
+		console.error(
+			"====== /pulls ルートハンドラでエラーをキャッチしました ======",
+		);
+		console.error(error);
+		console.error("======================================================");
+		if (error instanceof AppError) {
+			const status = errorStatusMap[error.code] ?? 200;
+			return respondOpenApiError(
+				c,
+				{ code: error.code, message: error.message },
+				status as ContentfulStatusCode,
+			) as unknown as RouteConfigToTypedResponse<typeof listRepoPullsRoute>;
+		}
+		return respondOpenApiError(
+			c,
+			{
+				code: ErrorCode.INTERNAL_SERVER_ERROR,
+				message: "Failed to get pull request list",
+			},
+			200,
+		) as unknown as RouteConfigToTypedResponse<typeof listRepoPullsRoute>;
 	}
 });
 

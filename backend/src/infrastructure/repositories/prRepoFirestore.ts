@@ -134,6 +134,22 @@ export const prRepoFirestore = (db: Firestore): PrRepoPort => ({
 		}
 		return results;
 	},
+	async checkArticlesExist(owner, repo, prNumbers) {
+		if (!prNumbers || prNumbers.length === 0) return [];
+		const repoFull = `${owner}/${repo}`;
+		const BATCH_SIZE = 30;
+		const exists: number[] = [];
+		for (let i = 0; i < prNumbers.length; i += BATCH_SIZE) {
+			const batchNumbers = prNumbers.slice(i, i + BATCH_SIZE);
+			const snap = await db
+				.collection(COLLECTION)
+				.where("repository", "==", repoFull)
+				.where("prNumber", "in", batchNumbers)
+				.get();
+			exists.push(...snap.docs.map((doc) => doc.data().prNumber));
+		}
+		return exists;
+	},
 	executeTransaction: async <T>(
 		operation: (
 			tx: import("firebase-admin/firestore").Transaction,

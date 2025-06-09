@@ -438,6 +438,97 @@ export const createPrService = (deps: {
 			.filter((info): info is LikedArticleInfo => info !== undefined);
 		return { data: result, totalItems };
 	};
+	const getPullRequestListForRepo = async (
+		userId: string,
+		owner: string,
+		repo: string,
+		query: {
+			state?: "open" | "closed" | "all";
+			per_page?: number;
+			page?: number;
+		},
+	) => {
+		console.log(
+			`[prService] 1. getPullRequestListForRepo 開始: ${owner}/${repo}`,
+		);
+		try {
+			console.log(`[prService] 2. ユーザー検索 (ID: ${userId})`);
+			const user = await deps.userRepo.findById(userId);
+			if (!user?.encryptedGitHubAccessToken) {
+				console.error(
+					"[prService] 致命的エラー: ユーザーかGitHubトークンが見つかりません。",
+				);
+				throw new ForbiddenError("GitHub access token is not registered.");
+			}
+
+			console.log("[prService] 3. ユーザー発見。トークンを復号します。");
+			const accessToken = decrypt(user.encryptedGitHubAccessToken);
+
+			const perPage =
+				query.per_page && query.per_page > 0 && query.per_page <= 100
+					? query.per_page
+					: 30;
+			const page = query.page && query.page > 0 ? query.page : 1;
+			const state = query.state || "open";
+			console.log(
+				`[prService] 4. GitHub APIを呼び出します (page: ${page}, per_page: ${perPage}, state: ${state})`,
+			);
+
+			const githubPrs = await deps.github.listPullRequests(
+				accessToken,
+				owner,
+				repo,
+				{
+					state,
+					per_page: perPage,
+					page,
+				},
+			);
+			console.log(
+				`[prService] 5. GitHub APIが ${githubPrs.length} 件のPRを返しました。`,
+			);
+
+			if (githubPrs.length === 0) {
+				console.log(
+					"[prService] GitHub上にPRがないため、空のリストを返します。",
+				);
+				return [];
+			}
+
+			const prNumbers = githubPrs.map((pr) => pr.number ?? pr.number);
+			console.log(
+				`[prService] 6. DBに記事の有無を問い合わせます (PR番号: ${prNumbers.join(", ")})`,
+			);
+			const existingArticleNumbers = await deps.prRepo.checkArticlesExist(
+				owner,
+				repo,
+				prNumbers,
+			);
+			console.log(
+				`[prService] 7. DB内に ${existingArticleNumbers.length} 件の記事を発見しました。`,
+			);
+
+			console.log("[prService] 8. 最終データを結合して返却します。");
+			const responseData = githubPrs.map((pr) => ({
+				prNumber: pr.number,
+				title: pr.title,
+				authorLogin: pr.user?.login ?? "unknown",
+				githubPrUrl: pr.html_url,
+				state: pr.state,
+				createdAt: pr.created_at,
+				articleExists: existingArticleNumbers.includes(pr.number),
+			}));
+
+			return responseData;
+		} catch (error) {
+			console.error(
+				"[prService] getPullRequestListForRepoの内部で予期せぬエラーが発生しました！:",
+				error,
+			);
+			// エラーを再度スローして、ルートハンドラに処理を渡す
+			throw error;
+		}
+	};
 	return {
 		ingestPr,
 		generateArticle,
@@ -446,6 +537,7 @@ export const createPrService = (deps: {
 		likeArticle,
 		unlikeArticle,
 		getLikedArticles,
+		getPullRequestListForRepo,
 	};
 };
 

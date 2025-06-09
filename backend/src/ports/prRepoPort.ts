@@ -33,4 +33,9 @@ export interface PrRepoPort {
 	}): Promise<PullRequestArticle[]>;
 	findArticlesByIds(ids: string[]): Promise<PullRequestArticle[]>;
 	executeTransaction<T>(operation: (tx: Transaction) => Promise<T>): Promise<T>;
+	checkArticlesExist(
+		owner: string,
+		repo: string,
+		prNumbers: number[],
+	): Promise<number[]>;
 }
