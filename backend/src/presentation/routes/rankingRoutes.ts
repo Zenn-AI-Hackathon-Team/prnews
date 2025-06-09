@@ -1,15 +1,10 @@
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 import {
-	ErrorCode,
-	apiResponseSchema,
 	errorResponseSchema,
 	rankedArticleInfoSchema,
+	successResponseSchema,
 } from "@prnews/common";
 import type { Dependencies } from "../../config/di";
-import {
-	respondOpenApiError,
-	respondOpenApiSuccess,
-} from "../../utils/apiResponder";
 
 const rankingRoutes = new OpenAPIHono<{ Variables: Dependencies }>();
 
@@ -32,7 +27,7 @@ const getArticleLikeRankingRoute = createRoute({
 			description: "ランキング取得成功",
 			content: {
 				"application/json": {
-					schema: apiResponseSchema(
+					schema: successResponseSchema(
 						z.object({
 							data: z.array(rankedArticleInfoSchema),
 							pagination: z.object({
@@ -54,19 +49,19 @@ const getArticleLikeRankingRoute = createRoute({
 
 rankingRoutes.openapi(getArticleLikeRankingRoute, async (c) => {
 	const { rankingService } = c.var;
-	try {
-		const { period, language, limit, offset } = c.req.valid("query");
-		const numLimit = limit ? Number(limit) : undefined;
-		const numOffset = offset ? Number(offset) : undefined;
-		const { data, totalItems } = await rankingService.getArticleLikeRanking({
-			period,
-			language,
-			limit: numLimit,
-			offset: numOffset,
-		});
-		return respondOpenApiSuccess(
-			c,
-			{
+	const { period, language, limit, offset } = c.req.valid("query");
+	const numLimit = limit ? Number(limit) : undefined;
+	const numOffset = offset ? Number(offset) : undefined;
+	const { data, totalItems } = await rankingService.getArticleLikeRanking({
+		period,
+		language,
+		limit: numLimit,
+		offset: numOffset,
+	});
+	return c.json(
+		{
+			success: true as const,
+			data: {
 				data,
 				pagination: {
 					totalItems,
@@ -74,18 +69,9 @@ rankingRoutes.openapi(getArticleLikeRankingRoute, async (c) => {
 					offset: numOffset ?? 0,
 				},
 			},
-			200,
-		);
-	} catch (e) {
-		return respondOpenApiError(
-			c,
-			{
-				code: ErrorCode.INTERNAL_SERVER_ERROR,
-				message: "ランキング取得に失敗しました",
-			},
-			200,
-		);
-	}
+		},
+		200,
+	);
 });
 
 export default rankingRoutes;

@@ -1,14 +1,6 @@
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
-import {
-	ErrorCode,
-	apiResponseSchema,
-	errorResponseSchema,
-} from "@prnews/common";
+import { errorResponseSchema, successResponseSchema } from "@prnews/common";
 import type { Dependencies } from "../../config/di";
-import {
-	respondOpenApiError,
-	respondOpenApiSuccess,
-} from "../../utils/apiResponder";
 
 const generalRoutes = new OpenAPIHono<{ Variables: Dependencies }>();
 
@@ -30,7 +22,7 @@ const healthzRoute = createRoute({
 			description: "サービス正常稼働",
 			content: {
 				"application/json": {
-					schema: apiResponseSchema(healthzResponseDataSchema),
+					schema: successResponseSchema(healthzResponseDataSchema),
 				},
 			},
 		},
@@ -47,20 +39,8 @@ const healthzRoute = createRoute({
 
 generalRoutes.openapi(healthzRoute, async (c) => {
 	const { generalService } = c.var;
-	try {
-		const healthStatus = await generalService.checkHealth();
-		return respondOpenApiSuccess(c, healthStatus, 200);
-	} catch (error) {
-		console.error("Health check failed:", error);
-		return respondOpenApiError(
-			c,
-			{
-				code: ErrorCode.INTERNAL_SERVER_ERROR,
-				details: "Health check failed",
-			},
-			500,
-		);
-	}
+	const healthStatus = await generalService.checkHealth();
+	return c.json({ success: true as const, data: healthStatus }, 200);
 });
 
 export default generalRoutes;

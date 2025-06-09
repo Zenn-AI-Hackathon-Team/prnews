@@ -1,22 +1,13 @@
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
-import type { RouteConfigToTypedResponse } from "@hono/zod-openapi";
 import {
-	ErrorCode,
-	apiResponseSchema,
 	errorResponseSchema,
 	pullRequestArticleSchema,
 	pullRequestListItemSchema,
 	pullRequestSchema,
+	successResponseSchema,
 } from "@prnews/common";
-import { errorStatusMap } from "@prnews/common";
-import type { ContentfulStatusCode } from "hono/utils/http-status";
+import { HTTPException } from "hono/http-exception";
 import type { Dependencies } from "../../config/di";
-import { AppError } from "../../errors/AppError";
-import { NotFoundError } from "../../errors/NotFoundError";
-import {
-	respondOpenApiError,
-	respondOpenApiSuccess,
-} from "../../utils/apiResponder";
 import type { AuthVariables } from "../middlewares/authMiddleware";
 import { authMiddleware } from "../middlewares/authMiddleware";
 
@@ -44,7 +35,9 @@ const ingestPrRoute = createRoute({
 		200: {
 			description: "Pull Request情報の取得・保存成功",
 			content: {
-				"application/json": { schema: apiResponseSchema(pullRequestSchema) },
+				"application/json": {
+					schema: successResponseSchema(pullRequestSchema),
+				},
 			},
 		},
 		401: {
@@ -58,50 +51,20 @@ const ingestPrRoute = createRoute({
 	},
 });
 prRoutes.openapi(ingestPrRoute, async (c) => {
-	const authResult = await authMiddleware(c, async () => {});
-	if (authResult)
-		return authResult as unknown as RouteConfigToTypedResponse<
-			typeof ingestPrRoute
-		>;
+	await authMiddleware(c, async () => {});
 	const { prService } = c.var;
 	const params = c.req.valid("param");
 	const authenticatedUser = c.var.user;
 	if (!authenticatedUser) {
-		return respondOpenApiError(
-			c,
-			{ code: ErrorCode.UNAUTHENTICATED },
-			200,
-		) as unknown as RouteConfigToTypedResponse<typeof ingestPrRoute>;
+		throw new HTTPException(401, { message: "Unauthenticated" });
 	}
-	try {
-		const ingestedPr = await prService.ingestPr(
-			authenticatedUser.id,
-			params.owner,
-			params.repo,
-			params.number,
-		);
-		return respondOpenApiSuccess(
-			c,
-			ingestedPr,
-			200,
-		) as unknown as RouteConfigToTypedResponse<typeof ingestPrRoute>;
-	} catch (error) {
-		if (error instanceof NotFoundError) {
-			return respondOpenApiError(
-				c,
-				{ code: ErrorCode.NOT_FOUND, message: error.message },
-				200,
-			) as unknown as RouteConfigToTypedResponse<typeof ingestPrRoute>;
-		}
-		return respondOpenApiError(
-			c,
-			{
-				code: ErrorCode.INTERNAL_SERVER_ERROR,
-				message: "Failed to ingest pull request",
-			},
-			200,
-		) as unknown as RouteConfigToTypedResponse<typeof ingestPrRoute>;
-	}
+	const ingestedPr = await prService.ingestPr(
+		authenticatedUser.id,
+		params.owner,
+		params.repo,
+		params.number,
+	);
+	return c.json({ success: true as const, data: ingestedPr }, 200);
 });
 
 // --- POST /repos/{owner}/{repo}/pulls/{number}/article ---
@@ -123,7 +86,7 @@ const generateArticleRoute = createRoute({
 			description: "記事生成成功",
 			content: {
 				"application/json": {
-					schema: apiResponseSchema(pullRequestArticleSchema),
+					schema: successResponseSchema(pullRequestArticleSchema),
 				},
 			},
 		},
@@ -138,42 +101,16 @@ const generateArticleRoute = createRoute({
 	},
 });
 prRoutes.openapi(generateArticleRoute, async (c) => {
-	const authResult = await authMiddleware(c, async () => {});
-	if (authResult)
-		return authResult as unknown as RouteConfigToTypedResponse<
-			typeof generateArticleRoute
-		>;
+	await authMiddleware(c, async () => {});
 	const { prService } = c.var;
 	const params = c.req.valid("param");
-	try {
-		const articleRaw = await prService.generateArticle(
-			params.owner,
-			params.repo,
-			params.number,
-		);
-		const article = pullRequestArticleSchema.parse(articleRaw);
-		return respondOpenApiSuccess(
-			c,
-			article,
-			200,
-		) as unknown as RouteConfigToTypedResponse<typeof generateArticleRoute>;
-	} catch (error) {
-		if (error instanceof NotFoundError) {
-			return respondOpenApiError(
-				c,
-				{ code: ErrorCode.NOT_FOUND, message: error.message },
-				200,
-			) as unknown as RouteConfigToTypedResponse<typeof generateArticleRoute>;
-		}
-		return respondOpenApiError(
-			c,
-			{
-				code: ErrorCode.INTERNAL_SERVER_ERROR,
-				message: "Failed to generate article",
-			},
-			200,
-		) as unknown as RouteConfigToTypedResponse<typeof generateArticleRoute>;
-	}
+	const articleRaw = await prService.generateArticle(
+		params.owner,
+		params.repo,
+		params.number,
+	);
+	const article = pullRequestArticleSchema.parse(articleRaw);
+	return c.json({ success: true as const, data: article }, 200);
 });
 
 // --- GET /repos/{owner}/{repo}/pulls/{number} ---
@@ -194,7 +131,9 @@ const getPrRoute = createRoute({
 		200: {
 			description: "取得成功",
 			content: {
-				"application/json": { schema: apiResponseSchema(pullRequestSchema) },
+				"application/json": {
+					schema: successResponseSchema(pullRequestSchema),
+				},
 			},
 		},
 		404: {
@@ -208,44 +147,20 @@ const getPrRoute = createRoute({
 	},
 });
 prRoutes.openapi(getPrRoute, async (c) => {
-	const authResult = await authMiddleware(c, async () => {});
-	if (authResult)
-		return authResult as unknown as RouteConfigToTypedResponse<
-			typeof getPrRoute
-		>;
+	await authMiddleware(c, async () => {});
 	const { prService } = c.var;
 	const params = c.req.valid("param");
-	try {
-		const pr = await prService.getPullRequest(
-			params.owner,
-			params.repo,
-			params.number,
-		);
-		if (!pr) {
-			return respondOpenApiError(
-				c,
-				{
-					code: ErrorCode.NOT_FOUND,
-					message: "Pull request not found in cache",
-				},
-				200,
-			) as unknown as RouteConfigToTypedResponse<typeof getPrRoute>;
-		}
-		return respondOpenApiSuccess(
-			c,
-			pr,
-			200,
-		) as unknown as RouteConfigToTypedResponse<typeof getPrRoute>;
-	} catch (error) {
-		return respondOpenApiError(
-			c,
-			{
-				code: ErrorCode.INTERNAL_SERVER_ERROR,
-				message: "Failed to get pull request",
-			},
-			200,
-		) as unknown as RouteConfigToTypedResponse<typeof getPrRoute>;
+	const pr = await prService.getPullRequest(
+		params.owner,
+		params.repo,
+		params.number,
+	);
+	if (!pr) {
+		throw new HTTPException(404, {
+			message: "Pull request not found in cache",
+		});
 	}
+	return c.json({ success: true as const, data: pr }, 200);
 });
 
 // --- GET /repos/{owner}/{repo}/pulls/{number}/article ---
@@ -267,7 +182,7 @@ const getArticleRoute = createRoute({
 			description: "取得成功",
 			content: {
 				"application/json": {
-					schema: apiResponseSchema(pullRequestArticleSchema),
+					schema: successResponseSchema(pullRequestArticleSchema),
 				},
 			},
 		},
@@ -284,45 +199,24 @@ const getArticleRoute = createRoute({
 prRoutes.openapi(getArticleRoute, async (c) => {
 	const { prService, prRepo } = c.var;
 	const params = c.req.valid("param");
-	try {
-		const pullRequest = await prRepo.findByOwnerRepoNumber(
-			params.owner,
-			params.repo,
-			params.number,
-		);
-		if (!pullRequest) {
-			return respondOpenApiError(
-				c,
-				{
-					code: ErrorCode.NOT_FOUND,
-					message: "Original pull request not found",
-				},
-				200,
-			);
-		}
-		const prId = pullRequest.id;
-		const article = await prService.getArticle(prId);
-		if (!article) {
-			return respondOpenApiError(
-				c,
-				{
-					code: ErrorCode.NOT_FOUND,
-					message: "Article not found for this pull request",
-				},
-				200,
-			);
-		}
-		return respondOpenApiSuccess(c, article, 200);
-	} catch (error) {
-		return respondOpenApiError(
-			c,
-			{
-				code: ErrorCode.INTERNAL_SERVER_ERROR,
-				message: "Failed to get article",
-			},
-			200,
-		);
+	const pullRequest = await prRepo.findByOwnerRepoNumber(
+		params.owner,
+		params.repo,
+		params.number,
+	);
+	if (!pullRequest) {
+		throw new HTTPException(404, {
+			message: "Original pull request not found",
+		});
 	}
+	const prId = pullRequest.id;
+	const article = await prService.getArticle(prId);
+	if (!article) {
+		throw new HTTPException(404, {
+			message: "Article not found for this pull request",
+		});
+	}
+	return c.json({ success: true as const, data: article }, 200);
 });
 
 // --- GET /repos/{owner}/{repo}/pulls ---
@@ -361,7 +255,7 @@ const listRepoPullsRoute = createRoute({
 			description: "PR一覧の取得成功",
 			content: {
 				"application/json": {
-					schema: apiResponseSchema(z.array(pullRequestListItemSchema)),
+					schema: successResponseSchema(z.array(pullRequestListItemSchema)),
 				},
 			},
 		},
@@ -376,57 +270,21 @@ const listRepoPullsRoute = createRoute({
 	},
 });
 prRoutes.openapi(listRepoPullsRoute, async (c) => {
-	const authResult = await authMiddleware(c, async () => {});
-	if (authResult)
-		return authResult as unknown as RouteConfigToTypedResponse<
-			typeof listRepoPullsRoute
-		>;
+	await authMiddleware(c, async () => {});
 	const { prService } = c.var;
 	const authenticatedUser = c.var.user;
 	if (!authenticatedUser) {
-		return respondOpenApiError(
-			c,
-			{ code: ErrorCode.UNAUTHENTICATED },
-			200,
-		) as unknown as RouteConfigToTypedResponse<typeof listRepoPullsRoute>;
+		throw new HTTPException(401, { message: "Unauthenticated" });
 	}
 	const { owner, repo } = c.req.valid("param");
 	const query = c.req.valid("query");
-	try {
-		const prList = await prService.getPullRequestListForRepo(
-			authenticatedUser.id,
-			owner,
-			repo,
-			query,
-		);
-		return respondOpenApiSuccess(
-			c,
-			prList,
-			200,
-		) as unknown as RouteConfigToTypedResponse<typeof listRepoPullsRoute>;
-	} catch (error) {
-		console.error(
-			"====== /pulls ルートハンドラでエラーをキャッチしました ======",
-		);
-		console.error(error);
-		console.error("======================================================");
-		if (error instanceof AppError) {
-			const status = errorStatusMap[error.code] ?? 200;
-			return respondOpenApiError(
-				c,
-				{ code: error.code, message: error.message },
-				status as ContentfulStatusCode,
-			) as unknown as RouteConfigToTypedResponse<typeof listRepoPullsRoute>;
-		}
-		return respondOpenApiError(
-			c,
-			{
-				code: ErrorCode.INTERNAL_SERVER_ERROR,
-				message: "Failed to get pull request list",
-			},
-			200,
-		) as unknown as RouteConfigToTypedResponse<typeof listRepoPullsRoute>;
-	}
+	const prList = await prService.getPullRequestListForRepo(
+		authenticatedUser.id,
+		owner,
+		repo,
+		query,
+	);
+	return c.json({ success: true as const, data: prList }, 200);
 });
 
 export default prRoutes;

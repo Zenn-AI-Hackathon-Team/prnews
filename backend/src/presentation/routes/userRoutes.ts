@@ -1,18 +1,14 @@
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 import {
-	ErrorCode,
-	apiResponseSchema,
 	errorResponseSchema,
 	favoriteRepositorySchema,
 	likedArticleInfoSchema,
+	successResponseSchema,
 	userSchema,
 	// 他必要なスキーマ
 } from "@prnews/common";
+import { HTTPException } from "hono/http-exception";
 import type { Dependencies } from "../../config/di";
-import {
-	respondOpenApiError,
-	respondOpenApiSuccess,
-} from "../../utils/apiResponder";
 import type { AuthVariables } from "../middlewares/authMiddleware";
 
 const userRoutes = new OpenAPIHono<{
@@ -31,7 +27,7 @@ const getMyProfileRoute = createRoute({
 		200: {
 			description: "ユーザー情報の取得成功",
 			content: {
-				"application/json": { schema: apiResponseSchema(userSchema) },
+				"application/json": { schema: successResponseSchema(userSchema) },
 			},
 		},
 		401: {
@@ -48,17 +44,13 @@ userRoutes.openapi(getMyProfileRoute, async (c) => {
 	const { userService } = c.var;
 	const authenticatedUser = c.var.user;
 	if (!authenticatedUser) {
-		return respondOpenApiError(c, { code: ErrorCode.UNAUTHENTICATED }, 401);
+		throw new HTTPException(401, { message: "Unauthenticated" });
 	}
 	const userProfile = await userService.getCurrentUser(authenticatedUser);
 	if (!userProfile) {
-		return respondOpenApiError(
-			c,
-			{ code: ErrorCode.NOT_FOUND, message: "User profile not found" },
-			404,
-		);
+		throw new HTTPException(404, { message: "User profile not found" });
 	}
-	return respondOpenApiSuccess(c, userProfile, 200);
+	return c.json({ success: true as const, data: userProfile }, 200);
 });
 
 // --- POST /auth/logout ---
@@ -73,7 +65,7 @@ const logoutRoute = createRoute({
 		200: {
 			description: "ログアウト成功",
 			content: {
-				"application/json": { schema: apiResponseSchema(z.object({})) },
+				"application/json": { schema: successResponseSchema(z.object({})) },
 			},
 		},
 		401: {
@@ -90,28 +82,15 @@ userRoutes.openapi(logoutRoute, async (c) => {
 	const { userService } = c.var;
 	const authenticatedUser = c.var.user;
 	if (!authenticatedUser) {
-		return respondOpenApiError(c, { code: ErrorCode.UNAUTHENTICATED }, 401);
+		throw new HTTPException(401, { message: "Unauthenticated" });
 	}
-	try {
-		const result = await userService.logoutUser(authenticatedUser);
-		if (result.success) {
-			return respondOpenApiSuccess(c, {}, 200);
-		}
-		return respondOpenApiError(
-			c,
-			{
-				code: ErrorCode.INTERNAL_SERVER_ERROR,
-				message: result.message || "Logout failed",
-			},
-			500,
-		);
-	} catch (error) {
-		return respondOpenApiError(
-			c,
-			{ code: ErrorCode.INTERNAL_SERVER_ERROR, message: "Failed to logout" },
-			500,
-		);
+	const result = await userService.logoutUser(authenticatedUser);
+	if (!result.success) {
+		throw new HTTPException(500, {
+			message: result.message || "Logout failed",
+		});
 	}
+	return c.json({ success: true as const, data: {} }, 200);
 });
 
 // --- POST /auth/signup ---
@@ -135,7 +114,7 @@ const signupRoute = createRoute({
 		201: {
 			description: "ユーザー作成成功",
 			content: {
-				"application/json": { schema: apiResponseSchema(userSchema) },
+				"application/json": { schema: successResponseSchema(userSchema) },
 			},
 		},
 		409: {
@@ -156,42 +135,20 @@ userRoutes.openapi(signupRoute, async (c) => {
 	const { userService } = c.var;
 	const authenticatedUser = c.var.user;
 	if (!authenticatedUser) {
-		return respondOpenApiError(c, { code: ErrorCode.UNAUTHENTICATED }, 401);
+		throw new HTTPException(401, { message: "Unauthenticated" });
 	}
 	const body = c.req.valid("json");
 	const language =
 		typeof body.language === "string" ? body.language : undefined;
-	try {
-		const created = await userService.createUser(authenticatedUser, language);
-		if (!created) {
-			const already = await userService.getCurrentUser(authenticatedUser);
-			if (already) {
-				return respondOpenApiError(
-					c,
-					{ code: ErrorCode.VALIDATION_ERROR, message: "User already exists" },
-					409,
-				);
-			}
-			return respondOpenApiError(
-				c,
-				{
-					code: ErrorCode.INTERNAL_SERVER_ERROR,
-					message: "Failed to create user",
-				},
-				500,
-			);
+	const created = await userService.createUser(authenticatedUser, language);
+	if (!created) {
+		const already = await userService.getCurrentUser(authenticatedUser);
+		if (already) {
+			throw new HTTPException(409, { message: "User already exists" });
 		}
-		return respondOpenApiSuccess(c, created, 201);
-	} catch (error) {
-		return respondOpenApiError(
-			c,
-			{
-				code: ErrorCode.INTERNAL_SERVER_ERROR,
-				message: "Failed to signup user",
-			},
-			500,
-		);
+		throw new HTTPException(500, { message: "Failed to create user" });
 	}
+	return c.json({ success: true as const, data: created }, 201);
 });
 
 // --- POST /auth/session ---
@@ -205,7 +162,9 @@ const sessionRoute = createRoute({
 	responses: {
 		201: {
 			description: "セッション作成成功",
-			content: { "application/json": { schema: apiResponseSchema(z.any()) } },
+			content: {
+				"application/json": { schema: successResponseSchema(z.any()) },
+			},
 		},
 		401: {
 			description: "認証エラー",
@@ -221,31 +180,13 @@ userRoutes.openapi(sessionRoute, async (c) => {
 	const { userService } = c.var;
 	const authenticatedUser = c.var.user;
 	if (!authenticatedUser) {
-		return respondOpenApiError(c, { code: ErrorCode.UNAUTHENTICATED }, 401);
+		throw new HTTPException(401, { message: "Unauthenticated" });
 	}
-	try {
-		const created = await userService.createSession(authenticatedUser);
-		if (!created) {
-			return respondOpenApiError(
-				c,
-				{
-					code: ErrorCode.INTERNAL_SERVER_ERROR,
-					message: "Failed to create session",
-				},
-				500,
-			);
-		}
-		return respondOpenApiSuccess(c, created, 201);
-	} catch (error) {
-		return respondOpenApiError(
-			c,
-			{
-				code: ErrorCode.INTERNAL_SERVER_ERROR,
-				message: "Failed to create session",
-			},
-			500,
-		);
+	const created = await userService.createSession(authenticatedUser);
+	if (!created) {
+		throw new HTTPException(500, { message: "Failed to create session" });
 	}
+	return c.json({ success: true as const, data: created }, 201);
 });
 
 // --- POST /users/me/favorite-repositories ---
@@ -274,7 +215,7 @@ const addFavoriteRepoRoute = createRoute({
 			description: "既にお気に入り登録済み",
 			content: {
 				"application/json": {
-					schema: apiResponseSchema(favoriteRepositorySchema),
+					schema: successResponseSchema(favoriteRepositorySchema),
 				},
 			},
 		},
@@ -282,7 +223,7 @@ const addFavoriteRepoRoute = createRoute({
 			description: "新規お気に入り登録成功",
 			content: {
 				"application/json": {
-					schema: apiResponseSchema(favoriteRepositorySchema),
+					schema: successResponseSchema(favoriteRepositorySchema),
 				},
 			},
 		},
@@ -296,7 +237,7 @@ userRoutes.openapi(addFavoriteRepoRoute, async (c) => {
 	const { userService } = c.var;
 	const authenticatedUser = c.var.user;
 	if (!authenticatedUser) {
-		return respondOpenApiError(c, { code: ErrorCode.UNAUTHENTICATED }, 200);
+		throw new HTTPException(401, { message: "Unauthenticated" });
 	}
 	const { owner, repo } = c.req.valid("json");
 	const result = await userService.registerFavoriteRepository(
@@ -305,9 +246,9 @@ userRoutes.openapi(addFavoriteRepoRoute, async (c) => {
 		repo,
 	);
 	if (result.alreadyExists) {
-		return respondOpenApiSuccess(c, result.favorite, 200);
+		return c.json({ success: true as const, data: result.favorite }, 200);
 	}
-	return respondOpenApiSuccess(c, result.favorite, 201);
+	return c.json({ success: true as const, data: result.favorite }, 201);
 });
 
 // --- GET /users/me/liked-articles ---
@@ -331,7 +272,7 @@ const getLikedArticlesRoute = createRoute({
 			description: "取得成功",
 			content: {
 				"application/json": {
-					schema: apiResponseSchema(
+					schema: successResponseSchema(
 						z.object({
 							data: z.array(likedArticleInfoSchema),
 							pagination: z.object({
@@ -354,7 +295,7 @@ userRoutes.openapi(getLikedArticlesRoute, async (c) => {
 	const { prService } = c.var;
 	const authenticatedUser = c.var.user;
 	if (!authenticatedUser) {
-		return respondOpenApiError(c, { code: ErrorCode.UNAUTHENTICATED }, 401);
+		throw new HTTPException(401, { message: "Unauthenticated" });
 	}
 	const { lang, limit, offset, sort } = c.req.valid("query");
 	const numLimit = limit ? Number(limit) : undefined;
@@ -363,11 +304,17 @@ userRoutes.openapi(getLikedArticlesRoute, async (c) => {
 		authenticatedUser.id,
 		{ lang, limit: numLimit, offset: numOffset, sort },
 	);
-	return respondOpenApiSuccess(
-		c,
+	return c.json(
 		{
-			data,
-			pagination: { totalItems, limit: numLimit ?? 10, offset: numOffset ?? 0 },
+			success: true as const,
+			data: {
+				data,
+				pagination: {
+					totalItems,
+					limit: numLimit ?? 10,
+					offset: numOffset ?? 0,
+				},
+			},
 		},
 		200,
 	);
@@ -392,7 +339,7 @@ const getFavoriteReposRoute = createRoute({
 			description: "取得成功",
 			content: {
 				"application/json": {
-					schema: apiResponseSchema(
+					schema: successResponseSchema(
 						z.object({
 							data: z.array(favoriteRepositorySchema),
 							pagination: z.object({
@@ -415,7 +362,7 @@ userRoutes.openapi(getFavoriteReposRoute, async (c) => {
 	const { userService } = c.var;
 	const authenticatedUser = c.var.user;
 	if (!authenticatedUser) {
-		return respondOpenApiError(c, { code: ErrorCode.UNAUTHENTICATED }, 401);
+		throw new HTTPException(401, { message: "Unauthenticated" });
 	}
 	const { limit, offset } = c.req.valid("query");
 	const numLimit = limit ? Number(limit) : 20;
@@ -424,11 +371,13 @@ userRoutes.openapi(getFavoriteReposRoute, async (c) => {
 		authenticatedUser.id,
 		{ limit: numLimit, offset: numOffset },
 	);
-	return respondOpenApiSuccess(
-		c,
+	return c.json(
 		{
-			data: favorites,
-			pagination: { totalItems: total, limit: numLimit, offset: numOffset },
+			success: true as const,
+			data: {
+				data: favorites,
+				pagination: { totalItems: total, limit: numLimit, offset: numOffset },
+			},
 		},
 		200,
 	);
@@ -450,7 +399,7 @@ const deleteFavoriteRepoRoute = createRoute({
 			description: "削除成功",
 			content: {
 				"application/json": {
-					schema: apiResponseSchema(z.object({ message: z.string() })),
+					schema: successResponseSchema(z.object({ message: z.string() })),
 				},
 			},
 		},
@@ -468,44 +417,17 @@ userRoutes.openapi(deleteFavoriteRepoRoute, async (c) => {
 	const { userService } = c.var;
 	const authenticatedUser = c.var.user;
 	if (!authenticatedUser) {
-		return respondOpenApiError(c, { code: ErrorCode.UNAUTHENTICATED }, 200);
+		throw new HTTPException(401, { message: "Unauthenticated" });
 	}
 	const { favoriteId } = c.req.valid("param");
-	try {
-		await userService.deleteFavoriteRepository(
-			authenticatedUser.id,
-			favoriteId,
-		);
-		return respondOpenApiSuccess(
-			c,
-			{ message: "Favorite repository deleted successfully." },
-			200,
-		);
-	} catch (error: unknown) {
-		if (
-			typeof error === "object" &&
-			error &&
-			"code" in error &&
-			(error as { code?: string }).code === ErrorCode.NOT_FOUND
-		) {
-			return respondOpenApiError(
-				c,
-				{
-					code: ErrorCode.NOT_FOUND,
-					message: (error as { message?: string }).message,
-				},
-				200,
-			);
-		}
-		return respondOpenApiError(
-			c,
-			{
-				code: ErrorCode.INTERNAL_SERVER_ERROR,
-				message: "Failed to delete favorite repository",
-			},
-			200,
-		);
-	}
+	await userService.deleteFavoriteRepository(authenticatedUser.id, favoriteId);
+	return c.json(
+		{
+			success: true as const,
+			data: { message: "Favorite repository deleted successfully." },
+		},
+		200,
+	);
 });
 
 // --- POST /auth/token/exchange ---
@@ -530,7 +452,7 @@ const tokenExchangeRoute = createRoute({
 			description: "保存成功",
 			content: {
 				"application/json": {
-					schema: apiResponseSchema(z.object({ message: z.string() })),
+					schema: successResponseSchema(z.object({ message: z.string() })),
 				},
 			},
 		},
@@ -549,27 +471,18 @@ userRoutes.openapi(tokenExchangeRoute, async (c) => {
 	const authenticatedUser = c.var.user;
 	const { githubAccessToken } = c.req.valid("json");
 	if (!authenticatedUser || !githubAccessToken) {
-		return respondOpenApiError(
-			c,
-			{ code: ErrorCode.VALIDATION_ERROR, message: "Invalid request" },
-			401,
-		);
+		throw new HTTPException(401, { message: "Invalid request" });
 	}
 	const result = await userService.saveGitHubToken(
 		authenticatedUser.id,
 		githubAccessToken,
 	);
-	if (result.success) {
-		return respondOpenApiSuccess(
-			c,
-			{ message: "Token saved successfully." },
-			200,
-		);
+	if (!result.success) {
+		throw new HTTPException(500, { message: "Failed to save token." });
 	}
-	return respondOpenApiError(
-		c,
-		{ code: ErrorCode.INTERNAL_SERVER_ERROR, message: "Failed to save token." },
-		500,
+	return c.json(
+		{ success: true as const, data: { message: "Token saved successfully." } },
+		200,
 	);
 });
 

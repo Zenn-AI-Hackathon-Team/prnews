@@ -1,20 +1,28 @@
 import { serve } from "@hono/node-server";
 import { swaggerUI } from "@hono/swagger-ui";
 import { OpenAPIHono } from "@hono/zod-openapi";
+import { HTTPException } from "hono/http-exception";
+import { ZodError } from "zod";
 import { type Dependencies, buildDependencies } from "./config/di";
 import {
 	type AuthVariables,
 	authMiddleware,
 } from "./presentation/middlewares/authMiddleware";
-import { errorHandlerMiddleware } from "./presentation/middlewares/errorHandler";
 import generalRoutes from "./presentation/routes/generalRoutes";
 import prRoutes from "./presentation/routes/prRoutes";
 import rankingRoutes from "./presentation/routes/rankingRoutes";
 import userRoutes from "./presentation/routes/userRoutes";
 
-const app = new OpenAPIHono<{ Variables: Dependencies & AuthVariables }>();
-
-app.use("*", errorHandlerMiddleware);
+const app = new OpenAPIHono<{ Variables: Dependencies & AuthVariables }>({
+	defaultHook: (result, c) => {
+		if (!result.success) {
+			throw new HTTPException(422, {
+				message: "Validation Failed",
+				cause: result.error,
+			});
+		}
+	},
+});
 
 app.use("*", async (c, next) => {
 	const deps = buildDependencies();
@@ -66,6 +74,28 @@ app.doc("/specification", {
 });
 
 app.get("/doc", swaggerUI({ url: "/specification" }));
+
+// グローバルエラーハンドラ
+app.onError((err, c) => {
+	if (err instanceof HTTPException) {
+		if (err.cause instanceof ZodError) {
+			const details = err.cause.errors.map((e) => ({
+				path: e.path,
+				message: e.message,
+			}));
+			return c.json(
+				{ code: "VALIDATION_ERROR", message: err.message, details },
+				err.status,
+			);
+		}
+		return c.json({ code: "HTTP_EXCEPTION", message: err.message }, err.status);
+	}
+	console.error("[UnhandledError]", err);
+	return c.json(
+		{ code: "INTERNAL_SERVER_ERROR", message: "An unexpected error occurred" },
+		500,
+	);
+});
 
 serve(
 	{
