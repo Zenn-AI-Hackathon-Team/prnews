@@ -1,28 +1,15 @@
 import { serve } from "@hono/node-server";
 import { swaggerUI } from "@hono/swagger-ui";
-import { OpenAPIHono } from "@hono/zod-openapi";
 import { HTTPException } from "hono/http-exception";
 import { ZodError } from "zod";
-import { type Dependencies, buildDependencies } from "./config/di";
-import {
-	type AuthVariables,
-	authMiddleware,
-} from "./presentation/middlewares/authMiddleware";
+import { buildDependencies } from "./config/di";
+import { createApp } from "./presentation/hono-app";
 import generalRoutes from "./presentation/routes/generalRoutes";
 import prRoutes from "./presentation/routes/prRoutes";
 import rankingRoutes from "./presentation/routes/rankingRoutes";
 import userRoutes from "./presentation/routes/userRoutes";
 
-const app = new OpenAPIHono<{ Variables: Dependencies & AuthVariables }>({
-	defaultHook: (result, c) => {
-		if (!result.success) {
-			throw new HTTPException(422, {
-				message: "Validation Failed",
-				cause: result.error,
-			});
-		}
-	},
-});
+const app = createApp();
 
 app.use("*", async (c, next) => {
 	const deps = buildDependencies();
@@ -38,15 +25,6 @@ app.use("*", async (c, next) => {
 	c.set("auth", deps.auth);
 	await next();
 });
-
-// app.use("/repos/*", authMiddleware);
-// app.use("/repos/:owner/:repo/pulls/*", authMiddleware);
-app.use("/users/*", authMiddleware);
-app.use("/auth/*", (c, next) => {
-	if (c.req.path === "/auth/signup") return next();
-	return authMiddleware(c, next);
-});
-// app.use("/articles/*", authMiddleware);
 
 app.route("/", generalRoutes);
 app.route("/", prRoutes);
@@ -66,11 +44,6 @@ app.doc("/specification", {
 		version: "1.0.0",
 		title: "PR News Backend API",
 	},
-	security: [
-		{
-			bearerAuth: [],
-		},
-	],
 });
 
 app.get("/doc", swaggerUI({ url: "/specification" }));

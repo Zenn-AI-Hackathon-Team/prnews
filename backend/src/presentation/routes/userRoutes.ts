@@ -1,4 +1,4 @@
-import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
+import { createRoute, z } from "@hono/zod-openapi";
 import {
 	errorResponseSchema,
 	favoriteRepositorySchema,
@@ -8,21 +8,9 @@ import {
 	// 他必要なスキーマ
 } from "@prnews/common";
 import { HTTPException } from "hono/http-exception";
-import type { Dependencies } from "../../config/di";
-import type { AuthVariables } from "../middlewares/authMiddleware";
+import { createApp } from "../hono-app";
 
-const userRoutes = new OpenAPIHono<{
-	Variables: Dependencies & AuthVariables;
-}>({
-	defaultHook: (result, c) => {
-		if (!result.success) {
-			throw new HTTPException(422, {
-				message: "Validation Failed",
-				cause: result.error,
-			});
-		}
-	},
-});
+const userRoutes = createApp();
 
 // --- GET /users/me ---
 const getMyProfileRoute = createRoute({

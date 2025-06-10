@@ -1,8 +1,8 @@
-import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
+import { createRoute, z } from "@hono/zod-openapi";
 import { errorResponseSchema, successResponseSchema } from "@prnews/common";
-import type { Dependencies } from "../../config/di";
+import { createApp } from "../hono-app";
 
-const generalRoutes = new OpenAPIHono<{ Variables: Dependencies }>();
+const generalRoutes = createApp();
 
 // レスポンスの "data" プロパティに入る部分のスキーマを定義
 const healthzResponseDataSchema = z.object({

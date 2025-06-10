@@ -1,8 +1,10 @@
-import { Hono } from "hono";
+import type { Context, Hono, Next } from "hono";
 import { HTTPException } from "hono/http-exception";
+import { createApp } from "../hono-app";
 import generalRoutes from "./generalRoutes";
 
 describe("/healthz endpoint", () => {
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	let app: Hono<{ Variables: TestVariables }>;
 	const mockCheckHealth = jest.fn();
 	const mockGeneralService = { checkHealth: mockCheckHealth };
@@ -10,8 +12,8 @@ describe("/healthz endpoint", () => {
 
 	let errorSpy: jest.SpyInstance;
 	beforeEach(() => {
-		app = new Hono<{ Variables: TestVariables }>();
-		app.onError((err, c) => {
+		app = createApp<TestVariables>();
+		app.onError((err: unknown, c: Context<{ Variables: TestVariables }>) => {
 			if (err instanceof HTTPException) {
 				return c.json(
 					{ code: "HTTP_EXCEPTION", message: err.message },
@@ -23,10 +25,13 @@ describe("/healthz endpoint", () => {
 				500,
 			);
 		});
-		app.use("*", async (c, next) => {
-			c.set("generalService", mockGeneralService);
-			await next();
-		});
+		app.use(
+			"*",
+			async (c: Context<{ Variables: TestVariables }>, next: Next) => {
+				c.set("generalService", mockGeneralService);
+				await next();
+			},
+		);
 		app.route("/", generalRoutes);
 		errorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
 	});

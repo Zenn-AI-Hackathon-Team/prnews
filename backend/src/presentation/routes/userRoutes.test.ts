@@ -1,10 +1,10 @@
-import { OpenAPIHono } from "@hono/zod-openapi";
-import { Hono } from "hono";
+import { type Context, Hono, type Next } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { ZodError } from "zod";
 import type { PrService } from "../../application/prService";
 import type { UserService } from "../../application/userService";
 import type { User } from "../../domain/user";
+import { createApp } from "../hono-app";
 import type { AuthenticatedUser } from "../middlewares/authMiddleware";
 import userRoutes from "./userRoutes";
 
@@ -15,7 +15,7 @@ type TestVariables = {
 };
 
 describe("userRoutes", () => {
-	let app: OpenAPIHono<{ Variables: TestVariables }>;
+	let app: Hono<{ Variables: TestVariables }>;
 	let mockUserService: jest.Mocked<UserService>;
 	let mockPrService: jest.Mocked<PrService>;
 	const testUser: AuthenticatedUser = {
@@ -42,18 +42,9 @@ describe("userRoutes", () => {
 			getLikedArticles: jest.fn(),
 		} as unknown as jest.Mocked<PrService>;
 
-		app = new OpenAPIHono<{ Variables: TestVariables }>({
-			defaultHook: (result, c) => {
-				if (!result.success) {
-					throw new HTTPException(422, {
-						message: "Validation Failed",
-						cause: result.error,
-					});
-				}
-			},
-		});
+		app = createApp<TestVariables>();
 
-		app.onError((err, c) => {
+		app.onError((err: unknown, c: Context<{ Variables: TestVariables }>) => {
 			if (err instanceof HTTPException) {
 				if (err.cause instanceof ZodError) {
 					return c.json(
@@ -76,12 +67,15 @@ describe("userRoutes", () => {
 			);
 		});
 
-		app.use("*", async (c, next) => {
-			c.set("userService", mockUserService);
-			c.set("prService", mockPrService);
-			c.set("user", testUser);
-			await next();
-		});
+		app.use(
+			"*",
+			async (c: Context<{ Variables: TestVariables }>, next: Next) => {
+				c.set("userService", mockUserService);
+				c.set("prService", mockPrService);
+				c.set("user", testUser);
+				await next();
+			},
+		);
 		app.route("/", userRoutes);
 	});
 

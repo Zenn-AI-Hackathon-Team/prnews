@@ -1,11 +1,11 @@
-import { OpenAPIHono } from "@hono/zod-openapi";
-import type { Context, Next } from "hono";
+import type { Context, Hono, Next } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { ZodError } from "zod";
 import type { PrService } from "../../application/prService";
 import type { Dependencies } from "../../config/di";
 import type { PullRequest } from "../../domain/pullRequest";
 import type { PrRepoPort } from "../../ports/prRepoPort";
+import { createApp } from "../hono-app";
 import type {
 	AuthVariables,
 	AuthenticatedUser,
@@ -24,7 +24,7 @@ const testUser: AuthenticatedUser = {
 jest.mock("../middlewares/authMiddleware", () => ({
 	authMiddleware: jest.fn((c: Context, next: Next) => {
 		if (c.var.user === undefined) {
-			throw new HTTPException(401, { message: "Unauthenticated by test mock" });
+			throw new HTTPException(401, { message: "Unauthenticated" });
 		}
 		return next();
 	}),
@@ -63,7 +63,7 @@ const prApiResponseMock = {
 type AppContext = Context<{ Variables: Dependencies & AuthVariables }>;
 
 describe("prRoutes", () => {
-	let app: OpenAPIHono<{ Variables: TestVariables }>;
+	let app: Hono<{ Variables: TestVariables }>;
 	let mockPrService: jest.Mocked<PrService>;
 	let mockPrRepo: jest.Mocked<PrRepoPort>;
 
@@ -78,9 +78,9 @@ describe("prRoutes", () => {
 			findByOwnerRepoNumber: jest.fn(),
 		} as unknown as jest.Mocked<PrRepoPort>;
 
-		app = new OpenAPIHono<{ Variables: TestVariables }>();
+		app = createApp<TestVariables>();
 
-		app.onError((err, c) => {
+		app.onError((err: unknown, c: Context<{ Variables: TestVariables }>) => {
 			if (err instanceof HTTPException) {
 				if (err.cause instanceof ZodError) {
 					return c.json(
@@ -103,7 +103,7 @@ describe("prRoutes", () => {
 			);
 		});
 
-		app.use("*", (c, next) => {
+		app.use("*", (c: Context<{ Variables: TestVariables }>, next: Next) => {
 			c.set("prService", mockPrService);
 			c.set("prRepo", mockPrRepo);
 			c.set("user", testUser);
@@ -155,7 +155,7 @@ describe("prRoutes", () => {
 	});
 
 	it("POST /articles/:articleId/language/:langCode/like 異常系: 認証エラー", async () => {
-		const unauthApp = new OpenAPIHono();
+		const unauthApp = createApp();
 		unauthApp.route("/", prRoutes);
 		unauthApp.onError((err, c) => {
 			if (err instanceof HTTPException) {

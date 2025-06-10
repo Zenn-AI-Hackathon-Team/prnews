@@ -1,12 +1,12 @@
-import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
+import { createRoute, z } from "@hono/zod-openapi";
 import {
 	errorResponseSchema,
 	rankedArticleInfoSchema,
 	successResponseSchema,
 } from "@prnews/common";
-import type { Dependencies } from "../../config/di";
+import { createApp } from "../hono-app";
 
-const rankingRoutes = new OpenAPIHono<{ Variables: Dependencies }>();
+const rankingRoutes = createApp();
 
 const getArticleLikeRankingRoute = createRoute({
 	method: "get",

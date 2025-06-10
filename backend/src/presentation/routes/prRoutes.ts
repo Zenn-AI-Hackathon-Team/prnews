@@ -1,4 +1,4 @@
-import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
+import { createRoute, z } from "@hono/zod-openapi";
 import {
 	errorResponseSchema,
 	pullRequestArticleSchema,
@@ -7,249 +7,14 @@ import {
 	successResponseSchema,
 } from "@prnews/common";
 import { HTTPException } from "hono/http-exception";
-import type { Dependencies } from "../../config/di";
-import type { AuthVariables } from "../middlewares/authMiddleware";
+import { createApp } from "../hono-app";
+import { authMiddleware } from "../middlewares/authMiddleware";
 
-const prRoutes = new OpenAPIHono<{ Variables: Dependencies & AuthVariables }>({
-	defaultHook: (result, c) => {
-		if (!result.success) {
-			throw new HTTPException(422, {
-				message: "Validation Failed",
-				cause: result.error,
-			});
-		}
-	},
-});
+const prRoutes = createApp();
 
-// --- POST /repos/{owner}/{repo}/pulls/{number}/ingest ---
-const ingestPrRoute = createRoute({
-	method: "post",
-	path: "/repos/{owner}/{repo}/pulls/{number}/ingest",
-	summary: "GitHubからPull Request情報を取得・保存",
-	description: `\
-指定されたリポジトリのPull Request情報をGitHub APIから取得し、データベースに保存（取り込み）します。この処理はGitHub APIを消費します。
-- 既に同じPRが存在する場合は上書き保存されます。
-- 本APIは認証（Bearerトークン）が必須です。
-`,
-	security: [{ bearerAuth: [] }],
-	tags: ["Pull Request"],
-	request: {
-		params: z.object({
-			owner: z.string().openapi({
-				param: { name: "owner", in: "path" },
-				description: "リポジトリのオーナー名",
-				example: "vercel",
-			}),
-			repo: z.string().openapi({
-				param: { name: "repo", in: "path" },
-				description: "リポジトリ名",
-				example: "next.js",
-			}),
-			number: z
-				.string()
-				.regex(/^\d+$/)
-				.transform(Number)
-				.openapi({
-					param: { name: "number", in: "path" },
-					description: "Pull Requestの番号",
-					example: "42",
-				}),
-		}),
-	},
-	responses: {
-		200: {
-			description: "Pull Request情報の取得・保存成功",
-			content: {
-				"application/json": {
-					schema: successResponseSchema(pullRequestSchema),
-					example: {
-						success: true,
-						data: {
-							id: "pr1",
-							prNumber: 42,
-							repository: "vercel/next.js",
-							title: "Fix bug",
-							body: "...",
-							diff: "...",
-							authorLogin: "masa",
-							createdAt: "2024-01-01T00:00:00Z",
-							comments: [],
-						},
-					},
-				},
-			},
-		},
-		401: {
-			description: "認証エラー。Bearerトークンが無効または未指定。",
-			content: {
-				"application/json": {
-					schema: errorResponseSchema,
-					example: { code: "HTTP_EXCEPTION", message: "Unauthenticated" },
-				},
-			},
-		},
-		404: {
-			description: "指定されたPRがGitHub上に存在しない場合。",
-			content: {
-				"application/json": {
-					schema: errorResponseSchema,
-					example: { code: "HTTP_EXCEPTION", message: "PRが見つかりません" },
-				},
-			},
-		},
-		422: {
-			description:
-				"パラメータバリデーションエラー（owner/repo/number不正など）",
-			content: {
-				"application/json": {
-					schema: errorResponseSchema,
-					example: {
-						code: "VALIDATION_ERROR",
-						message: "Validation Failed",
-						details: [
-							{
-								code: "invalid_string",
-								type: "string",
-								path: ["owner"],
-								message: "owner is required",
-							},
-						],
-					},
-				},
-			},
-		},
-	},
-});
-prRoutes.openapi(ingestPrRoute, async (c) => {
-	const { prService } = c.var;
-	const params = c.req.valid("param");
-	const authenticatedUser = c.var.user;
-	if (!authenticatedUser) {
-		throw new HTTPException(401, { message: "Unauthenticated" });
-	}
-	const ingestedPr = await prService.ingestPr(
-		authenticatedUser.id,
-		params.owner,
-		params.repo,
-		params.number,
-	);
-	return c.json({ success: true as const, data: ingestedPr }, 200);
-});
-
-// --- POST /repos/{owner}/{repo}/pulls/{number}/article ---
-const generateArticleRoute = createRoute({
-	method: "post",
-	path: "/repos/{owner}/{repo}/pulls/{number}/article",
-	summary: "Pull Request記事のAI自動生成",
-	description: `\
-指定されたリポジトリ・PR番号のPull Request記事をAIで自動生成します。
-- 既に記事が存在する場合は上書き生成されます。
-- 本APIは認証（Bearerトークン）が必須です。
-`,
-	security: [{ bearerAuth: [] }],
-	tags: ["Pull Request"],
-	request: {
-		params: z.object({
-			owner: z.string().openapi({
-				param: { name: "owner", in: "path" },
-				description: "リポジトリのオーナー名",
-				example: "vercel",
-			}),
-			repo: z.string().openapi({
-				param: { name: "repo", in: "path" },
-				description: "リポジトリ名",
-				example: "next.js",
-			}),
-			number: z
-				.string()
-				.regex(/^\d+$/)
-				.transform(Number)
-				.openapi({
-					param: { name: "number", in: "path" },
-					description: "Pull Requestの番号",
-					example: "42",
-				}),
-		}),
-	},
-	responses: {
-		200: {
-			description: "記事生成成功",
-			content: {
-				"application/json": {
-					schema: successResponseSchema(pullRequestArticleSchema),
-					example: {
-						success: true,
-						data: {
-							id: "article1",
-							prId: "pr1",
-							title: "AIによるPR解説",
-							content: "...",
-							lang: "ja",
-							createdAt: "2024-01-01T00:00:00Z",
-						},
-					},
-				},
-			},
-		},
-		404: {
-			description: "PRまたは記事が見つからない場合。",
-			content: {
-				"application/json": {
-					schema: errorResponseSchema,
-					example: {
-						code: "HTTP_EXCEPTION",
-						message: "PRまたは記事が見つかりません",
-					},
-				},
-			},
-		},
-		500: {
-			description: "サーバーエラー。AI生成処理失敗など。",
-			content: {
-				"application/json": {
-					schema: errorResponseSchema,
-					example: {
-						code: "INTERNAL_SERVER_ERROR",
-						message: "Internal Server Error",
-					},
-				},
-			},
-		},
-		422: {
-			description:
-				"パラメータバリデーションエラー（owner/repo/number不正など）",
-			content: {
-				"application/json": {
-					schema: errorResponseSchema,
-					example: {
-						code: "VALIDATION_ERROR",
-						message: "Validation Failed",
-						details: [
-							{
-								code: "invalid_string",
-								type: "string",
-								path: ["owner"],
-								message: "owner is required",
-							},
-						],
-					},
-				},
-			},
-		},
-	},
-});
-prRoutes.openapi(generateArticleRoute, async (c) => {
-	const { prService } = c.var;
-	const params = c.req.valid("param");
-	const articleRaw = await prService.generateArticle(
-		params.owner,
-		params.repo,
-		params.number,
-	);
-	const article = pullRequestArticleSchema.parse(articleRaw);
-	return c.json({ success: true as const, data: article }, 200);
-});
-
+// =============================
+// 認証不要ルート
+// =============================
 // --- GET /repos/{owner}/{repo}/pulls/{number} ---
 const getPrRoute = createRoute({
 	method: "get",
@@ -492,6 +257,244 @@ prRoutes.openapi(getArticleRoute, async (c) => {
 	return c.json({ success: true as const, data: article }, 200);
 });
 
+// =============================
+// ここから下は認証必須
+// =============================
+prRoutes.use("/repos/*", authMiddleware);
+
+// --- POST /repos/{owner}/{repo}/pulls/{number}/ingest ---
+const ingestPrRoute = createRoute({
+	method: "post",
+	path: "/repos/{owner}/{repo}/pulls/{number}/ingest",
+	summary: "GitHubからPull Request情報を取得・保存",
+	description: `\
+指定されたリポジトリのPull Request情報をGitHub APIから取得し、データベースに保存（取り込み）します。この処理はGitHub APIを消費します。
+- 既に同じPRが存在する場合は上書き保存されます。
+- 本APIは認証（Bearerトークン）が必須です。
+`,
+	tags: ["Pull Request"],
+	request: {
+		params: z.object({
+			owner: z.string().openapi({
+				param: { name: "owner", in: "path" },
+				description: "リポジトリのオーナー名",
+				example: "vercel",
+			}),
+			repo: z.string().openapi({
+				param: { name: "repo", in: "path" },
+				description: "リポジトリ名",
+				example: "next.js",
+			}),
+			number: z
+				.string()
+				.regex(/^\d+$/)
+				.transform(Number)
+				.openapi({
+					param: { name: "number", in: "path" },
+					description: "Pull Requestの番号",
+					example: "42",
+				}),
+		}),
+	},
+	responses: {
+		200: {
+			description: "Pull Request情報の取得・保存成功",
+			content: {
+				"application/json": {
+					schema: successResponseSchema(pullRequestSchema),
+					example: {
+						success: true,
+						data: {
+							id: "pr1",
+							prNumber: 42,
+							repository: "vercel/next.js",
+							title: "Fix bug",
+							body: "...",
+							diff: "...",
+							authorLogin: "masa",
+							createdAt: "2024-01-01T00:00:00Z",
+							comments: [],
+						},
+					},
+				},
+			},
+		},
+		401: {
+			description: "認証エラー。Bearerトークンが無効または未指定。",
+			content: {
+				"application/json": {
+					schema: errorResponseSchema,
+					example: { code: "HTTP_EXCEPTION", message: "Unauthenticated" },
+				},
+			},
+		},
+		404: {
+			description: "指定されたPRがGitHub上に存在しない場合。",
+			content: {
+				"application/json": {
+					schema: errorResponseSchema,
+					example: { code: "HTTP_EXCEPTION", message: "PRが見つかりません" },
+				},
+			},
+		},
+		422: {
+			description:
+				"パラメータバリデーションエラー（owner/repo/number不正など）",
+			content: {
+				"application/json": {
+					schema: errorResponseSchema,
+					example: {
+						code: "VALIDATION_ERROR",
+						message: "Validation Failed",
+						details: [
+							{
+								code: "invalid_string",
+								type: "string",
+								path: ["owner"],
+								message: "owner is required",
+							},
+						],
+					},
+				},
+			},
+		},
+	},
+	security: [{ bearerAuth: [] }],
+});
+prRoutes.openapi(ingestPrRoute, async (c) => {
+	const { prService } = c.var;
+	const params = c.req.valid("param");
+	if (!c.var.user) {
+		throw new HTTPException(401, { message: "Unauthenticated" });
+	}
+	const authenticatedUser = c.var.user;
+	const ingestedPr = await prService.ingestPr(
+		authenticatedUser.id,
+		params.owner,
+		params.repo,
+		params.number,
+	);
+	return c.json({ success: true as const, data: ingestedPr }, 200);
+});
+
+// --- POST /repos/{owner}/{repo}/pulls/{number}/article ---
+const generateArticleRoute = createRoute({
+	method: "post",
+	path: "/repos/{owner}/{repo}/pulls/{number}/article",
+	summary: "Pull Request記事のAI自動生成",
+	description: `\
+指定されたリポジトリ・PR番号のPull Request記事をAIで自動生成します。
+- 既に記事が存在する場合は上書き生成されます。
+- 本APIは認証（Bearerトークン）が必須です。
+`,
+	tags: ["Pull Request"],
+	request: {
+		params: z.object({
+			owner: z.string().openapi({
+				param: { name: "owner", in: "path" },
+				description: "リポジトリのオーナー名",
+				example: "vercel",
+			}),
+			repo: z.string().openapi({
+				param: { name: "repo", in: "path" },
+				description: "リポジトリ名",
+				example: "next.js",
+			}),
+			number: z
+				.string()
+				.regex(/^\d+$/)
+				.transform(Number)
+				.openapi({
+					param: { name: "number", in: "path" },
+					description: "Pull Requestの番号",
+					example: "42",
+				}),
+		}),
+	},
+	responses: {
+		200: {
+			description: "記事生成成功",
+			content: {
+				"application/json": {
+					schema: successResponseSchema(pullRequestArticleSchema),
+					example: {
+						success: true,
+						data: {
+							id: "article1",
+							prId: "pr1",
+							title: "AIによるPR解説",
+							content: "...",
+							lang: "ja",
+							createdAt: "2024-01-01T00:00:00Z",
+						},
+					},
+				},
+			},
+		},
+		404: {
+			description: "PRまたは記事が見つからない場合。",
+			content: {
+				"application/json": {
+					schema: errorResponseSchema,
+					example: {
+						code: "HTTP_EXCEPTION",
+						message: "PRまたは記事が見つかりません",
+					},
+				},
+			},
+		},
+		500: {
+			description: "サーバーエラー。AI生成処理失敗など。",
+			content: {
+				"application/json": {
+					schema: errorResponseSchema,
+					example: {
+						code: "INTERNAL_SERVER_ERROR",
+						message: "Internal Server Error",
+					},
+				},
+			},
+		},
+		422: {
+			description:
+				"パラメータバリデーションエラー（owner/repo/number不正など）",
+			content: {
+				"application/json": {
+					schema: errorResponseSchema,
+					example: {
+						code: "VALIDATION_ERROR",
+						message: "Validation Failed",
+						details: [
+							{
+								code: "invalid_string",
+								type: "string",
+								path: ["owner"],
+								message: "owner is required",
+							},
+						],
+					},
+				},
+			},
+		},
+	},
+	security: [{ bearerAuth: [] }],
+});
+prRoutes.openapi(generateArticleRoute, async (c) => {
+	const { prService } = c.var;
+	const params = c.req.valid("param");
+	if (!c.var.user) {
+		throw new HTTPException(401, { message: "Unauthenticated" });
+	}
+	const authenticatedUser = c.var.user;
+	const articleRaw = await prService.generateArticle(
+		params.owner,
+		params.repo,
+		params.number,
+	);
+	const article = pullRequestArticleSchema.parse(articleRaw);
+	return c.json({ success: true as const, data: article }, 200);
+});
+
 // --- GET /repos/{owner}/{repo}/pulls ---
 const listRepoPullsRoute = createRoute({
 	method: "get",
@@ -502,7 +505,6 @@ const listRepoPullsRoute = createRoute({
 - PRの状態（open/closed/all）やページネーションも指定可能。
 - 本APIは認証（Bearerトークン）が必須です。
 `,
-	security: [{ bearerAuth: [] }],
 	tags: ["Pull Request"],
 	request: {
 		params: z.object({
@@ -596,13 +598,14 @@ const listRepoPullsRoute = createRoute({
 			},
 		},
 	},
+	security: [{ bearerAuth: [] }],
 });
 prRoutes.openapi(listRepoPullsRoute, async (c) => {
 	const { prService } = c.var;
-	const authenticatedUser = c.var.user;
-	if (!authenticatedUser) {
+	if (!c.var.user) {
 		throw new HTTPException(401, { message: "Unauthenticated" });
 	}
+	const authenticatedUser = c.var.user;
 	const { owner, repo } = c.req.valid("param");
 	const query = c.req.valid("query");
 	const prList = await prService.getPullRequestListForRepo(
@@ -613,6 +616,8 @@ prRoutes.openapi(listRepoPullsRoute, async (c) => {
 	);
 	return c.json({ success: true as const, data: prList }, 200);
 });
+
+prRoutes.use("/articles/*", authMiddleware);
 
 // --- POST /articles/{articleId}/language/{langCode}/like ---
 const likeArticleRoute = createRoute({
@@ -625,7 +630,6 @@ const likeArticleRoute = createRoute({
 - 記事または言語版が存在しない場合は404エラー。
 - 本APIは認証（Bearerトークン）が必須です。
 `,
-	security: [{ bearerAuth: [] }],
 	tags: ["Likes"],
 	request: {
 		params: z.object({
@@ -726,27 +730,24 @@ const likeArticleRoute = createRoute({
 			},
 		},
 	},
+	security: [{ bearerAuth: [] }],
 });
-
 prRoutes.openapi(likeArticleRoute, async (c) => {
 	const { prService } = c.var;
-	const authenticatedUser = c.var.user;
-	if (!authenticatedUser) {
+	if (!c.var.user) {
 		throw new HTTPException(401, { message: "Unauthenticated" });
 	}
+	const authenticatedUser = c.var.user;
 	const { articleId, langCode } = c.req.valid("param");
-
 	const result = await prService.likeArticle(
 		authenticatedUser.id,
 		articleId,
 		langCode,
 	);
-
 	const responseData = {
 		likeCount: result.likeCount,
 		message: result.message,
 	};
-
 	if (result.alreadyLiked) {
 		return c.json({ success: true as const, data: responseData }, 200);
 	}

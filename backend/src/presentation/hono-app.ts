@@ -4,9 +4,11 @@ import type { Dependencies } from "../config/di";
 import type { AuthVariables } from "./middlewares/authMiddleware";
 
 // サブアプリ（ルーター）を生成するためのファクトリ関数
-export const createApp = () => {
+export const createApp = <
+	T extends object = Dependencies & AuthVariables,
+>() => {
 	return new OpenAPIHono<{
-		Variables: Dependencies & AuthVariables;
+		Variables: T;
 	}>({
 		// バリデーションフックをここで一元管理する
 		defaultHook: (result, c) => {

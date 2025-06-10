@@ -1,7 +1,8 @@
 import type { RankedArticleInfo } from "@prnews/common";
-import { Hono } from "hono";
+import type { Context, Hono, Next } from "hono";
 import { HTTPException } from "hono/http-exception";
 import type { RankingService } from "../../application/rankingService";
+import { createApp } from "../hono-app";
 import rankingRoutes from "./rankingRoutes";
 
 type TestVariables = {
@@ -28,8 +29,8 @@ describe("rankingRoutes", () => {
 			getArticleLikeRanking: jest.fn(),
 			getUserRanking: jest.fn(),
 		} as unknown as jest.Mocked<RankingService>;
-		app = new Hono<{ Variables: TestVariables }>();
-		app.onError((err, c) => {
+		app = createApp<TestVariables>();
+		app.onError((err: unknown, c: Context<{ Variables: TestVariables }>) => {
 			if (err instanceof HTTPException) {
 				return c.json(
 					{ code: "HTTP_EXCEPTION", message: err.message },
@@ -41,10 +42,13 @@ describe("rankingRoutes", () => {
 				500,
 			);
 		});
-		app.use("*", async (c, next) => {
-			c.set("rankingService", mockRankingService);
-			await next();
-		});
+		app.use(
+			"*",
+			async (c: Context<{ Variables: TestVariables }>, next: Next) => {
+				c.set("rankingService", mockRankingService);
+				await next();
+			},
+		);
 		app.route("/", rankingRoutes);
 		errorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
 	});
