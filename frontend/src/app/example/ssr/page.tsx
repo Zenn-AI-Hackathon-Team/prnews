@@ -1,7 +1,7 @@
 // HonoのRPCのサンプルページ
 // SSR(サーバーサイドレンダリング)バージョン
 
-import { client } from "@/lib/apiClient";
+import { client } from "@/lib/hono";
 import type { RankedArticleInfo } from "@prnews/common";
 
 const page = async () => {
