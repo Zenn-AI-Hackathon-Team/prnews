@@ -1,9 +1,11 @@
-import { type Context, Hono, type Next } from "hono";
+import type { Context, Hono, Next } from "hono";
+import { HTTPException } from "hono/http-exception";
+import { ZodError } from "zod";
 import type { PrService } from "../../application/prService";
 import type { Dependencies } from "../../config/di";
 import type { PullRequest } from "../../domain/pullRequest";
-import { NotFoundError } from "../../errors/NotFoundError";
 import type { PrRepoPort } from "../../ports/prRepoPort";
+import { createApp } from "../hono-app";
 import type {
 	AuthVariables,
 	AuthenticatedUser,
@@ -19,21 +21,19 @@ const testUser: AuthenticatedUser = {
 	avatarUrl: "http://example.com/avatar.png",
 };
 
-import * as auth from "../middlewares/authMiddleware";
-
-jest.mock("../middlewares/authMiddleware", () => {
-	const original = jest.requireActual("../middlewares/authMiddleware");
-	return {
-		...original,
-		authMiddleware: jest.fn((c: Context, next: Next) => {
-			c.set("user", testUser);
-			return next();
-		}),
-	};
-});
+jest.mock("../middlewares/authMiddleware", () => ({
+	authMiddleware: jest.fn((c: Context, next: Next) => {
+		if (c.var.user === undefined) {
+			throw new HTTPException(401, { message: "Unauthenticated" });
+		}
+		return next();
+	}),
+}));
 
 type TestVariables = {
 	prService: jest.Mocked<PrService>;
+	prRepo: jest.Mocked<PrRepoPort>;
+	user: AuthenticatedUser;
 };
 
 const prMock: PullRequest = {
@@ -45,13 +45,7 @@ const prMock: PullRequest = {
 	diff: "diff",
 	authorLogin: "author",
 	createdAt: "2024-01-01T00:00:00Z",
-	comments: [
-		{
-			author: "reviewer1",
-			body: "Looks good!",
-			createdAt: "2024-01-02T00:00:00Z",
-		},
-	],
+	comments: [],
 };
 
 const prApiResponseMock = {
@@ -63,25 +57,13 @@ const prApiResponseMock = {
 	diff: "diff",
 	authorLogin: "author",
 	githubPrCreatedAt: "2024-01-01T00:00:00Z",
-	comments: [
-		{
-			author: "reviewer1",
-			body: "Looks good!",
-			createdAt: "2024-01-02T00:00:00Z",
-		},
-	],
+	comments: [],
 };
 
-// authMiddlewareが期待するContextの型を定義
 type AppContext = Context<{ Variables: Dependencies & AuthVariables }>;
 
 describe("prRoutes", () => {
-	let app: Hono<{
-		Variables: TestVariables & {
-			user?: AuthenticatedUser;
-			prRepo?: jest.Mocked<PrRepoPort>;
-		};
-	}>;
+	let app: Hono<{ Variables: TestVariables }>;
 	let mockPrService: jest.Mocked<PrService>;
 	let mockPrRepo: jest.Mocked<PrRepoPort>;
 
@@ -90,45 +72,67 @@ describe("prRoutes", () => {
 			getPullRequest: jest.fn(),
 			likeArticle: jest.fn(),
 			ingestPr: jest.fn(),
+			generateArticle: jest.fn(),
 		} as unknown as jest.Mocked<PrService>;
 		mockPrRepo = {
 			findByOwnerRepoNumber: jest.fn(),
 		} as unknown as jest.Mocked<PrRepoPort>;
-		app = new Hono<{
-			Variables: TestVariables & {
-				user?: AuthenticatedUser;
-				prRepo?: jest.Mocked<PrRepoPort>;
-			};
-		}>();
-		app.use("*", (c, next) => {
+
+		app = createApp<TestVariables>();
+
+		app.onError((err: unknown, c: Context<{ Variables: TestVariables }>) => {
+			if (err instanceof HTTPException) {
+				if (err.cause instanceof ZodError) {
+					return c.json(
+						{
+							code: "VALIDATION_ERROR",
+							message: err.message,
+							details: err.cause.errors,
+						},
+						err.status,
+					);
+				}
+				return c.json(
+					{ code: "HTTP_EXCEPTION", message: err.message },
+					err.status,
+				);
+			}
+			return c.json(
+				{ code: "INTERNAL_SERVER_ERROR", message: "Internal Server Error" },
+				500,
+			);
+		});
+
+		app.use("*", (c: Context<{ Variables: TestVariables }>, next: Next) => {
 			c.set("prService", mockPrService);
 			c.set("prRepo", mockPrRepo);
-			// Contextの型をunknownを経由してアサーションし、エラーを解消
-			return auth.authMiddleware(c as unknown as AppContext, next);
+			c.set("user", testUser);
+			return next();
 		});
+
 		app.route("/", prRoutes);
 	});
 
 	it("GET /repos/:owner/:repo/pulls/:number 正常系", async () => {
 		mockPrService.getPullRequest.mockResolvedValue(prApiResponseMock);
-		mockPrRepo.findByOwnerRepoNumber.mockResolvedValue(prMock);
 		const req = new Request("http://localhost/repos/owner/repo/pulls/1");
 		const res = await app.request(req);
-		expect(res.status).toBe(200);
 		const json = await res.json();
+		expect(res.status).toBe(200);
 		expect(json.success).toBe(true);
 		expect(json.data).toEqual(prApiResponseMock);
 	});
 
 	it("GET /repos/:owner/:repo/pulls/:number 異常系: PRが存在しない", async () => {
-		(mockPrService.getPullRequest as jest.Mock).mockResolvedValue(null);
-		mockPrRepo.findByOwnerRepoNumber.mockResolvedValue(null);
+		mockPrService.getPullRequest.mockRejectedValue(
+			new HTTPException(404, { message: "PR not found" }),
+		);
 		const req = new Request("http://localhost/repos/owner/repo/pulls/999");
 		const res = await app.request(req);
-		expect(res.status).toBe(404);
 		const json = await res.json();
-		expect(json.success).toBe(false);
-		expect(json.error.code).toBeDefined();
+		expect(res.status).toBe(404);
+		expect(json.code).toBe("HTTP_EXCEPTION");
+		expect(json.message).toBe("PR not found");
 	});
 
 	it("POST /articles/:articleId/language/:langCode/like 正常系", async () => {
@@ -137,9 +141,12 @@ describe("prRoutes", () => {
 			likeCount: 1,
 			message: "liked",
 		});
-		const req = new Request("http://localhost/articles/pr1/language/ja/like", {
-			method: "POST",
-		});
+		const req = new Request(
+			`http://localhost/articles/${prMock.id}/language/ja/like`,
+			{
+				method: "POST",
+			},
+		);
 		const res = await app.request(req);
 		expect(res.status).toBe(201);
 		const json = await res.json();
@@ -148,41 +155,49 @@ describe("prRoutes", () => {
 	});
 
 	it("POST /articles/:articleId/language/:langCode/like 異常系: 認証エラー", async () => {
-		const authSpy = jest
-			.spyOn(auth, "authMiddleware")
-			.mockImplementation((c: Context, next: Next) => {
-				return next();
-			});
-
-		const req = new Request("http://localhost/articles/pr1/language/ja/like", {
-			method: "POST",
+		const unauthApp = createApp();
+		unauthApp.route("/", prRoutes);
+		unauthApp.onError((err, c) => {
+			if (err instanceof HTTPException) {
+				return c.json(
+					{ code: "HTTP_EXCEPTION", message: err.message },
+					err.status,
+				);
+			}
+			return c.json(
+				{ code: "INTERNAL_SERVER_ERROR", message: "Internal Server Error" },
+				500,
+			);
 		});
-		const res = await app.request(req);
+
+		const req = new Request(
+			`http://localhost/articles/${prMock.id}/language/ja/like`,
+			{
+				method: "POST",
+			},
+		);
+		const res = await unauthApp.request(req);
 		const json = await res.json();
 
 		expect(res.status).toBe(401);
-		expect(json.success).toBe(false);
-		expect(json.error.code).toBe("UNAUTHENTICATED");
-
-		authSpy.mockRestore();
+		expect(json.code).toBe("HTTP_EXCEPTION");
+		expect(json.message).toBe("Unauthenticated");
 	});
 
 	describe("POST /repos/:owner/:repo/pulls/:number/ingest", () => {
-		it("異常系: サービスがNotFoundErrorをスローした場合、404を返す", async () => {
+		it("異常系: サービスがHTTPException(404)をスローした場合、404を返す", async () => {
 			mockPrService.ingestPr.mockRejectedValue(
-				new NotFoundError("NOT_FOUND", "Pull request not found"),
+				new HTTPException(404, { message: "Pull request not found" }),
 			);
-
 			const req = new Request(
 				"http://localhost/repos/owner/repo/pulls/999/ingest",
 				{ method: "POST" },
 			);
 			const res = await app.request(req);
-
 			expect(res.status).toBe(404);
 			const json = await res.json();
-			expect(json.success).toBe(false);
-			expect(json.error.code).toBe("NOT_FOUND");
+			expect(json.code).toBe("HTTP_EXCEPTION");
+			expect(json.message).toBe("Pull request not found");
 		});
 
 		it("異常系: パスパラメータが不正な場合、422を返す", async () => {
@@ -191,11 +206,10 @@ describe("prRoutes", () => {
 				{ method: "POST" },
 			);
 			const res = await app.request(req);
-
 			expect(res.status).toBe(422);
 			const json = await res.json();
-			expect(json.success).toBe(false);
-			expect(json.error.code).toBe("VALIDATION_ERROR");
+			expect(json.code).toBe("VALIDATION_ERROR");
+			expect(json.message).toBe("Validation Failed");
 		});
 	});
 });

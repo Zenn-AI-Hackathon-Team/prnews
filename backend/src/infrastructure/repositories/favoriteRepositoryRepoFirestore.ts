@@ -1,5 +1,6 @@
 import type { FavoriteRepository } from "@prnews/common";
 import type { DocumentSnapshot, Firestore } from "firebase-admin/firestore";
+import { HTTPException } from "hono/http-exception";
 import type { FavoriteRepositoryRepoPort } from "../../ports/favoriteRepositoryRepoPort";
 
 function favoriteFromDoc(doc: DocumentSnapshot): FavoriteRepository | null {
@@ -38,7 +39,10 @@ export const favoriteRepositoryRepoFirestore = (
 			.doc(favorite.id)
 			.get();
 		const result = favoriteFromDoc(saved);
-		if (!result) throw new Error("Failed to save favorite repository");
+		if (!result)
+			throw new HTTPException(500, {
+				message: "Failed to save favorite repository",
+			});
 		return result;
 	},
 	async findById(favoriteId) {

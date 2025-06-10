@@ -1,3 +1,4 @@
+import { HTTPException } from "hono/http-exception";
 import type { ArticleLikeRepoPort } from "../ports/articleLikeRepoPort";
 import type { PrRepoPort } from "../ports/prRepoPort";
 import { createRankingService } from "./rankingService";
@@ -47,7 +48,7 @@ describe("rankingService", () => {
 
 	it("getArticleLikeRanking 異常系: リポジトリエラー", async () => {
 		prRepo.getRanking.mockImplementation(() => {
-			throw new Error("db error");
+			throw new HTTPException(500, { message: "db error" });
 		});
 		await expect(service.getArticleLikeRanking()).rejects.toThrow("db error");
 	});

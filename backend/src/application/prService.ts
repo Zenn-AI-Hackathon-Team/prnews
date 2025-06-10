@@ -6,12 +6,9 @@ import {
 	pullRequestSchema,
 } from "@prnews/common";
 import { articleLikeSchema } from "@prnews/common";
+import { HTTPException } from "hono/http-exception";
 import { createPullRequest } from "../domain/pullRequest";
 import type { PullRequestArticle } from "../domain/pullRequestArticle";
-import { AppError } from "../errors/AppError";
-import { ForbiddenError } from "../errors/ForbiddenError";
-import { NotFoundError } from "../errors/NotFoundError";
-import { ValidationError } from "../errors/ValidationError";
 import type { ArticleLikeRepoPort } from "../ports/articleLikeRepoPort.js";
 import type { GeminiPort } from "../ports/geminiPort.js";
 import type { GithubPort } from "../ports/githubPort.js";
@@ -78,10 +75,9 @@ export const createPrService = (deps: {
 		// 1. ユーザー情報を取得
 		const user = await deps.userRepo.findById(userId);
 		if (!user?.encryptedGitHubAccessToken) {
-			throw new ForbiddenError(
-				"UNAUTHENTICATED",
-				"GitHub token not found for this user.",
-			);
+			throw new HTTPException(403, {
+				message: "GitHub token not found for this user.",
+			});
 		}
 		// 2. トークンを復号
 		const accessToken = decrypt(user.encryptedGitHubAccessToken);
@@ -93,9 +89,9 @@ export const createPrService = (deps: {
 			number,
 		);
 		if (!rawPr) {
-			throw new NotFoundError(
-				`Pull request #${number} not found in ${owner}/${repo}`,
-			);
+			throw new HTTPException(404, {
+				message: `Pull request #${number} not found in ${owner}/${repo}`,
+			});
 		}
 
 		// 4. ドメインオブジェクト生成
@@ -125,10 +121,10 @@ export const createPrService = (deps: {
 			comments: pr.comments,
 		});
 		if (!validation.success) {
-			throw new ValidationError(
-				"PullRequest validation failed",
-				validation.error.flatten().fieldErrors,
-			);
+			throw new HTTPException(422, {
+				message: "PullRequest validation failed",
+				cause: validation.error.flatten().fieldErrors,
+			});
 		}
 
 		// 6. 保存
@@ -153,9 +149,9 @@ export const createPrService = (deps: {
 	) => {
 		const pr = await deps.prRepo.findByNumber(owner, repo, number);
 		if (!pr) {
-			throw new NotFoundError(
-				`Pull request #${number} not found in ${owner}/${repo}`,
-			);
+			throw new HTTPException(404, {
+				message: `Pull request #${number} not found in ${owner}/${repo}`,
+			});
 		}
 
 		// コメントを一つのテキストにまとめる
@@ -169,10 +165,7 @@ export const createPrService = (deps: {
 
 		const aiResult = await deps.gemini.summarizeDiff(inputTextForAI);
 		if (!aiResult || !aiResult.aiGeneratedTitle) {
-			throw new AppError(
-				"INTERNAL_SERVER_ERROR",
-				"AI summary generation failed",
-			);
+			throw new HTTPException(500, { message: "AI summary generation failed" });
 		}
 
 		const now = new Date().toISOString();
@@ -222,7 +215,9 @@ export const createPrService = (deps: {
 	): Promise<CommonPullRequest> => {
 		const pr = await deps.prRepo.findByOwnerRepoNumber(owner, repo, pullNumber);
 		if (!pr) {
-			throw new NotFoundError("指定されたプルリクエストが見つかりません。");
+			throw new HTTPException(404, {
+				message: "指定されたプルリクエストが見つかりません。",
+			});
 		}
 		// APIスキーマに整形
 		return {
@@ -240,7 +235,9 @@ export const createPrService = (deps: {
 	const getArticle = async (prId: string): Promise<PullRequestArticleType> => {
 		const article = await deps.prRepo.findArticleByPrId(prId);
 		if (!article) {
-			throw new NotFoundError("指定された記事が見つかりません。");
+			throw new HTTPException(404, {
+				message: "指定された記事が見つかりません。",
+			});
 		}
 
 		// Transform contents to match the expected type
@@ -310,7 +307,9 @@ export const createPrService = (deps: {
 		return await deps.prRepo.executeTransaction(async (tx) => {
 			const article = await deps.prRepo.findArticleByPrId(articleId, tx);
 			if (!article || !article.contents || !article.contents[langCode]) {
-				throw new NotFoundError("指定された記事または言語版が見つかりません。");
+				throw new HTTPException(404, {
+					message: "指定された記事または言語版が見つかりません。",
+				});
 			}
 			const existing =
 				await deps.articleLikeRepo.findByUserIdAndArticleIdAndLang(
@@ -333,10 +332,10 @@ export const createPrService = (deps: {
 			};
 			const validation = articleLikeSchema.safeParse(like);
 			if (!validation.success) {
-				throw new ValidationError(
-					"Likeデータのバリデーションに失敗しました",
-					validation.error.flatten().fieldErrors,
-				);
+				throw new HTTPException(422, {
+					message: "Likeデータのバリデーションに失敗しました",
+					cause: validation.error.flatten().fieldErrors,
+				});
 			}
 			await deps.articleLikeRepo.save(like, tx);
 			return {
@@ -354,7 +353,9 @@ export const createPrService = (deps: {
 		return await deps.prRepo.executeTransaction(async (tx) => {
 			const article = await deps.prRepo.findArticleByPrId(articleId, tx);
 			if (!article || !article.contents || !article.contents[langCode]) {
-				throw new NotFoundError("指定された記事または言語版が見つかりません。");
+				throw new HTTPException(404, {
+					message: "指定された記事または言語版が見つかりません。",
+				});
 			}
 			const likeCount = article.contents[langCode].likeCount ?? 0;
 			const existing =
@@ -409,10 +410,7 @@ export const createPrService = (deps: {
 			articles = await deps.prRepo.findArticlesByIds(articleIds);
 		} catch (e) {
 			console.error("findArticlesByIds error", e);
-			throw new AppError(
-				"INTERNAL_SERVER_ERROR",
-				"記事情報の取得に失敗しました",
-			);
+			throw new HTTPException(500, { message: "記事情報の取得に失敗しました" });
 		}
 		const articleMap = new Map(articles.map((a) => [a.id, a]));
 		const result: LikedArticleInfo[] = pagedLikes
@@ -458,7 +456,9 @@ export const createPrService = (deps: {
 				console.error(
 					"[prService] 致命的エラー: ユーザーかGitHubトークンが見つかりません。",
 				);
-				throw new ForbiddenError("GitHub access token is not registered.");
+				throw new HTTPException(403, {
+					message: "GitHub access token is not registered.",
+				});
 			}
 
 			console.log("[prService] 3. ユーザー発見。トークンを復号します。");
@@ -526,7 +526,7 @@ export const createPrService = (deps: {
 				error,
 			);
 			// エラーを再度スローして、ルートハンドラに処理を渡す
-			throw error;
+			throw new HTTPException(500, { message: "Internal server error" });
 		}
 	};
 	return {

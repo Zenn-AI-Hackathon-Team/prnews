@@ -1,8 +1,7 @@
 import type { User } from "@prnews/common";
-import { ErrorCode } from "@prnews/common";
 import { createMiddleware } from "hono/factory";
+import { HTTPException } from "hono/http-exception";
 import type { Dependencies } from "../../config/di";
-import { respondError } from "../../utils/apiResponder";
 
 export type AuthenticatedUser = Pick<User, "id" | "githubUsername"> & {
 	firebaseUid: string;
@@ -22,16 +21,14 @@ export const authMiddleware = createMiddleware<{
 	const authHeader = c.req.header("Authorization");
 
 	if (!authHeader) {
-		return respondError(
-			c,
-			ErrorCode.UNAUTHENTICATED,
-			"Authorization header is missing",
-		);
+		throw new HTTPException(401, {
+			message: "Authorization header is missing",
+		});
 	}
 
 	const [scheme, token] = authHeader.split(" ");
 	if (scheme !== "Bearer" || !token) {
-		return respondError(c, ErrorCode.UNAUTHENTICATED, "Invalid token format");
+		throw new HTTPException(401, { message: "Invalid token format" });
 	}
 
 	try {
@@ -45,11 +42,9 @@ export const authMiddleware = createMiddleware<{
 			console.warn(
 				`User with firebaseUid ${firebaseUid} not found in app database.`,
 			);
-			return respondError(
-				c,
-				ErrorCode.UNAUTHENTICATED,
-				"User not registered in this service",
-			);
+			throw new HTTPException(401, {
+				message: "User not registered in this service",
+			});
 		}
 
 		const authenticatedUser: AuthenticatedUser = {
@@ -64,10 +59,6 @@ export const authMiddleware = createMiddleware<{
 		await next();
 	} catch (error) {
 		console.error("Token verification failed:", error);
-		return respondError(
-			c,
-			ErrorCode.UNAUTHENTICATED,
-			"Invalid or expired token",
-		);
+		throw new HTTPException(401, { message: "Invalid or expired token" });
 	}
 });

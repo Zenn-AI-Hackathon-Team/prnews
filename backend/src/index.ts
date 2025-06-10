@@ -1,20 +1,15 @@
 import { serve } from "@hono/node-server";
 import { swaggerUI } from "@hono/swagger-ui";
-import { OpenAPIHono } from "@hono/zod-openapi";
-import { type Dependencies, buildDependencies } from "./config/di";
-import {
-	type AuthVariables,
-	authMiddleware,
-} from "./presentation/middlewares/authMiddleware";
-import { errorHandlerMiddleware } from "./presentation/middlewares/errorHandler";
+import { HTTPException } from "hono/http-exception";
+import { ZodError } from "zod";
+import { buildDependencies } from "./config/di";
+import { createApp } from "./presentation/hono-app";
 import generalRoutes from "./presentation/routes/generalRoutes";
 import prRoutes from "./presentation/routes/prRoutes";
 import rankingRoutes from "./presentation/routes/rankingRoutes";
 import userRoutes from "./presentation/routes/userRoutes";
 
-const app = new OpenAPIHono<{ Variables: Dependencies & AuthVariables }>();
-
-app.use("*", errorHandlerMiddleware);
+const app = createApp();
 
 app.use("*", async (c, next) => {
 	const deps = buildDependencies();
@@ -30,15 +25,6 @@ app.use("*", async (c, next) => {
 	c.set("auth", deps.auth);
 	await next();
 });
-
-// app.use("/repos/*", authMiddleware);
-// app.use("/repos/:owner/:repo/pulls/*", authMiddleware);
-app.use("/users/*", authMiddleware);
-app.use("/auth/*", (c, next) => {
-	if (c.req.path === "/auth/signup") return next();
-	return authMiddleware(c, next);
-});
-// app.use("/articles/*", authMiddleware);
 
 app.route("/", generalRoutes);
 app.route("/", prRoutes);
@@ -58,14 +44,31 @@ app.doc("/specification", {
 		version: "1.0.0",
 		title: "PR News Backend API",
 	},
-	security: [
-		{
-			bearerAuth: [],
-		},
-	],
 });
 
 app.get("/doc", swaggerUI({ url: "/specification" }));
+
+// グローバルエラーハンドラ
+app.onError((err, c) => {
+	if (err instanceof HTTPException) {
+		if (err.cause instanceof ZodError) {
+			const details = err.cause.errors.map((e) => ({
+				path: e.path,
+				message: e.message,
+			}));
+			return c.json(
+				{ code: "VALIDATION_ERROR", message: err.message, details },
+				err.status,
+			);
+		}
+		return c.json({ code: "HTTP_EXCEPTION", message: err.message }, err.status);
+	}
+	console.error("[UnhandledError]", err);
+	return c.json(
+		{ code: "INTERNAL_SERVER_ERROR", message: "An unexpected error occurred" },
+		500,
+	);
+});
 
 serve(
 	{

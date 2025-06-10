@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { HTTPException } from "hono/http-exception";
 import type { PullRequest } from "../../domain/pullRequest.js";
 import type { PullRequestArticle } from "../../domain/pullRequestArticle.js";
 import type { PrRepoPort } from "../../ports/prRepoPort.js";
@@ -46,7 +47,9 @@ export const prRepoMemory = (): PrRepoPort => {
 				pr,
 			);
 			if (!pr) {
-				throw new Error("PR not found for this article");
+				throw new HTTPException(404, {
+					message: "PR not found for this article",
+				});
 			}
 			const id = pr.id;
 			const articleWithId = { ...article, id };

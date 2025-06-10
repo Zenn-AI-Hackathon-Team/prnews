@@ -1,7 +1,6 @@
 import type { Transaction } from "firebase-admin/firestore";
+import { HTTPException } from "hono/http-exception";
 import type { User } from "../domain/user";
-import { ForbiddenError } from "../errors/ForbiddenError";
-import { NotFoundError } from "../errors/NotFoundError";
 import type { ArticleLikeRepoPort } from "../ports/articleLikeRepoPort";
 import type { GeminiPort } from "../ports/geminiPort";
 import type { GithubPort } from "../ports/githubPort";
@@ -74,7 +73,7 @@ describe("prService", () => {
 	it("getPullRequest 異常系: PRが存在しない", async () => {
 		prRepo.findByNumber.mockResolvedValue(null);
 		await expect(service.getPullRequest("owner", "repo", 1)).rejects.toThrow(
-			NotFoundError,
+			HTTPException,
 		);
 	});
 
@@ -88,19 +87,19 @@ describe("prService", () => {
 	});
 
 	describe("ingestPr", () => {
-		it("異常系: ユーザーにGitHubアクセストークンがない場合、ForbiddenErrorをスローする", async () => {
+		it("異常系: ユーザーにGitHubアクセストークンがない場合、HTTPException(403)をスローする", async () => {
 			const userId = "user-without-token";
 			const user = { id: userId, githubUsername: "testuser" };
 			userRepo.findById.mockResolvedValue(user as User | null);
 			await expect(
 				service.ingestPr(userId, "owner", "repo", 123),
-			).rejects.toThrow(ForbiddenError);
+			).rejects.toThrow(HTTPException);
 			expect(githubPort.fetchPullRequest).not.toHaveBeenCalled();
 		});
 	});
 
 	describe("generateArticle", () => {
-		it("異常系: Pull RequestがDBに存在しない場合、NotFoundErrorをスローする", async () => {
+		it("異常系: Pull RequestがDBに存在しない場合、HTTPException(404)をスローする", async () => {
 			// 1. 準備: prRepoがnullを返すように設定
 			prRepo.findByNumber.mockResolvedValue(null);
 
@@ -111,7 +110,7 @@ describe("prService", () => {
 			// 2. 実行と検証:
 			await expect(
 				service.generateArticle(owner, repo, number),
-			).rejects.toThrow(NotFoundError);
+			).rejects.toThrow(HTTPException);
 
 			// 3. 副作用の検証:
 			expect(geminiPort.summarizeDiff).not.toHaveBeenCalled();
@@ -123,7 +122,7 @@ describe("prService", () => {
 		const articleId = "article-not-exist";
 		const langCode = "ja";
 
-		it("異常系: 対象の記事が存在しない場合、NotFoundErrorをスローする", async () => {
+		it("異常系: 対象の記事が存在しない場合、HTTPException(404)をスローする", async () => {
 			prRepo.executeTransaction.mockImplementation(async (callback) => {
 				prRepo.findArticleByPrId.mockResolvedValue(null);
 				return callback({} as Transaction);
@@ -131,7 +130,7 @@ describe("prService", () => {
 
 			await expect(
 				service.likeArticle(userId, articleId, langCode),
-			).rejects.toThrow(NotFoundError);
+			).rejects.toThrow(HTTPException);
 
 			expect(prRepo.incrementLikeCount).not.toHaveBeenCalled();
 			expect(articleLikeRepo.save).not.toHaveBeenCalled();
@@ -143,7 +142,7 @@ describe("prService", () => {
 		const articleId = "article-not-exist";
 		const langCode = "ja";
 
-		it("異常系: 対象の記事が存在しない場合、NotFoundErrorをスローする", async () => {
+		it("異常系: 対象の記事が存在しない場合、HTTPException(404)をスローする", async () => {
 			prRepo.executeTransaction.mockImplementation(async (callback) => {
 				prRepo.findArticleByPrId.mockResolvedValue(null);
 				return callback({} as Transaction);
@@ -151,7 +150,7 @@ describe("prService", () => {
 
 			await expect(
 				service.unlikeArticle(userId, articleId, langCode),
-			).rejects.toThrow(NotFoundError);
+			).rejects.toThrow(HTTPException);
 
 			expect(
 				articleLikeRepo.deleteByUserIdAndArticleIdAndLang,

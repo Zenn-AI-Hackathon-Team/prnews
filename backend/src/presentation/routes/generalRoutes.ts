@@ -1,16 +1,8 @@
-import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
-import {
-	ErrorCode,
-	apiResponseSchema,
-	errorResponseSchema,
-} from "@prnews/common";
-import type { Dependencies } from "../../config/di";
-import {
-	respondOpenApiError,
-	respondOpenApiSuccess,
-} from "../../utils/apiResponder";
+import { createRoute, z } from "@hono/zod-openapi";
+import { errorResponseSchema, successResponseSchema } from "@prnews/common";
+import { createApp } from "../hono-app";
 
-const generalRoutes = new OpenAPIHono<{ Variables: Dependencies }>();
+const generalRoutes = createApp();
 
 // レスポンスの "data" プロパティに入る部分のスキーマを定義
 const healthzResponseDataSchema = z.object({
@@ -22,23 +14,29 @@ const healthzRoute = createRoute({
 	method: "get",
 	path: "/healthz",
 	summary: "ヘルスチェック",
-	description:
-		"サービスの稼働状況を確認します。コンテナやロードバランサのliveness/readiness probeに使用されます。",
+	description: `\
+サービスの稼働状況を確認します。コンテナやロードバランサのliveness/readiness probe用途にも利用できます。
+`,
 	tags: ["General"],
 	responses: {
 		200: {
 			description: "サービス正常稼働",
 			content: {
 				"application/json": {
-					schema: apiResponseSchema(healthzResponseDataSchema),
+					schema: successResponseSchema(healthzResponseDataSchema),
+					example: { success: true, data: { ok: true } },
 				},
 			},
 		},
 		500: {
-			description: "サーバー内部エラー",
+			description: "サーバー内部エラー。ヘルスチェック失敗など。",
 			content: {
 				"application/json": {
 					schema: errorResponseSchema,
+					example: {
+						code: "INTERNAL_SERVER_ERROR",
+						message: "Internal Server Error",
+					},
 				},
 			},
 		},
@@ -47,20 +45,8 @@ const healthzRoute = createRoute({
 
 generalRoutes.openapi(healthzRoute, async (c) => {
 	const { generalService } = c.var;
-	try {
-		const healthStatus = await generalService.checkHealth();
-		return respondOpenApiSuccess(c, healthStatus, 200);
-	} catch (error) {
-		console.error("Health check failed:", error);
-		return respondOpenApiError(
-			c,
-			{
-				code: ErrorCode.INTERNAL_SERVER_ERROR,
-				details: "Health check failed",
-			},
-			500,
-		);
-	}
+	const healthStatus = await generalService.checkHealth();
+	return c.json({ success: true as const, data: healthStatus }, 200);
 });
 
 export default generalRoutes;

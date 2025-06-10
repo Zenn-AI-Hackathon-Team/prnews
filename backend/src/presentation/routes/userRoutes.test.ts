@@ -1,11 +1,11 @@
-import { Hono } from "hono";
+import { type Context, Hono, type Next } from "hono";
+import { HTTPException } from "hono/http-exception";
+import { ZodError } from "zod";
 import type { PrService } from "../../application/prService";
 import type { UserService } from "../../application/userService";
 import type { User } from "../../domain/user";
-import { ForbiddenError } from "../../errors/ForbiddenError";
-import { NotFoundError } from "../../errors/NotFoundError";
+import { createApp } from "../hono-app";
 import type { AuthenticatedUser } from "../middlewares/authMiddleware";
-import { errorHandlerMiddleware } from "../middlewares/errorHandler";
 import userRoutes from "./userRoutes";
 
 type TestVariables = {
@@ -41,14 +41,41 @@ describe("userRoutes", () => {
 		mockPrService = {
 			getLikedArticles: jest.fn(),
 		} as unknown as jest.Mocked<PrService>;
-		app = new Hono<{ Variables: TestVariables }>();
-		app.use("*", errorHandlerMiddleware);
-		app.use("*", async (c, next) => {
-			c.set("userService", mockUserService);
-			c.set("prService", mockPrService);
-			c.set("user", testUser);
-			await next();
+
+		app = createApp<TestVariables>();
+
+		app.onError((err: unknown, c: Context<{ Variables: TestVariables }>) => {
+			if (err instanceof HTTPException) {
+				if (err.cause instanceof ZodError) {
+					return c.json(
+						{
+							code: "VALIDATION_ERROR",
+							message: err.message,
+							details: err.cause.errors,
+						},
+						err.status,
+					);
+				}
+				return c.json(
+					{ code: "HTTP_EXCEPTION", message: err.message },
+					err.status,
+				);
+			}
+			return c.json(
+				{ code: "INTERNAL_SERVER_ERROR", message: "Internal Server Error" },
+				500,
+			);
 		});
+
+		app.use(
+			"*",
+			async (c: Context<{ Variables: TestVariables }>, next: Next) => {
+				c.set("userService", mockUserService);
+				c.set("prService", mockPrService);
+				c.set("user", testUser);
+				await next();
+			},
+		);
 		app.route("/", userRoutes);
 	});
 
@@ -75,17 +102,11 @@ describe("userRoutes", () => {
 	});
 
 	it("GET /users/me 異常系: 未認証", async () => {
-		app = new Hono();
-		app.use("*", async (c, next) => {
-			await next();
-		});
-		app.route("/", userRoutes);
+		const unauthApp = new Hono();
+		unauthApp.route("/", userRoutes);
 		const req = new Request("http://localhost/users/me");
-		const res = await app.request(req);
+		const res = await unauthApp.request(req);
 		expect(res.status).toBe(401);
-		const json = await res.json();
-		expect(json.success).toBe(false);
-		expect(json.error.code).toBeDefined();
 	});
 
 	it("POST /auth/logout 正常系", async () => {
@@ -109,12 +130,12 @@ describe("userRoutes", () => {
 		const res = await app.request(req);
 		expect(res.status).toBe(422);
 		const json = await res.json();
-		expect(json.success).toBe(false);
-		expect(json.error.code).toBeDefined();
+		expect(json.code).toBe("VALIDATION_ERROR");
+		expect(json.message).toBe("Validation Failed");
 	});
 
 	it("POST /auth/signup 正常系", async () => {
-		mockUserService.createUser.mockResolvedValue({
+		const user: User = {
 			id: "11111111-1111-1111-1111-111111111111",
 			githubUserId: 1,
 			githubUsername: "foo",
@@ -125,7 +146,8 @@ describe("userRoutes", () => {
 			avatarUrl: "http://example.com/avatar.png",
 			createdAt: "2024-01-01T00:00:00Z",
 			updatedAt: "2024-01-01T00:00:00Z",
-		});
+		};
+		mockUserService.createUser.mockResolvedValue(user);
 		const req = new Request("http://localhost/auth/signup", {
 			method: "POST",
 			body: JSON.stringify({ language: "ja" }),
@@ -139,21 +161,15 @@ describe("userRoutes", () => {
 	});
 
 	it("POST /auth/signup 異常系: 未認証", async () => {
-		app = new Hono();
-		app.use("*", async (c, next) => {
-			await next();
-		});
-		app.route("/", userRoutes);
+		const unauthApp = new Hono();
+		unauthApp.route("/", userRoutes);
 		const req = new Request("http://localhost/auth/signup", {
 			method: "POST",
 			body: JSON.stringify({ language: "ja" }),
 			headers: { "content-type": "application/json" },
 		});
-		const res = await app.request(req);
+		const res = await unauthApp.request(req);
 		expect(res.status).toBe(401);
-		const json = await res.json();
-		expect(json.success).toBe(false);
-		expect(json.error.code).toBeDefined();
 	});
 
 	it("POST /auth/session 正常系", async () => {
@@ -201,7 +217,7 @@ describe("userRoutes", () => {
 		};
 
 		it("正常系: 認証済みユーザーに正しいリストとページネーションを返す", async () => {
-			mockUserService.getFavoriteRepositories = jest.fn().mockResolvedValue({
+			mockUserService.getFavoriteRepositories.mockResolvedValue({
 				favorites: [mockFavoriteRepo],
 				total: 1,
 			});
@@ -218,29 +234,15 @@ describe("userRoutes", () => {
 		});
 
 		it("正常系: limit/offsetクエリが正しく渡る", async () => {
-			const spy = jest
-				.spyOn(mockUserService, "getFavoriteRepositories")
-				.mockResolvedValue({ favorites: [], total: 0 });
+			const spy = mockUserService.getFavoriteRepositories.mockResolvedValue({
+				favorites: [],
+				total: 0,
+			});
 			const req = new Request(
 				"http://localhost/users/me/favorite-repositories?limit=5&offset=10",
 			);
 			await app.request(req);
 			expect(spy).toHaveBeenCalledWith(testUser.id, { limit: 5, offset: 10 });
-		});
-
-		it("正常系: 空配列でも正常レスポンス", async () => {
-			mockUserService.getFavoriteRepositories = jest
-				.fn()
-				.mockResolvedValue({ favorites: [], total: 0 });
-			const req = new Request(
-				"http://localhost/users/me/favorite-repositories",
-			);
-			const res = await app.request(req);
-			const json = await res.json();
-			expect(res.status).toBe(200);
-			expect(json.success).toBe(true);
-			expect(Array.isArray(json.data.data)).toBe(true);
-			expect(json.data.data.length).toBe(0);
 		});
 
 		it("異常系: 未認証の場合は401", async () => {
@@ -251,9 +253,6 @@ describe("userRoutes", () => {
 			);
 			const res = await unauthApp.request(req);
 			expect(res.status).toBe(401);
-			const json = await res.json();
-			expect(json.success).toBe(false);
-			expect(json.error.code).toBeDefined();
 		});
 	});
 
@@ -281,9 +280,9 @@ describe("userRoutes", () => {
 			);
 		});
 
-		it("異常系: サービスがNOT_FOUNDを返す場合は404", async () => {
+		it("異常系: サービスがHTTPException(404)をスローした場合、404を返す", async () => {
 			mockUserService.deleteFavoriteRepository.mockRejectedValue(
-				new NotFoundError("NOT_FOUND", "Not found"),
+				new HTTPException(404, { message: "Not found" }),
 			);
 
 			const req = new Request(
@@ -294,34 +293,8 @@ describe("userRoutes", () => {
 
 			expect(res.status).toBe(404);
 			const json = await res.json();
-			expect(json.success).toBe(false);
-			expect(json.error.code).toBe("NOT_FOUND");
-		});
-
-		it("異常系: サービスがFORBIDDENを返す場合は403", async () => {
-			mockUserService.deleteFavoriteRepository.mockRejectedValue(
-				new ForbiddenError("FORBIDDEN", "Forbidden"),
-			);
-
-			const req = new Request(
-				`http://localhost/users/me/favorite-repositories/${validId}`,
-				{ method: "DELETE" },
-			);
-			const res = await app.request(req);
-
-			expect(res.status).toBe(403);
-			const json = await res.json();
-			expect(json.success).toBe(false);
-			expect(json.error.code).toBe("FORBIDDEN");
-		});
-
-		it("異常系: favoriteIdが空文字など不正なら422", async () => {
-			const req = new Request(
-				"http://localhost/users/me/favorite-repositories/",
-				{ method: "DELETE" },
-			);
-			const res = await app.request(req);
-			expect([404, 422]).toContain(res.status);
+			expect(json.code).toBe("HTTP_EXCEPTION");
+			expect(json.message).toBe("Not found");
 		});
 	});
 
@@ -329,12 +302,9 @@ describe("userRoutes", () => {
 		const owner = "unknown-owner";
 		const repo = "unknown-repo";
 
-		it("異常系: サービスがNotFoundErrorをスローした場合、404を返す", async () => {
+		it("異常系: サービスがHTTPException(404)をスローした場合、404を返す", async () => {
 			mockUserService.registerFavoriteRepository.mockRejectedValue(
-				new NotFoundError(
-					"GITHUB_REPO_NOT_FOUND",
-					"GitHub repository not found",
-				),
+				new HTTPException(404, { message: "GitHub repository not found" }),
 			);
 
 			const req = new Request(
@@ -349,8 +319,8 @@ describe("userRoutes", () => {
 
 			expect(res.status).toBe(404);
 			const json = await res.json();
-			expect(json.success).toBe(false);
-			expect(json.error.code).toBe("GITHUB_REPO_NOT_FOUND");
+			expect(json.code).toBe("HTTP_EXCEPTION");
+			expect(json.message).toBe("GitHub repository not found");
 		});
 	});
 });

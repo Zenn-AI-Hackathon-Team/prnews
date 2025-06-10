@@ -3,6 +3,7 @@ import {
 	HarmBlockThreshold,
 	HarmCategory,
 } from "@google/generative-ai";
+import { HTTPException } from "hono/http-exception";
 import type { GeminiPort } from "../../ports/geminiPort";
 
 /**
@@ -20,7 +21,9 @@ const getLanguageName = (code: string): string => {
 // 環境変数からAPIキーを読み込む
 const apiKey = process.env.GEMINI_API_KEY;
 if (!apiKey) {
-	throw new Error("GEMINI_API_KEY is not defined in environment variables");
+	throw new HTTPException(500, {
+		message: "GEMINI_API_KEY is not defined in environment variables",
+	});
 }
 
 export const geminiClient = (): GeminiPort => {
@@ -113,7 +116,9 @@ export const geminiClient = (): GeminiPort => {
 				};
 			} catch (error) {
 				console.error("Gemini API request failed:", error);
-				throw new Error("Failed to generate summary with Gemini");
+				throw new HTTPException(500, {
+					message: "Failed to generate summary with Gemini",
+				});
 			}
 		},
 	};

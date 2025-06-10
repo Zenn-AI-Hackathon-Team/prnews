@@ -1,6 +1,6 @@
+import { HTTPException } from "hono/http-exception";
 import type { AuthSession } from "../domain/authSession";
 import type { User } from "../domain/user";
-import { NotFoundError } from "../errors/NotFoundError";
 import type { AuthSessionRepoPort } from "../ports/authSessionRepoPort";
 import type { FavoriteRepositoryRepoPort } from "../ports/favoriteRepositoryRepoPort";
 import type { GithubPort } from "../ports/githubPort";
@@ -337,21 +337,18 @@ describe("userService", () => {
 			firebaseUid: "f1",
 			githubUsername: "testuser",
 		};
-		it("異常系: GitHubリポジトリが見つからない場合、NotFoundErrorをスローする", async () => {
+		it("異常系: GitHubリポジトリが見つからない場合、HTTPException(404)をスローする", async () => {
 			userRepo.findById.mockResolvedValue({
 				id: authUser.id,
 				encryptedGitHubAccessToken: "valid-encrypted-token",
 			} as User | null);
 			(decrypt as jest.Mock).mockReturnValue("decrypted-token");
 			githubPort.getRepositoryByOwnerAndRepo.mockRejectedValue(
-				new NotFoundError(
-					"GITHUB_REPO_NOT_FOUND",
-					"GitHub repository not found",
-				),
+				new HTTPException(404, { message: "GitHub repository not found" }),
 			);
 			await expect(
 				service.registerFavoriteRepository(authUser, "unknown", "repo"),
-			).rejects.toThrow(NotFoundError);
+			).rejects.toThrow(HTTPException);
 			expect(favoriteRepositoryRepo.save).not.toHaveBeenCalled();
 		});
 	});
