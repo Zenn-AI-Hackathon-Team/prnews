@@ -26,10 +26,13 @@ app.use("*", async (c, next) => {
 	await next();
 });
 
-app.route("/", generalRoutes);
-app.route("/", prRoutes);
-app.route("/", userRoutes);
-app.route("/", rankingRoutes);
+const api = app
+	.route("/", generalRoutes)
+	.route("/", prRoutes)
+	.route("/", userRoutes)
+	.route("/", rankingRoutes);
+
+export type AppType = typeof api;
 
 app.openAPIRegistry.registerComponent("securitySchemes", "bearerAuth", {
 	type: "http",

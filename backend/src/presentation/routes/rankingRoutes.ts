@@ -6,8 +6,6 @@ import {
 } from "@prnews/common";
 import { createApp } from "../hono-app";
 
-const rankingRoutes = createApp();
-
 const getArticleLikeRankingRoute = createRoute({
 	method: "get",
 	path: "/ranking/articles/likes",
@@ -79,31 +77,34 @@ const getArticleLikeRankingRoute = createRoute({
 	},
 });
 
-rankingRoutes.openapi(getArticleLikeRankingRoute, async (c) => {
-	const { rankingService } = c.var;
-	const { period, language, limit, offset } = c.req.valid("query");
-	const numLimit = limit ? Number(limit) : undefined;
-	const numOffset = offset ? Number(offset) : undefined;
-	const { data, totalItems } = await rankingService.getArticleLikeRanking({
-		period,
-		language,
-		limit: numLimit,
-		offset: numOffset,
-	});
-	return c.json(
-		{
-			success: true as const,
-			data: {
-				data,
-				pagination: {
-					totalItems,
-					limit: numLimit ?? 10,
-					offset: numOffset ?? 0,
+const rankingRoutes = createApp().openapi(
+	getArticleLikeRankingRoute,
+	async (c) => {
+		const { rankingService } = c.var;
+		const { period, language, limit, offset } = c.req.valid("query");
+		const numLimit = limit ? Number(limit) : undefined;
+		const numOffset = offset ? Number(offset) : undefined;
+		const { data, totalItems } = await rankingService.getArticleLikeRanking({
+			period,
+			language,
+			limit: numLimit,
+			offset: numOffset,
+		});
+		return c.json(
+			{
+				success: true as const,
+				data: {
+					data,
+					pagination: {
+						totalItems,
+						limit: numLimit ?? 10,
+						offset: numOffset ?? 0,
+					},
 				},
 			},
-		},
-		200,
-	);
-});
+			200,
+		);
+	},
+);
 
 export default rankingRoutes;
