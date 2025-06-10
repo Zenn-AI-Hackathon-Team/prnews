@@ -1,5 +1,5 @@
 echo "🐶 Husky: コミット前にBiomeのチェックを実行します..."
-bun run check
+pnpm run check
 
 if [ $? -ne 0 ]; then
   echo "❌ Biomeのチェックに失敗しました。問題を修正して再度コミットしてください。"
