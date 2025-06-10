@@ -1,5 +1,6 @@
 import type { ArticleLike } from "@prnews/common";
 import type { DocumentSnapshot, Firestore } from "firebase-admin/firestore";
+import { HTTPException } from "hono/http-exception";
 import type { ArticleLikeRepoPort } from "../../ports/articleLikeRepoPort";
 
 const COLLECTION = "articleLikes";
@@ -44,7 +45,8 @@ export const articleLikeRepoFirestore = (
 		await docRef.set(like, { merge: true });
 		const saved = await docRef.get();
 		const result = likeFromDoc(saved);
-		if (!result) throw new Error("Failed to save article like");
+		if (!result)
+			throw new HTTPException(500, { message: "Failed to save article like" });
 		return result;
 	},
 	async deleteByUserIdAndArticleIdAndLang(userId, articleId, lang, tx) {

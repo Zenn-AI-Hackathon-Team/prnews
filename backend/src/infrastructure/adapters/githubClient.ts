@@ -1,7 +1,6 @@
 import { Octokit } from "@octokit/rest";
-import { ErrorCode } from "@prnews/common";
+import { HTTPException } from "hono/http-exception";
 import type { PullRequest } from "../../domain/pullRequest";
-import { NotFoundError } from "../../errors/NotFoundError";
 import type { GithubPort } from "../../ports/githubPort";
 
 const getOctokit = (accessToken: string) => new Octokit({ auth: accessToken });
@@ -78,7 +77,7 @@ export const githubClient = (): GithubPort => ({
 			) {
 				return null;
 			}
-			throw error;
+			throw new HTTPException(500, { message: "Internal server error" });
 		}
 	},
 	async getRepositoryByOwnerAndRepo(accessToken, owner, repo) {
@@ -100,9 +99,9 @@ export const githubClient = (): GithubPort => ({
 				typeof (error as { status?: unknown }).status === "number" &&
 				(error as { status: number }).status === 404
 			) {
-				throw new Error(ErrorCode.GITHUB_REPO_NOT_FOUND);
+				throw new HTTPException(404, { message: "Repository not found" });
 			}
-			throw new Error(ErrorCode.INTERNAL_SERVER_ERROR);
+			throw new HTTPException(500, { message: "Internal server error" });
 		}
 	},
 	async getAuthenticatedUserInfo(accessToken) {
@@ -118,7 +117,7 @@ export const githubClient = (): GithubPort => ({
 			};
 		} catch (error) {
 			console.error("Failed to fetch authenticated GitHub user info", error);
-			throw new Error(ErrorCode.INTERNAL_SERVER_ERROR);
+			throw new HTTPException(500, { message: "Internal server error" });
 		}
 	},
 	async listPullRequests(accessToken, owner, repo, options) {
@@ -140,13 +139,10 @@ export const githubClient = (): GithubPort => ({
 				error.status === 404
 			) {
 				console.warn(`[githubClient] Repository not found: ${owner}/${repo}`);
-				throw new NotFoundError(
-					"GITHUB_REPO_NOT_FOUND",
-					`Repository not found: ${owner}/${repo}`,
-				);
+				throw new HTTPException(404, { message: "Repository not found" });
 			}
 			console.error("[githubClient] Failed to list pull requests:", error);
-			throw error;
+			throw new HTTPException(500, { message: "Internal server error" });
 		}
 	},
 });

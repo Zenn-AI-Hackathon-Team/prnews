@@ -4,6 +4,7 @@ import {
 	randomBytes,
 	scryptSync,
 } from "node:crypto";
+import { HTTPException } from "hono/http-exception";
 
 const ALGORITHM = "aes-256-cbc";
 const IV_LENGTH = 16;
@@ -11,14 +12,16 @@ const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY;
 const ENCRYPTION_SALT = process.env.ENCRYPTION_SALT;
 
 if (!ENCRYPTION_KEY) {
-	throw new Error(
-		"ENCRYPTION_KEY is not defined in .env. Please set a 32-byte secret key.",
-	);
+	throw new HTTPException(500, {
+		message:
+			"ENCRYPTION_KEY is not defined in .env. Please set a 32-byte secret key.",
+	});
 }
 if (!ENCRYPTION_SALT) {
-	throw new Error(
-		"ENCRYPTION_SALT is not defined in .env. Please set a salt string.",
-	);
+	throw new HTTPException(500, {
+		message:
+			"ENCRYPTION_SALT is not defined in .env. Please set a salt string.",
+	});
 }
 
 const key = scryptSync(ENCRYPTION_KEY, ENCRYPTION_SALT, 32);
@@ -36,7 +39,7 @@ export function encrypt(text: string): string {
 export function decrypt(text: string): string {
 	const [ivHex, encryptedTextHex] = text.split(":");
 	if (!ivHex || !encryptedTextHex) {
-		throw new Error("Invalid encrypted text format");
+		throw new HTTPException(400, { message: "Invalid encrypted text format" });
 	}
 	const iv = Buffer.from(ivHex, "hex");
 	const encryptedText = Buffer.from(encryptedTextHex, "hex");

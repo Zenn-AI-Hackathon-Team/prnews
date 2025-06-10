@@ -526,7 +526,7 @@ export const createPrService = (deps: {
 				error,
 			);
 			// エラーを再度スローして、ルートハンドラに処理を渡す
-			throw error;
+			throw new HTTPException(500, { message: "Internal server error" });
 		}
 	};
 	return {

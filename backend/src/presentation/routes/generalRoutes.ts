@@ -14,8 +14,9 @@ const healthzRoute = createRoute({
 	method: "get",
 	path: "/healthz",
 	summary: "ヘルスチェック",
-	description:
-		"サービスの稼働状況を確認します。コンテナやロードバランサのliveness/readiness probeに使用されます。",
+	description: `\
+サービスの稼働状況を確認します。コンテナやロードバランサのliveness/readiness probe用途にも利用できます。
+`,
 	tags: ["General"],
 	responses: {
 		200: {
@@ -23,14 +24,19 @@ const healthzRoute = createRoute({
 			content: {
 				"application/json": {
 					schema: successResponseSchema(healthzResponseDataSchema),
+					example: { success: true, data: { ok: true } },
 				},
 			},
 		},
 		500: {
-			description: "サーバー内部エラー",
+			description: "サーバー内部エラー。ヘルスチェック失敗など。",
 			content: {
 				"application/json": {
 					schema: errorResponseSchema,
+					example: {
+						code: "INTERNAL_SERVER_ERROR",
+						message: "Internal Server Error",
+					},
 				},
 			},
 		},
