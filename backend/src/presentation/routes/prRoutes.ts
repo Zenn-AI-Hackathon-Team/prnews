@@ -10,12 +10,9 @@ import { HTTPException } from "hono/http-exception";
 import { createApp } from "../hono-app";
 import { authMiddleware } from "../middlewares/authMiddleware";
 
-const prRoutes = createApp();
-
 // =============================
-// 認証不要ルート
+// 各ルートのスキーマ定義（既存定義をそのまま利用）
 // =============================
-// --- GET /repos/{owner}/{repo}/pulls/{number} ---
 const getPrRoute = createRoute({
 	method: "get",
 	path: "/repos/{owner}/{repo}/pulls/{number}",
@@ -118,23 +115,6 @@ const getPrRoute = createRoute({
 		},
 	},
 });
-prRoutes.openapi(getPrRoute, async (c) => {
-	const { prService } = c.var;
-	const params = c.req.valid("param");
-	const pr = await prService.getPullRequest(
-		params.owner,
-		params.repo,
-		params.number,
-	);
-	if (!pr) {
-		throw new HTTPException(404, {
-			message: "Pull request not found in cache",
-		});
-	}
-	return c.json({ success: true as const, data: pr }, 200);
-});
-
-// --- GET /repos/{owner}/{repo}/pulls/{number}/article ---
 const getArticleRoute = createRoute({
 	method: "get",
 	path: "/repos/{owner}/{repo}/pulls/{number}/article",
@@ -234,35 +214,6 @@ const getArticleRoute = createRoute({
 		},
 	},
 });
-prRoutes.openapi(getArticleRoute, async (c) => {
-	const { prService, prRepo } = c.var;
-	const params = c.req.valid("param");
-	const pullRequest = await prRepo.findByOwnerRepoNumber(
-		params.owner,
-		params.repo,
-		params.number,
-	);
-	if (!pullRequest) {
-		throw new HTTPException(404, {
-			message: "Original pull request not found",
-		});
-	}
-	const prId = pullRequest.id;
-	const article = await prService.getArticle(prId);
-	if (!article) {
-		throw new HTTPException(404, {
-			message: "Article not found for this pull request",
-		});
-	}
-	return c.json({ success: true as const, data: article }, 200);
-});
-
-// =============================
-// ここから下は認証必須
-// =============================
-prRoutes.use("/repos/*", authMiddleware);
-
-// --- POST /repos/{owner}/{repo}/pulls/{number}/ingest ---
 const ingestPrRoute = createRoute({
 	method: "post",
 	path: "/repos/{owner}/{repo}/pulls/{number}/ingest",
@@ -361,23 +312,6 @@ const ingestPrRoute = createRoute({
 	},
 	security: [{ bearerAuth: [] }],
 });
-prRoutes.openapi(ingestPrRoute, async (c) => {
-	const { prService } = c.var;
-	const params = c.req.valid("param");
-	if (!c.var.user) {
-		throw new HTTPException(401, { message: "Unauthenticated" });
-	}
-	const authenticatedUser = c.var.user;
-	const ingestedPr = await prService.ingestPr(
-		authenticatedUser.id,
-		params.owner,
-		params.repo,
-		params.number,
-	);
-	return c.json({ success: true as const, data: ingestedPr }, 200);
-});
-
-// --- POST /repos/{owner}/{repo}/pulls/{number}/article ---
 const generateArticleRoute = createRoute({
 	method: "post",
 	path: "/repos/{owner}/{repo}/pulls/{number}/article",
@@ -479,23 +413,6 @@ const generateArticleRoute = createRoute({
 	},
 	security: [{ bearerAuth: [] }],
 });
-prRoutes.openapi(generateArticleRoute, async (c) => {
-	const { prService } = c.var;
-	const params = c.req.valid("param");
-	if (!c.var.user) {
-		throw new HTTPException(401, { message: "Unauthenticated" });
-	}
-	const authenticatedUser = c.var.user;
-	const articleRaw = await prService.generateArticle(
-		params.owner,
-		params.repo,
-		params.number,
-	);
-	const article = pullRequestArticleSchema.parse(articleRaw);
-	return c.json({ success: true as const, data: article }, 200);
-});
-
-// --- GET /repos/{owner}/{repo}/pulls ---
 const listRepoPullsRoute = createRoute({
 	method: "get",
 	path: "/repos/{owner}/{repo}/pulls",
@@ -600,26 +517,6 @@ const listRepoPullsRoute = createRoute({
 	},
 	security: [{ bearerAuth: [] }],
 });
-prRoutes.openapi(listRepoPullsRoute, async (c) => {
-	const { prService } = c.var;
-	if (!c.var.user) {
-		throw new HTTPException(401, { message: "Unauthenticated" });
-	}
-	const authenticatedUser = c.var.user;
-	const { owner, repo } = c.req.valid("param");
-	const query = c.req.valid("query");
-	const prList = await prService.getPullRequestListForRepo(
-		authenticatedUser.id,
-		owner,
-		repo,
-		query,
-	);
-	return c.json({ success: true as const, data: prList }, 200);
-});
-
-prRoutes.use("/articles/*", authMiddleware);
-
-// --- POST /articles/{articleId}/language/{langCode}/like ---
 const likeArticleRoute = createRoute({
 	method: "post",
 	path: "/articles/{articleId}/language/{langCode}/like",
@@ -732,26 +629,124 @@ const likeArticleRoute = createRoute({
 	},
 	security: [{ bearerAuth: [] }],
 });
-prRoutes.openapi(likeArticleRoute, async (c) => {
-	const { prService } = c.var;
-	if (!c.var.user) {
-		throw new HTTPException(401, { message: "Unauthenticated" });
-	}
-	const authenticatedUser = c.var.user;
-	const { articleId, langCode } = c.req.valid("param");
-	const result = await prService.likeArticle(
-		authenticatedUser.id,
-		articleId,
-		langCode,
-	);
-	const responseData = {
-		likeCount: result.likeCount,
-		message: result.message,
-	};
-	if (result.alreadyLiked) {
-		return c.json({ success: true as const, data: responseData }, 200);
-	}
-	return c.json({ success: true as const, data: responseData }, 201);
-});
+
+// =============================
+// 1. 認証が【不要】な公開ルートを定義
+// =============================
+const publicRoutes = createApp()
+	.openapi(getPrRoute, async (c) => {
+		const { prService } = c.var;
+		const params = c.req.valid("param");
+		const pr = await prService.getPullRequest(
+			params.owner,
+			params.repo,
+			params.number,
+		);
+		if (!pr)
+			throw new HTTPException(404, {
+				message: "Pull request not found in cache",
+			});
+		return c.json({ success: true as const, data: pr }, 200);
+	})
+	.openapi(getArticleRoute, async (c) => {
+		const { prService, prRepo } = c.var;
+		const params = c.req.valid("param");
+		const pullRequest = await prRepo.findByOwnerRepoNumber(
+			params.owner,
+			params.repo,
+			params.number,
+		);
+		if (!pullRequest)
+			throw new HTTPException(404, {
+				message: "Original pull request not found",
+			});
+		const prId = pullRequest.id;
+		const article = await prService.getArticle(prId);
+		if (!article)
+			throw new HTTPException(404, {
+				message: "Article not found for this pull request",
+			});
+		return c.json({ success: true as const, data: article }, 200);
+	});
+
+// =============================
+// 2. 認証が【必要】な保護ルートを定義
+// =============================
+const privateRoutes = createApp()
+	.openapi(ingestPrRoute, async (c) => {
+		const { prService } = c.var;
+		const params = c.req.valid("param");
+		const authenticatedUser = c.var.user;
+		if (!authenticatedUser) {
+			throw new HTTPException(401, { message: "Unauthenticated" });
+		}
+		const ingestedPr = await prService.ingestPr(
+			authenticatedUser.id,
+			params.owner,
+			params.repo,
+			params.number,
+		);
+		return c.json({ success: true as const, data: ingestedPr }, 200);
+	})
+	.openapi(generateArticleRoute, async (c) => {
+		const { prService } = c.var;
+		const params = c.req.valid("param");
+		const authenticatedUser = c.var.user;
+		if (!authenticatedUser) {
+			throw new HTTPException(401, { message: "Unauthenticated" });
+		}
+		const articleRaw = await prService.generateArticle(
+			params.owner,
+			params.repo,
+			params.number,
+		);
+		const article = pullRequestArticleSchema.parse(articleRaw);
+		return c.json({ success: true as const, data: article }, 200);
+	})
+	.openapi(listRepoPullsRoute, async (c) => {
+		const { prService } = c.var;
+		const authenticatedUser = c.var.user;
+		if (!authenticatedUser) {
+			throw new HTTPException(401, { message: "Unauthenticated" });
+		}
+		const { owner, repo } = c.req.valid("param");
+		const query = c.req.valid("query");
+		const prList = await prService.getPullRequestListForRepo(
+			authenticatedUser.id,
+			owner,
+			repo,
+			query,
+		);
+		return c.json({ success: true as const, data: prList }, 200);
+	})
+	.openapi(likeArticleRoute, async (c) => {
+		const { prService } = c.var;
+		const authenticatedUser = c.var.user;
+		if (!authenticatedUser) {
+			throw new HTTPException(401, { message: "Unauthenticated" });
+		}
+		const { articleId, langCode } = c.req.valid("param");
+		const result = await prService.likeArticle(
+			authenticatedUser.id,
+			articleId,
+			langCode,
+		);
+		const responseData = {
+			likeCount: result.likeCount,
+			message: result.message,
+		};
+		if (result.alreadyLiked)
+			return c.json({ success: true as const, data: responseData }, 200);
+		return c.json({ success: true as const, data: responseData }, 201);
+	});
+
+// =============================
+// 3. 公開ルートと保護ルートを合体させる
+// =============================
+const prRoutes = createApp()
+	.route("/", publicRoutes)
+	.use("/repos/*", authMiddleware)
+	.use("/articles/*", authMiddleware)
+	.route("/", privateRoutes);
 
 export default prRoutes;

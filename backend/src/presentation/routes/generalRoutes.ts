@@ -2,8 +2,6 @@ import { createRoute, z } from "@hono/zod-openapi";
 import { errorResponseSchema, successResponseSchema } from "@prnews/common";
 import { createApp } from "../hono-app";
 
-const generalRoutes = createApp();
-
 // レスポンスの "data" プロパティに入る部分のスキーマを定義
 const healthzResponseDataSchema = z.object({
 	ok: z.boolean().openapi({ description: "ヘルスチェック結果 (true=正常)" }),
@@ -43,7 +41,7 @@ const healthzRoute = createRoute({
 	},
 });
 
-generalRoutes.openapi(healthzRoute, async (c) => {
+const generalRoutes = createApp().openapi(healthzRoute, async (c) => {
 	const { generalService } = c.var;
 	const healthStatus = await generalService.checkHealth();
 	return c.json({ success: true as const, data: healthStatus }, 200);

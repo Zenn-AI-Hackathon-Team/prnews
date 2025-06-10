@@ -10,8 +10,6 @@ import {
 import { HTTPException } from "hono/http-exception";
 import { createApp } from "../hono-app";
 
-const userRoutes = createApp();
-
 // --- GET /users/me ---
 const getMyProfileRoute = createRoute({
 	method: "get",
@@ -70,20 +68,7 @@ const getMyProfileRoute = createRoute({
 		},
 	},
 });
-userRoutes.openapi(getMyProfileRoute, async (c) => {
-	const { userService } = c.var;
-	const authenticatedUser = c.var.user;
-	if (!authenticatedUser) {
-		throw new HTTPException(401, { message: "Unauthenticated" });
-	}
-	const userProfile = await userService.getCurrentUser(authenticatedUser);
-	if (!userProfile) {
-		throw new HTTPException(404, { message: "User profile not found" });
-	}
-	return c.json({ success: true as const, data: userProfile }, 200);
-});
 
-// --- POST /auth/logout ---
 const logoutRoute = createRoute({
 	method: "post",
 	path: "/auth/logout",
@@ -124,22 +109,7 @@ const logoutRoute = createRoute({
 		},
 	},
 });
-userRoutes.openapi(logoutRoute, async (c) => {
-	const { userService } = c.var;
-	const authenticatedUser = c.var.user;
-	if (!authenticatedUser) {
-		throw new HTTPException(401, { message: "Unauthenticated" });
-	}
-	const result = await userService.logoutUser(authenticatedUser);
-	if (!result.success) {
-		throw new HTTPException(500, {
-			message: result.message || "Logout failed",
-		});
-	}
-	return c.json({ success: true as const, data: {} }, 200);
-});
 
-// --- POST /auth/signup ---
 const signupRoute = createRoute({
 	method: "post",
 	path: "/auth/signup",
@@ -220,27 +190,7 @@ const signupRoute = createRoute({
 		},
 	},
 });
-userRoutes.openapi(signupRoute, async (c) => {
-	const { userService } = c.var;
-	const authenticatedUser = c.var.user;
-	if (!authenticatedUser) {
-		throw new HTTPException(401, { message: "Unauthenticated" });
-	}
-	const body = c.req.valid("json");
-	const language =
-		typeof body.language === "string" ? body.language : undefined;
-	const created = await userService.createUser(authenticatedUser, language);
-	if (!created) {
-		const already = await userService.getCurrentUser(authenticatedUser);
-		if (already) {
-			throw new HTTPException(409, { message: "User already exists" });
-		}
-		throw new HTTPException(500, { message: "Failed to create user" });
-	}
-	return c.json({ success: true as const, data: created }, 201);
-});
 
-// --- POST /auth/session ---
 const sessionRoute = createRoute({
 	method: "post",
 	path: "/auth/session",
@@ -290,20 +240,7 @@ const sessionRoute = createRoute({
 		},
 	},
 });
-userRoutes.openapi(sessionRoute, async (c) => {
-	const { userService } = c.var;
-	const authenticatedUser = c.var.user;
-	if (!authenticatedUser) {
-		throw new HTTPException(401, { message: "Unauthenticated" });
-	}
-	const created = await userService.createSession(authenticatedUser);
-	if (!created) {
-		throw new HTTPException(500, { message: "Failed to create session" });
-	}
-	return c.json({ success: true as const, data: created }, 201);
-});
 
-// --- POST /users/me/favorite-repositories ---
 const addFavoriteRepoRoute = createRoute({
 	method: "post",
 	path: "/users/me/favorite-repositories",
@@ -369,25 +306,7 @@ const addFavoriteRepoRoute = createRoute({
 		},
 	},
 });
-userRoutes.openapi(addFavoriteRepoRoute, async (c) => {
-	const { userService } = c.var;
-	const authenticatedUser = c.var.user;
-	if (!authenticatedUser) {
-		throw new HTTPException(401, { message: "Unauthenticated" });
-	}
-	const { owner, repo } = c.req.valid("json");
-	const result = await userService.registerFavoriteRepository(
-		authenticatedUser,
-		owner,
-		repo,
-	);
-	if (result.alreadyExists) {
-		return c.json({ success: true as const, data: result.favorite }, 200);
-	}
-	return c.json({ success: true as const, data: result.favorite }, 201);
-});
 
-// --- GET /users/me/liked-articles ---
 const getLikedArticlesRoute = createRoute({
 	method: "get",
 	path: "/users/me/liked-articles",
@@ -462,36 +381,7 @@ const getLikedArticlesRoute = createRoute({
 		},
 	},
 });
-userRoutes.openapi(getLikedArticlesRoute, async (c) => {
-	const { prService } = c.var;
-	const authenticatedUser = c.var.user;
-	if (!authenticatedUser) {
-		throw new HTTPException(401, { message: "Unauthenticated" });
-	}
-	const { lang, limit, offset, sort } = c.req.valid("query");
-	const numLimit = limit ? Number(limit) : undefined;
-	const numOffset = offset ? Number(offset) : undefined;
-	const { data, totalItems } = await prService.getLikedArticles(
-		authenticatedUser.id,
-		{ lang, limit: numLimit, offset: numOffset, sort },
-	);
-	return c.json(
-		{
-			success: true as const,
-			data: {
-				data,
-				pagination: {
-					totalItems,
-					limit: numLimit ?? 10,
-					offset: numOffset ?? 0,
-				},
-			},
-		},
-		200,
-	);
-});
 
-// --- GET /users/me/favorite-repositories ---
 const getFavoriteReposRoute = createRoute({
 	method: "get",
 	path: "/users/me/favorite-repositories",
@@ -551,32 +441,7 @@ const getFavoriteReposRoute = createRoute({
 		},
 	},
 });
-userRoutes.openapi(getFavoriteReposRoute, async (c) => {
-	const { userService } = c.var;
-	const authenticatedUser = c.var.user;
-	if (!authenticatedUser) {
-		throw new HTTPException(401, { message: "Unauthenticated" });
-	}
-	const { limit, offset } = c.req.valid("query");
-	const numLimit = limit ? Number(limit) : 20;
-	const numOffset = offset ? Number(offset) : 0;
-	const { favorites, total } = await userService.getFavoriteRepositories(
-		authenticatedUser.id,
-		{ limit: numLimit, offset: numOffset },
-	);
-	return c.json(
-		{
-			success: true as const,
-			data: {
-				data: favorites,
-				pagination: { totalItems: total, limit: numLimit, offset: numOffset },
-			},
-		},
-		200,
-	);
-});
 
-// --- DELETE /users/me/favorite-repositories/:favoriteId ---
 const deleteFavoriteRepoRoute = createRoute({
 	method: "delete",
 	path: "/users/me/favorite-repositories/{favoriteId}",
@@ -631,24 +496,7 @@ const deleteFavoriteRepoRoute = createRoute({
 		},
 	},
 });
-userRoutes.openapi(deleteFavoriteRepoRoute, async (c) => {
-	const { userService } = c.var;
-	const authenticatedUser = c.var.user;
-	if (!authenticatedUser) {
-		throw new HTTPException(401, { message: "Unauthenticated" });
-	}
-	const { favoriteId } = c.req.valid("param");
-	await userService.deleteFavoriteRepository(authenticatedUser.id, favoriteId);
-	return c.json(
-		{
-			success: true as const,
-			data: { message: "Favorite repository deleted successfully." },
-		},
-		200,
-	);
-});
 
-// --- POST /auth/token/exchange ---
 const tokenExchangeRoute = createRoute({
 	method: "post",
 	path: "/auth/token/exchange",
@@ -709,24 +557,177 @@ GitHubアクセストークンを保存します。
 		},
 	},
 });
-userRoutes.openapi(tokenExchangeRoute, async (c) => {
-	const { userService } = c.var;
-	const authenticatedUser = c.var.user;
-	const { githubAccessToken } = c.req.valid("json");
-	if (!authenticatedUser || !githubAccessToken) {
-		throw new HTTPException(401, { message: "Invalid request" });
-	}
-	const result = await userService.saveGitHubToken(
-		authenticatedUser.id,
-		githubAccessToken,
-	);
-	if (!result.success) {
-		throw new HTTPException(500, { message: "Failed to save token." });
-	}
-	return c.json(
-		{ success: true as const, data: { message: "Token saved successfully." } },
-		200,
-	);
-});
+
+const userRoutes = createApp()
+	.openapi(getMyProfileRoute, async (c) => {
+		const { userService } = c.var;
+		const authenticatedUser = c.var.user;
+		if (!authenticatedUser) {
+			throw new HTTPException(401, { message: "Unauthenticated" });
+		}
+		const userProfile = await userService.getCurrentUser(authenticatedUser);
+		if (!userProfile) {
+			throw new HTTPException(404, { message: "User profile not found" });
+		}
+		return c.json({ success: true as const, data: userProfile }, 200);
+	})
+	.openapi(logoutRoute, async (c) => {
+		const { userService } = c.var;
+		const authenticatedUser = c.var.user;
+		if (!authenticatedUser) {
+			throw new HTTPException(401, { message: "Unauthenticated" });
+		}
+		const result = await userService.logoutUser(authenticatedUser);
+		if (!result.success) {
+			throw new HTTPException(500, {
+				message: result.message || "Logout failed",
+			});
+		}
+		return c.json({ success: true as const, data: {} }, 200);
+	})
+	.openapi(signupRoute, async (c) => {
+		const { userService } = c.var;
+		const authenticatedUser = c.var.user;
+		if (!authenticatedUser) {
+			throw new HTTPException(401, { message: "Unauthenticated" });
+		}
+		const body = c.req.valid("json");
+		const language =
+			typeof body.language === "string" ? body.language : undefined;
+		const created = await userService.createUser(authenticatedUser, language);
+		if (!created) {
+			const already = await userService.getCurrentUser(authenticatedUser);
+			if (already) {
+				throw new HTTPException(409, { message: "User already exists" });
+			}
+			throw new HTTPException(500, { message: "Failed to create user" });
+		}
+		return c.json({ success: true as const, data: created }, 201);
+	})
+	.openapi(sessionRoute, async (c) => {
+		const { userService } = c.var;
+		const authenticatedUser = c.var.user;
+		if (!authenticatedUser) {
+			throw new HTTPException(401, { message: "Unauthenticated" });
+		}
+		const created = await userService.createSession(authenticatedUser);
+		if (!created) {
+			throw new HTTPException(500, { message: "Failed to create session" });
+		}
+		return c.json({ success: true as const, data: created }, 201);
+	})
+	.openapi(addFavoriteRepoRoute, async (c) => {
+		const { userService } = c.var;
+		const authenticatedUser = c.var.user;
+		if (!authenticatedUser) {
+			throw new HTTPException(401, { message: "Unauthenticated" });
+		}
+		const { owner, repo } = c.req.valid("json");
+		const result = await userService.registerFavoriteRepository(
+			authenticatedUser,
+			owner,
+			repo,
+		);
+		if (result.alreadyExists) {
+			return c.json({ success: true as const, data: result.favorite }, 200);
+		}
+		return c.json({ success: true as const, data: result.favorite }, 201);
+	})
+	.openapi(getLikedArticlesRoute, async (c) => {
+		const { prService } = c.var;
+		const authenticatedUser = c.var.user;
+		if (!authenticatedUser) {
+			throw new HTTPException(401, { message: "Unauthenticated" });
+		}
+		const { lang, limit, offset, sort } = c.req.valid("query");
+		const numLimit = limit ? Number(limit) : undefined;
+		const numOffset = offset ? Number(offset) : undefined;
+		const { data, totalItems } = await prService.getLikedArticles(
+			authenticatedUser.id,
+			{ lang, limit: numLimit, offset: numOffset, sort },
+		);
+		return c.json(
+			{
+				success: true as const,
+				data: {
+					data,
+					pagination: {
+						totalItems,
+						limit: numLimit ?? 10,
+						offset: numOffset ?? 0,
+					},
+				},
+			},
+			200,
+		);
+	})
+	.openapi(getFavoriteReposRoute, async (c) => {
+		const { userService } = c.var;
+		const authenticatedUser = c.var.user;
+		if (!authenticatedUser) {
+			throw new HTTPException(401, { message: "Unauthenticated" });
+		}
+		const { limit, offset } = c.req.valid("query");
+		const numLimit = limit ? Number(limit) : 20;
+		const numOffset = offset ? Number(offset) : 0;
+		const { favorites, total } = await userService.getFavoriteRepositories(
+			authenticatedUser.id,
+			{ limit: numLimit, offset: numOffset },
+		);
+		return c.json(
+			{
+				success: true as const,
+				data: {
+					data: favorites,
+					pagination: { totalItems: total, limit: numLimit, offset: numOffset },
+				},
+			},
+			200,
+		);
+	})
+	.openapi(deleteFavoriteRepoRoute, async (c) => {
+		const { userService } = c.var;
+		const authenticatedUser = c.var.user;
+		if (!authenticatedUser) {
+			throw new HTTPException(401, { message: "Unauthenticated" });
+		}
+		const { favoriteId } = c.req.valid("param");
+		await userService.deleteFavoriteRepository(
+			authenticatedUser.id,
+			favoriteId,
+		);
+		return c.json(
+			{
+				success: true as const,
+				data: { message: "Favorite repository deleted successfully." },
+			},
+			200,
+		);
+	})
+	.openapi(tokenExchangeRoute, async (c) => {
+		const { userService } = c.var;
+		const authenticatedUser = c.var.user;
+		if (!authenticatedUser) {
+			throw new HTTPException(401, { message: "Unauthenticated" });
+		}
+		const { githubAccessToken } = c.req.valid("json");
+		if (!githubAccessToken) {
+			throw new HTTPException(401, { message: "Invalid request" });
+		}
+		const result = await userService.saveGitHubToken(
+			authenticatedUser.id,
+			githubAccessToken,
+		);
+		if (!result.success) {
+			throw new HTTPException(500, { message: "Failed to save token." });
+		}
+		return c.json(
+			{
+				success: true as const,
+				data: { message: "Token saved successfully." },
+			},
+			200,
+		);
+	});
 
 export default userRoutes;
