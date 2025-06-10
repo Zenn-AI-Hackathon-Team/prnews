@@ -1,19 +1,4 @@
 "use client";
-import React, { useState } from "react";
-import {
-  GitPullRequest,
-  ThumbsUp,
-  Clock,
-  FileText,
-  Plus,
-  Minus,
-  GitBranch,
-  Sparkles,
-  Code,
-  AlertCircle,
-  Zap,
-  Package,
-} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -24,6 +9,22 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import {
+  AlertCircle,
+  Clock,
+  Code,
+  FileText,
+  GitBranch,
+  GitPullRequest,
+  Minus,
+  Package,
+  Plus,
+  Sparkles,
+  ThumbsUp,
+  Zap,
+} from "lucide-react";
+import type React from "react";
+import { useState } from "react";
 
 // PR詳細の型定義
 export type PRDetail = {
