@@ -15,5 +15,11 @@ export interface PrRepoPort {
 		prNumber: number,
 	): Promise<PullRequest | null>;
 	findArticleByPrId(prId: string): Promise<PullRequestArticle | null>;
-	findAllArticles(): Promise<PullRequestArticle[]>;
+	incrementLikeCount(prId: string, lang: string, delta: number): Promise<void>;
+	getRanking(options: {
+		period?: "weekly" | "monthly" | "all";
+		language?: string;
+		limit?: number;
+		offset?: number;
+	}): Promise<PullRequestArticle[]>;
 }

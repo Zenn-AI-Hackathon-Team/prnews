@@ -1,26 +1,47 @@
+import {
+	type ServiceAccount,
+	cert,
+	getApps,
+	initializeApp,
+} from "firebase-admin/app";
+import { getAuth } from "firebase-admin/auth";
+import { getFirestore } from "firebase-admin/firestore";
+import serviceAccount from "../../.gcloud/firebase-admin.json" assert {
+	type: "json",
+};
 import { createGeneralService } from "../application/generalService";
 import { createPrService } from "../application/prService";
 import { createRankingService } from "../application/rankingService";
 import { createUserService } from "../application/userService";
-import { articleLikeRepoMemory } from "../infrastructure/mock/articleLikeRepoMemory";
-import { authSessionRepoMemory } from "../infrastructure/mock/authSessionRepoMemory";
-import { favoriteRepositoryRepoMemory } from "../infrastructure/mock/favoriteRepositoryRepoMemory";
-import { geminiMock } from "../infrastructure/mock/geminiMock";
-import { githubMock } from "../infrastructure/mock/githubMock";
-import { prRepoMemory } from "../infrastructure/mock/prRepoMemory";
-import { userRepoMemory } from "../infrastructure/mock/userRepoMemory";
+import { geminiClient } from "../infrastructure/adapters/geminiClient";
+import { githubClient } from "../infrastructure/adapters/githubClient";
+import { articleLikeRepoFirestore } from "../infrastructure/repositories/articleLikeRepoFirestore";
+import { authSessionRepoFirestore } from "../infrastructure/repositories/authSessionRepoFirestore";
+import { favoriteRepositoryRepoFirestore } from "../infrastructure/repositories/favoriteRepositoryRepoFirestore";
+import { prRepoFirestore } from "../infrastructure/repositories/prRepoFirestore";
+import { userRepoFirestore } from "../infrastructure/repositories/userRepoFirestore";
 import type { AuthSessionRepoPort } from "../ports/authSessionRepoPort";
 import type { UserRepoPort } from "../ports/userRepoPort";
 
 // [注意] このグローバルインスタンスは開発・検証用の仮実装です。
 // 本番運用時は必ず外部DB（Firestore等）に置き換えてください。
-const userRepo = userRepoMemory();
-const authSessionRepo = authSessionRepoMemory();
-const favoriteRepositoryRepo = favoriteRepositoryRepoMemory();
-const articleLikeRepo = articleLikeRepoMemory();
-const prRepo = prRepoMemory();
-const github = githubMock();
-const gemini = geminiMock();
+
+// Firestoreインスタンスの初期化（すでに初期化済みならスキップ）
+if (getApps().length === 0) {
+	initializeApp({
+		credential: cert(serviceAccount as ServiceAccount),
+	});
+}
+const firestore = getFirestore();
+
+const userRepo = userRepoFirestore(firestore);
+const authSessionRepo = authSessionRepoFirestore(firestore);
+const favoriteRepositoryRepo = favoriteRepositoryRepoFirestore(firestore);
+const articleLikeRepo = articleLikeRepoFirestore(firestore);
+const prRepo = prRepoFirestore(firestore);
+const github = githubClient();
+const gemini = geminiClient();
+const auth = getAuth();
 
 export const buildDependencies = () => {
 	const generalService = createGeneralService({});
@@ -29,6 +50,7 @@ export const buildDependencies = () => {
 		gemini,
 		prRepo,
 		articleLikeRepo,
+		userRepo,
 	});
 	const userService = createUserService({
 		userRepo,
@@ -49,6 +71,7 @@ export const buildDependencies = () => {
 		prService,
 		userService,
 		rankingService,
+		auth,
 	};
 };
 

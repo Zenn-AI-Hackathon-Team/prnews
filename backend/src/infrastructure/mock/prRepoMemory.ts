@@ -95,8 +95,24 @@ export const prRepoMemory = (): PrRepoPort => {
 			return article;
 		},
 
-		async findAllArticles() {
-			return Array.from(arts.values());
+		async incrementLikeCount(prId, lang, delta) {
+			// ダミー: 何もしない
+			return;
+		},
+
+		async getRanking({
+			period = "all",
+			language = "all",
+			limit = 10,
+			offset = 0,
+		}) {
+			// ダミー: 全件返す（本番では使われない想定）
+			let articles = Array.from(arts.values());
+			if (language !== "all") {
+				articles = articles.filter((a) => a.contents?.[language]);
+			}
+			if (offset) articles = articles.slice(offset);
+			return articles.slice(0, limit);
 		},
 	};
 };

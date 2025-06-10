@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import {
 	type AuthSession,
+	ErrorCode,
 	type FavoriteRepository,
 	userSchema as UserSchema,
 	type User as UserSchemaType,
@@ -15,6 +16,7 @@ import type { FavoriteRepositoryRepoPort } from "../ports/favoriteRepositoryRepo
 import type { GithubPort } from "../ports/githubPort.js";
 import type { UserRepoPort } from "../ports/userRepoPort";
 import type { AuthenticatedUser } from "../presentation/middlewares/authMiddleware";
+import { decrypt, encrypt } from "../utils/crypto";
 
 export const createUserService = (deps: {
 	userRepo: UserRepoPort;
@@ -99,26 +101,26 @@ export const createUserService = (deps: {
 			);
 			return null;
 		}
-		// 既に存在する場合はnull返す（409用）
-		const existing = await deps.userRepo.findById(authenticatedUser.id);
+		// 既存ユーザーのチェックをfindByFirebaseUidに変更
+		const existing = await deps.userRepo.findByFirebaseUid(
+			authenticatedUser.firebaseUid,
+		);
 		if (existing) {
 			console.warn(
-				`[UserService] User already exists for ID (${authenticatedUser.id})`,
+				`[UserService] User already exists for FirebaseUID (${authenticatedUser.firebaseUid})`,
 			);
 			return null;
 		}
+
 		const newUserInputData = createUserObjectFromAuthenticatedUser(
 			authenticatedUser,
 			language ?? "ja",
 		);
 		const userToSave: UserSchemaType = {
-			id: authenticatedUser.id,
+			id: randomUUID(), // 新しいIDをここで生成
 			...newUserInputData,
 			createdAt: new Date().toISOString(),
 			updatedAt: new Date().toISOString(),
-			githubDisplayName: null,
-			email: null,
-			avatarUrl: null,
 		};
 		const validationResult = UserSchema.safeParse(userToSave);
 		if (!validationResult.success) {
@@ -153,7 +155,7 @@ export const createUserService = (deps: {
 		const now = new Date().toISOString();
 		const expires = new Date(Date.now() + 1000 * 60 * 60 * 24).toISOString(); // 24h後
 		const session: AuthSession = {
-			id: "", // save時に採番
+			id: randomUUID(),
 			userId: authenticatedUser.id,
 			firebaseUid: authenticatedUser.firebaseUid,
 			tokenHash: "dummy-token-hash", // 本来はトークンのSHA-256
@@ -175,19 +177,30 @@ export const createUserService = (deps: {
 		owner: string,
 		repo: string,
 	): Promise<
-		{ alreadyExists: boolean; favorite: FavoriteRepository } | { error: string }
+		| { alreadyExists: boolean; favorite: FavoriteRepository }
+		| { error: ErrorCode }
 	> => {
 		if (!authenticatedUser) {
-			return { error: "User not authenticated" };
+			return { error: ErrorCode.UNAUTHENTICATED };
 		}
-		// GitHub APIでリポジトリ情報取得
+		const user = await deps.userRepo.findById(authenticatedUser.id);
+		if (!user?.encryptedGitHubAccessToken) {
+			return { error: ErrorCode.UNAUTHENTICATED };
+		}
+		const accessToken = decrypt(user.encryptedGitHubAccessToken);
 		let repoInfo: import("../domain/repository.js").RepositoryInfo;
 		try {
-			repoInfo = await deps.githubPort.getRepositoryByOwnerAndRepo(owner, repo);
-		} catch (e) {
-			return { error: "GITHUB_REPO_NOT_FOUND" };
+			repoInfo = await deps.githubPort.getRepositoryByOwnerAndRepo(
+				accessToken,
+				owner,
+				repo,
+			);
+		} catch (e: unknown) {
+			if (e instanceof Error && e.message === ErrorCode.GITHUB_REPO_NOT_FOUND) {
+				return { error: ErrorCode.GITHUB_REPO_NOT_FOUND };
+			}
+			return { error: ErrorCode.INTERNAL_SERVER_ERROR };
 		}
-		// 既存チェック
 		const existing =
 			await deps.favoriteRepositoryRepo.findByUserIdAndGithubRepoId(
 				authenticatedUser.id,
@@ -196,7 +209,6 @@ export const createUserService = (deps: {
 		if (existing) {
 			return { alreadyExists: true, favorite: existing };
 		}
-		// 新規作成
 		const now = new Date().toISOString();
 		const favorite: FavoriteRepository = {
 			id: randomUUID(),
@@ -207,13 +219,31 @@ export const createUserService = (deps: {
 			repo: repoInfo.repo,
 			registeredAt: now,
 		};
-		// バリデーション
 		const validation = favoriteRepositorySchema.safeParse(favorite);
 		if (!validation.success) {
-			return { error: "VALIDATION_ERROR" };
+			return { error: ErrorCode.VALIDATION_ERROR };
 		}
 		const saved = await deps.favoriteRepositoryRepo.save(favorite);
 		return { alreadyExists: false, favorite: saved };
+	};
+
+	const saveGitHubToken = async (
+		userId: string,
+		token: string,
+	): Promise<{ success: boolean }> => {
+		try {
+			const encryptedToken = encrypt(token);
+			await deps.userRepo.update(userId, {
+				encryptedGitHubAccessToken: encryptedToken,
+			});
+			return { success: true };
+		} catch (error) {
+			console.error(
+				`[UserService] Failed to save GitHub token for user ${userId}`,
+				error,
+			);
+			return { success: false };
+		}
 	};
 
 	return {
@@ -222,6 +252,7 @@ export const createUserService = (deps: {
 		createUser,
 		createSession,
 		registerFavoriteRepository,
+		saveGitHubToken,
 	};
 };
 

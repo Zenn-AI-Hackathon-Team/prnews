@@ -12,5 +12,12 @@ export const pullRequestSchema = z.object({
 	diff: z.string(),
 	authorLogin: z.string(),
 	githubPrCreatedAt: z.string().datetime("正しい日時形式で入力してください"),
+	comments: z.array(
+		z.object({
+			author: z.string(),
+			body: z.string(),
+			createdAt: z.string(),
+		}),
+	),
 });
 export type PullRequest = z.infer<typeof pullRequestSchema>;

@@ -42,3 +42,9 @@ lerna-debug.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# gcloud
+.gcloud
+
+# test
+coverage/

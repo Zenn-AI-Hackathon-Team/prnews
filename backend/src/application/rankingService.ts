@@ -25,60 +25,13 @@ export const createRankingService = (deps: {
 			offset?: number;
 		} = {},
 	): Promise<{ data: RankedArticleInfo[]; totalItems: number }> => {
-		// 1. 記事一覧を取得
-		const allArticles: PullRequestArticle[] =
-			await deps.prRepo.findAllArticles();
-
-		// 2. フィルタリング（言語）
+		// Firestoreクエリでランキング取得
+		const articles: PullRequestArticle[] =
+			await deps.prRepo.getRanking(options);
 		const language = options.language ?? "all";
-		let filtered: PullRequestArticle[] = allArticles;
-		if (language !== "all") {
-			filtered = filtered.filter((a) => a.contents?.[language]);
-		}
-
-		// 3. 期間フィルタ（createdAtで判定）
-		const period = options.period ?? "all";
-		if (period !== "all") {
-			const now = new Date();
-			let from: Date;
-			if (period === "weekly") {
-				from = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-			} else {
-				from = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-			}
-			filtered = filtered.filter((a) => {
-				if (!a.createdAt) return false;
-				const created = new Date(a.createdAt);
-				return created >= from;
-			});
-		}
-
-		// 4. likeCountでソート
-		const getLikeCount = (a: PullRequestArticle): number => {
-			if (!a.contents) return 0;
-			if (language === "all") {
-				// 全言語合算
-				return Object.values(a.contents).reduce(
-					(sum, c) => sum + (c.likeCount || 0),
-					0,
-				);
-			}
-			return a.contents[language]?.likeCount || 0;
-		};
-		const filteredWithLike = filtered.map((a) => ({
-			...a,
-			_likeCount: getLikeCount(a),
-		}));
-		filteredWithLike.sort((a, b) => b._likeCount - a._likeCount);
-
-		// 5. ページネーション
-		const totalItems = filteredWithLike.length;
-		const limit = options.limit ?? 10;
 		const offset = options.offset ?? 0;
-		const paged = filteredWithLike.slice(offset, offset + limit);
-
-		// 6. RankedArticleInfo配列に整形
-		const data: RankedArticleInfo[] = paged
+		// RankedArticleInfo配列に整形
+		const data: RankedArticleInfo[] = articles
 			.map((a, i) => {
 				const lang =
 					language === "all"
@@ -97,7 +50,15 @@ export const createRankingService = (deps: {
 							(a as { repositoryFullName?: string }).repositoryFullName ||
 							a.repository,
 						prNumber: a.prNumber,
-						likeCount: getLikeCount(a),
+						likeCount:
+							language === "all"
+								? a.contents
+									? Object.values(a.contents).reduce(
+											(sum, c) => sum + (c.likeCount || 0),
+											0,
+										)
+									: 0
+								: c?.likeCount || 0,
 					});
 				} catch (e) {
 					console.error(
@@ -113,8 +74,10 @@ export const createRankingService = (deps: {
 				}
 			})
 			.filter((v): v is RankedArticleInfo => v !== undefined);
-		return { data, totalItems };
+		return { data, totalItems: articles.length };
 	};
 
 	return { getArticleLikeRanking };
 };
+
+export type RankingService = ReturnType<typeof createRankingService>;
