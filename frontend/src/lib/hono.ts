@@ -1,4 +1,6 @@
+import type { AppType } from "@prnews/backend/rpc";
 import { hc } from "hono/client";
-import type { AppType } from "../../../backend/src/index";
 
-export const client = hc<AppType>("http://localhost:8080");
+const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+
+export const client = hc<AppType>(apiUrl);

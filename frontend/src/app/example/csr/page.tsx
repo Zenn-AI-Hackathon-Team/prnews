@@ -3,7 +3,7 @@
 // HonoのRPCのサンプルページ
 // CSR(クライアントサイドレンダリング)バージョン
 
-import { client } from "@/lib/apiClient";
+import { client } from "@/lib/hono";
 import type { RankedArticleInfo } from "@prnews/common";
 import { useEffect, useState } from "react";
 
