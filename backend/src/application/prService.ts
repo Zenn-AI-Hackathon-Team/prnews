@@ -3,12 +3,15 @@ import {
 	type PullRequest as CommonPullRequest,
 	type LikedArticleInfo,
 	type PullRequestArticle as PullRequestArticleType,
-	likedArticleInfoSchema,
 	pullRequestSchema,
 } from "@prnews/common";
-import { ErrorCode } from "@prnews/common";
 import { articleLikeSchema } from "@prnews/common";
 import { createPullRequest } from "../domain/pullRequest";
+import type { PullRequestArticle } from "../domain/pullRequestArticle";
+import { AppError } from "../errors/AppError";
+import { ForbiddenError } from "../errors/ForbiddenError";
+import { NotFoundError } from "../errors/NotFoundError";
+import { ValidationError } from "../errors/ValidationError";
 import type { ArticleLikeRepoPort } from "../ports/articleLikeRepoPort.js";
 import type { GeminiPort } from "../ports/geminiPort.js";
 import type { GithubPort } from "../ports/githubPort.js";
@@ -75,7 +78,10 @@ export const createPrService = (deps: {
 		// 1. ユーザー情報を取得
 		const user = await deps.userRepo.findById(userId);
 		if (!user?.encryptedGitHubAccessToken) {
-			throw new Error("GitHub token not found for this user.");
+			throw new ForbiddenError(
+				"UNAUTHENTICATED",
+				"GitHub token not found for this user.",
+			);
 		}
 		// 2. トークンを復号
 		const accessToken = decrypt(user.encryptedGitHubAccessToken);
@@ -87,11 +93,14 @@ export const createPrService = (deps: {
 			number,
 		);
 		if (!rawPr) {
-			throw new Error(ErrorCode.NOT_FOUND);
+			throw new NotFoundError(
+				`Pull request #${number} not found in ${owner}/${repo}`,
+			);
 		}
 
 		// 4. ドメインオブジェクト生成
 		const prProps = {
+			id: randomUUID(),
 			prNumber: rawPr.prNumber,
 			repository: rawPr.repository,
 			title: rawPr.title,
@@ -116,7 +125,10 @@ export const createPrService = (deps: {
 			comments: pr.comments,
 		});
 		if (!validation.success) {
-			throw new Error(ErrorCode.VALIDATION_ERROR);
+			throw new ValidationError(
+				"PullRequest validation failed",
+				validation.error.flatten().fieldErrors,
+			);
 		}
 
 		// 6. 保存
@@ -139,10 +151,11 @@ export const createPrService = (deps: {
 		repo: string,
 		number: number,
 	) => {
-		// 1. PR取得
 		const pr = await deps.prRepo.findByNumber(owner, repo, number);
 		if (!pr) {
-			throw new Error(ErrorCode.NOT_FOUND);
+			throw new NotFoundError(
+				`Pull request #${number} not found in ${owner}/${repo}`,
+			);
 		}
 
 		// コメントを一つのテキストにまとめる
@@ -154,13 +167,14 @@ export const createPrService = (deps: {
 		// diffとconversationを結合
 		const inputTextForAI = `## 差分情報\n\n${pr.diff}\n\n## 会話の履歴\n${conversationText}`;
 
-		// 2. Geminiで要約生成（入力情報を変更）
 		const aiResult = await deps.gemini.summarizeDiff(inputTextForAI);
 		if (!aiResult || !aiResult.aiGeneratedTitle) {
-			throw new Error(ErrorCode.INTERNAL_SERVER_ERROR);
+			throw new AppError(
+				"INTERNAL_SERVER_ERROR",
+				"AI summary generation failed",
+			);
 		}
 
-		// 3. PullRequestArticle生成
 		const now = new Date().toISOString();
 		const mainChanges = Array.isArray(aiResult.mainChanges)
 			? aiResult.mainChanges.map((mc) => ({
@@ -197,7 +211,6 @@ export const createPrService = (deps: {
 			},
 		};
 
-		// 4. 保存
 		await deps.prRepo.saveArticle(article);
 
 		return article;
@@ -206,10 +219,10 @@ export const createPrService = (deps: {
 		owner: string,
 		repo: string,
 		pullNumber: number,
-	): Promise<CommonPullRequest | null> => {
+	): Promise<CommonPullRequest> => {
 		const pr = await deps.prRepo.findByOwnerRepoNumber(owner, repo, pullNumber);
 		if (!pr) {
-			return null;
+			throw new NotFoundError("指定されたプルリクエストが見つかりません。");
 		}
 		// APIスキーマに整形
 		return {
@@ -224,12 +237,10 @@ export const createPrService = (deps: {
 			comments: pr.comments,
 		};
 	};
-	const getArticle = async (
-		prId: string,
-	): Promise<PullRequestArticleType | null> => {
+	const getArticle = async (prId: string): Promise<PullRequestArticleType> => {
 		const article = await deps.prRepo.findArticleByPrId(prId);
 		if (!article) {
-			return null;
+			throw new NotFoundError("指定された記事が見つかりません。");
 		}
 
 		// Transform contents to match the expected type
@@ -288,89 +299,84 @@ export const createPrService = (deps: {
 				Object.keys(transformedContents).length > 0
 					? transformedContents
 					: undefined,
+			totalLikeCount: article.totalLikeCount ?? 0,
 		};
 	};
 	const likeArticle = async (
 		userId: string,
 		articleId: string,
 		langCode: string,
-	): Promise<
-		| { alreadyLiked: boolean; likeCount: number; message: string }
-		| { error: string }
-	> => {
-		// 記事取得
-		const article = await deps.prRepo.findArticleByPrId(articleId);
-		if (!article || !article.contents || !article.contents[langCode]) {
-			return { error: "ARTICLE_NOT_FOUND" };
-		}
-		// 既にいいね済みか確認
-		const existing = await deps.articleLikeRepo.findByUserIdAndArticleIdAndLang(
-			userId,
-			articleId,
-			langCode,
-		);
-		const likeCount = article.contents[langCode].likeCount ?? 0;
-		if (existing) {
-			return { alreadyLiked: true, likeCount, message: "既にいいね済みです" };
-		}
-		// likeCountをトランザクションでインクリメント
-		await deps.prRepo.incrementLikeCount(articleId, langCode, 1);
-		// ArticleLikeレコード作成
-		const like = {
-			id: randomUUID(),
-			userId,
-			articleId,
-			languageCode: langCode,
-			likedAt: new Date().toISOString(),
-		};
-		const validation = articleLikeSchema.safeParse(like);
-		if (!validation.success) {
-			return { error: "VALIDATION_ERROR" };
-		}
-		await deps.articleLikeRepo.save(like);
-		// 最新のlikeCountを取得
-		const updated = await deps.prRepo.findArticleByPrId(articleId);
-		const newCount = updated?.contents?.[langCode]?.likeCount ?? likeCount + 1;
-		return {
-			alreadyLiked: false,
-			likeCount: newCount,
-			message: "いいねしました",
-		};
+	): Promise<{ alreadyLiked: boolean; likeCount: number; message: string }> => {
+		return await deps.prRepo.executeTransaction(async (tx) => {
+			const article = await deps.prRepo.findArticleByPrId(articleId, tx);
+			if (!article || !article.contents || !article.contents[langCode]) {
+				throw new NotFoundError("指定された記事または言語版が見つかりません。");
+			}
+			const existing =
+				await deps.articleLikeRepo.findByUserIdAndArticleIdAndLang(
+					userId,
+					articleId,
+					langCode,
+					tx,
+				);
+			const likeCount = article.contents[langCode].likeCount ?? 0;
+			if (existing) {
+				return { alreadyLiked: true, likeCount, message: "既にいいね済みです" };
+			}
+			await deps.prRepo.incrementLikeCount(articleId, langCode, 1, tx);
+			const like = {
+				id: randomUUID(),
+				userId,
+				articleId,
+				languageCode: langCode,
+				likedAt: new Date().toISOString(),
+			};
+			const validation = articleLikeSchema.safeParse(like);
+			if (!validation.success) {
+				throw new ValidationError(
+					"Likeデータのバリデーションに失敗しました",
+					validation.error.flatten().fieldErrors,
+				);
+			}
+			await deps.articleLikeRepo.save(like, tx);
+			return {
+				alreadyLiked: false,
+				likeCount: likeCount + 1,
+				message: "いいねしました",
+			};
+		});
 	};
 	const unlikeArticle = async (
 		userId: string,
 		articleId: string,
 		langCode: string,
-	): Promise<{ likeCount: number } | { error: string }> => {
-		// 記事取得
-		const article = await deps.prRepo.findArticleByPrId(articleId);
-		if (!article || !article.contents || !article.contents[langCode]) {
-			return { error: "ARTICLE_NOT_FOUND" };
-		}
-		const likeCount = article.contents[langCode].likeCount ?? 0;
-		// いいねレコードが存在するか確認
-		const existing = await deps.articleLikeRepo.findByUserIdAndArticleIdAndLang(
-			userId,
-			articleId,
-			langCode,
-		);
-		if (existing) {
-			// レコード削除
-			await deps.articleLikeRepo.deleteByUserIdAndArticleIdAndLang(
-				userId,
-				articleId,
-				langCode,
-			);
-			// likeCountをトランザクションでデクリメント
-			await deps.prRepo.incrementLikeCount(articleId, langCode, -1);
-			// 最新のlikeCountを取得
-			const updated = await deps.prRepo.findArticleByPrId(articleId);
-			const newCount =
-				updated?.contents?.[langCode]?.likeCount ?? Math.max(0, likeCount - 1);
-			return { likeCount: newCount };
-		}
-		// もともといいねしていなかった場合も現在のlikeCountを返す
-		return { likeCount };
+	): Promise<{ likeCount: number }> => {
+		return await deps.prRepo.executeTransaction(async (tx) => {
+			const article = await deps.prRepo.findArticleByPrId(articleId, tx);
+			if (!article || !article.contents || !article.contents[langCode]) {
+				throw new NotFoundError("指定された記事または言語版が見つかりません。");
+			}
+			const likeCount = article.contents[langCode].likeCount ?? 0;
+			const existing =
+				await deps.articleLikeRepo.findByUserIdAndArticleIdAndLang(
+					userId,
+					articleId,
+					langCode,
+					tx,
+				);
+			if (existing) {
+				await deps.articleLikeRepo.deleteByUserIdAndArticleIdAndLang(
+					userId,
+					articleId,
+					langCode,
+					tx,
+				);
+				await deps.prRepo.incrementLikeCount(articleId, langCode, -1, tx);
+				return { likeCount: likeCount > 0 ? likeCount - 1 : 0 };
+			}
+			// もともといいねしていなかった場合も現在のlikeCountを返す
+			return { likeCount };
+		});
 	};
 	const getLikedArticles = async (
 		userId: string,
@@ -387,55 +393,141 @@ export const createPrService = (deps: {
 		}
 		if (options.sort === "likedAt_asc") {
 			likes = likes.sort((a, b) => a.likedAt.localeCompare(b.likedAt));
-			const totalItems = likes.length;
-			const offset = options.offset ?? 0;
-			const limit = options.limit ?? 10;
-			const pagedLikes = likes.slice(offset, offset + limit);
-			const result: LikedArticleInfo[] = [];
-			for (const like of pagedLikes) {
-				const article = await deps.prRepo.findArticleByPrId(like.articleId);
+		} else {
+			likes = likes.sort((a, b) => b.likedAt.localeCompare(a.likedAt));
+		}
+		const totalItems = likes.length;
+		const offset = options.offset ?? 0;
+		const limit = options.limit ?? 10;
+		const pagedLikes = likes.slice(offset, offset + limit);
+		const articleIds = pagedLikes.map((like) => like.articleId);
+		if (articleIds.length === 0) {
+			return { data: [], totalItems };
+		}
+		let articles: PullRequestArticle[] = [];
+		try {
+			articles = await deps.prRepo.findArticlesByIds(articleIds);
+		} catch (e) {
+			console.error("findArticlesByIds error", e);
+			throw new AppError(
+				"INTERNAL_SERVER_ERROR",
+				"記事情報の取得に失敗しました",
+			);
+		}
+		const articleMap = new Map(articles.map((a) => [a.id, a]));
+		const result: LikedArticleInfo[] = pagedLikes
+			.map((like) => {
+				const article = articleMap.get(like.articleId);
 				if (
 					!article ||
 					!article.contents ||
 					!article.contents[like.languageCode]
-				)
-					continue;
+				) {
+					return undefined;
+				}
 				const content = article.contents[like.languageCode];
-				result.push({
+				return {
 					articleId: like.articleId,
 					languageCode: like.languageCode,
 					likedAt: like.likedAt,
 					aiGeneratedTitle: content.aiGeneratedTitle,
 					repositoryFullName: article.repository,
 					prNumber: article.prNumber,
-					// articleUrl: ... 必要なら生成
-				});
-			}
-			return { data: result, totalItems };
-		}
-		// desc（デフォルト）
-		likes = likes.sort((a, b) => b.likedAt.localeCompare(a.likedAt));
-		const totalItems = likes.length;
-		const offset = options.offset ?? 0;
-		const limit = options.limit ?? 10;
-		const pagedLikes = likes.slice(offset, offset + limit);
-		const result: LikedArticleInfo[] = [];
-		for (const like of pagedLikes) {
-			const article = await deps.prRepo.findArticleByPrId(like.articleId);
-			if (!article || !article.contents || !article.contents[like.languageCode])
-				continue;
-			const content = article.contents[like.languageCode];
-			result.push({
-				articleId: like.articleId,
-				languageCode: like.languageCode,
-				likedAt: like.likedAt,
-				aiGeneratedTitle: content.aiGeneratedTitle,
-				repositoryFullName: article.repository,
-				prNumber: article.prNumber,
-				// articleUrl: ... 必要なら生成
-			});
-		}
+				};
+			})
+			.filter((info): info is LikedArticleInfo => info !== undefined);
 		return { data: result, totalItems };
+	};
+	const getPullRequestListForRepo = async (
+		userId: string,
+		owner: string,
+		repo: string,
+		query: {
+			state?: "open" | "closed" | "all";
+			per_page?: number;
+			page?: number;
+		},
+	) => {
+		console.log(
+			`[prService] 1. getPullRequestListForRepo 開始: ${owner}/${repo}`,
+		);
+		try {
+			console.log(`[prService] 2. ユーザー検索 (ID: ${userId})`);
+			const user = await deps.userRepo.findById(userId);
+			if (!user?.encryptedGitHubAccessToken) {
+				console.error(
+					"[prService] 致命的エラー: ユーザーかGitHubトークンが見つかりません。",
+				);
+				throw new ForbiddenError("GitHub access token is not registered.");
+			}
+
+			console.log("[prService] 3. ユーザー発見。トークンを復号します。");
+			const accessToken = decrypt(user.encryptedGitHubAccessToken);
+
+			const perPage =
+				query.per_page && query.per_page > 0 && query.per_page <= 100
+					? query.per_page
+					: 30;
+			const page = query.page && query.page > 0 ? query.page : 1;
+			const state = query.state || "open";
+			console.log(
+				`[prService] 4. GitHub APIを呼び出します (page: ${page}, per_page: ${perPage}, state: ${state})`,
+			);
+
+			const githubPrs = await deps.github.listPullRequests(
+				accessToken,
+				owner,
+				repo,
+				{
+					state,
+					per_page: perPage,
+					page,
+				},
+			);
+			console.log(
+				`[prService] 5. GitHub APIが ${githubPrs.length} 件のPRを返しました。`,
+			);
+
+			if (githubPrs.length === 0) {
+				console.log(
+					"[prService] GitHub上にPRがないため、空のリストを返します。",
+				);
+				return [];
+			}
+
+			const prNumbers = githubPrs.map((pr) => pr.number ?? pr.number);
+			console.log(
+				`[prService] 6. DBに記事の有無を問い合わせます (PR番号: ${prNumbers.join(", ")})`,
+			);
+			const existingArticleNumbers = await deps.prRepo.checkArticlesExist(
+				owner,
+				repo,
+				prNumbers,
+			);
+			console.log(
+				`[prService] 7. DB内に ${existingArticleNumbers.length} 件の記事を発見しました。`,
+			);
+
+			console.log("[prService] 8. 最終データを結合して返却します。");
+			const responseData = githubPrs.map((pr) => ({
+				prNumber: pr.number,
+				title: pr.title,
+				authorLogin: pr.user?.login ?? "unknown",
+				githubPrUrl: pr.html_url,
+				state: pr.state,
+				createdAt: pr.created_at,
+				articleExists: existingArticleNumbers.includes(pr.number),
+			}));
+
+			return responseData;
+		} catch (error) {
+			console.error(
+				"[prService] getPullRequestListForRepoの内部で予期せぬエラーが発生しました！:",
+				error,
+			);
+			// エラーを再度スローして、ルートハンドラに処理を渡す
+			throw error;
+		}
 	};
 	return {
 		ingestPr,
@@ -445,6 +537,7 @@ export const createPrService = (deps: {
 		likeArticle,
 		unlikeArticle,
 		getLikedArticles,
+		getPullRequestListForRepo,
 	};
 };
 

@@ -1,6 +1,6 @@
 import {
-	type ApiResponse,
 	type ErrorCode,
+	type ErrorResponse,
 	errorStatusMap,
 } from "@prnews/common";
 import type { Context } from "hono";
@@ -31,8 +31,48 @@ export const respondError = (
 	const resolvedStatus: ContentfulStatusCode =
 		statusOverride ?? statusFromMap ?? defaultErrorStatus;
 
-	return c.json<ApiResponse<never>>(
-		{ success: false, error: { code, details }, message },
-		{ status: resolvedStatus },
+	const errorBody: ErrorResponse = {
+		success: false,
+		error: { code, details },
+		message,
+	};
+
+	return c.json(errorBody, { status: resolvedStatus });
+};
+
+/** openapiルート用の成功レスポンス。ステータスコードの型を固定できる。 */
+export const respondOpenApiSuccess = <
+	TData,
+	TStatus extends ContentfulStatusCode,
+>(
+	c: Context,
+	data: TData,
+	status: TStatus,
+) => {
+	return c.json(
+		{
+			success: true as const,
+			data,
+		},
+		{ status },
+	);
+};
+
+/** openapiルート用の失敗レスポンス。ステータスコードの型を固定できる。 */
+export const respondOpenApiError = <TStatus extends ContentfulStatusCode>(
+	c: Context,
+	errorData: { code: ErrorCode; details?: unknown; message?: string },
+	status: TStatus,
+) => {
+	return c.json(
+		{
+			success: false as const,
+			error: {
+				code: errorData.code,
+				details: errorData.details,
+			},
+			message: errorData.message,
+		},
+		{ status },
 	);
 };

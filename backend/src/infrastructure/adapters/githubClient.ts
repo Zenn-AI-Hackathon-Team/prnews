@@ -1,7 +1,7 @@
 import { Octokit } from "@octokit/rest";
 import { ErrorCode } from "@prnews/common";
 import type { PullRequest } from "../../domain/pullRequest";
-import type { RepositoryInfo } from "../../domain/repository";
+import { NotFoundError } from "../../errors/NotFoundError";
 import type { GithubPort } from "../../ports/githubPort";
 
 const getOctokit = (accessToken: string) => new Octokit({ auth: accessToken });
@@ -103,6 +103,50 @@ export const githubClient = (): GithubPort => ({
 				throw new Error(ErrorCode.GITHUB_REPO_NOT_FOUND);
 			}
 			throw new Error(ErrorCode.INTERNAL_SERVER_ERROR);
+		}
+	},
+	async getAuthenticatedUserInfo(accessToken) {
+		const octokit = getOctokit(accessToken);
+		try {
+			const { data } = await octokit.users.getAuthenticated();
+			return {
+				id: data.id,
+				login: data.login,
+				name: data.name ?? null,
+				email: data.email ?? null,
+				avatar_url: data.avatar_url ?? null,
+			};
+		} catch (error) {
+			console.error("Failed to fetch authenticated GitHub user info", error);
+			throw new Error(ErrorCode.INTERNAL_SERVER_ERROR);
+		}
+	},
+	async listPullRequests(accessToken, owner, repo, options) {
+		const octokit = getOctokit(accessToken);
+		try {
+			const response = await octokit.pulls.list({
+				owner,
+				repo,
+				state: options.state,
+				per_page: options.per_page,
+				page: options.page,
+			});
+			return response.data;
+		} catch (error) {
+			if (
+				error &&
+				typeof error === "object" &&
+				"status" in error &&
+				error.status === 404
+			) {
+				console.warn(`[githubClient] Repository not found: ${owner}/${repo}`);
+				throw new NotFoundError(
+					"GITHUB_REPO_NOT_FOUND",
+					`Repository not found: ${owner}/${repo}`,
+				);
+			}
+			console.error("[githubClient] Failed to list pull requests:", error);
+			throw error;
 		}
 	},
 });

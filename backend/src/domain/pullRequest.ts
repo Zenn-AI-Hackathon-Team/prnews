@@ -16,9 +16,6 @@ export type PullRequest = {
 	comments: Comment[];
 };
 
-export const createPullRequest = (
-	props: Omit<PullRequest, "id">,
-): PullRequest => ({
-	id: crypto.randomUUID(),
+export const createPullRequest = (props: PullRequest): PullRequest => ({
 	...props,
 });

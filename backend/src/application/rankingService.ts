@@ -51,14 +51,7 @@ export const createRankingService = (deps: {
 							a.repository,
 						prNumber: a.prNumber,
 						likeCount:
-							language === "all"
-								? a.contents
-									? Object.values(a.contents).reduce(
-											(sum, c) => sum + (c.likeCount || 0),
-											0,
-										)
-									: 0
-								: c?.likeCount || 0,
+							language === "all" ? (a.totalLikeCount ?? 0) : c?.likeCount || 0,
 					});
 				} catch (e) {
 					console.error(

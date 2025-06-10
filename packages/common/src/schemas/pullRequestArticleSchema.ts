@@ -55,6 +55,12 @@ export type ArticleContent = z.infer<typeof articleContentSchema>;
 
 export const pullRequestArticleSchema = pullRequestSchema.extend({
 	id: z.string().uuid("記事 ID は UUID 形式で入力してください"),
+	totalLikeCount: z
+		.number()
+		.int()
+		.nonnegative()
+		.default(0)
+		.describe("全言語版の合計いいね数"),
 	contents: z
 		.record(
 			z

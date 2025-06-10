@@ -4,7 +4,6 @@ import type {
 	Firestore,
 	Query,
 } from "firebase-admin/firestore";
-import type { PullRequest } from "../../domain/pullRequest";
 import type { PullRequestArticle } from "../../domain/pullRequestArticle";
 import type { PrRepoPort } from "../../ports/prRepoPort";
 
@@ -53,22 +52,30 @@ export const prRepoFirestore = (db: Firestore): PrRepoPort => ({
 		// findByNumberと同じ
 		return await this.findByNumber(owner, repo, prNumber);
 	},
-	async findArticleByPrId(prId) {
-		const doc = await db.collection(COLLECTION).doc(prId).get();
+	async findArticleByPrId(
+		prId: string,
+		tx?: import("firebase-admin/firestore").Transaction,
+	) {
+		const docRef = db.collection(COLLECTION).doc(prId);
+		const doc = tx ? await tx.get(docRef) : await docRef.get();
 		return articleFromDoc(doc);
 	},
-	async incrementLikeCount(prId: string, lang: string, delta: number) {
+	async incrementLikeCount(
+		prId: string,
+		lang: string,
+		delta: number,
+		tx?: import("firebase-admin/firestore").Transaction,
+	) {
 		const ref = db.collection(COLLECTION).doc(prId);
-		await db.runTransaction(async (tx) => {
-			const doc = await tx.get(ref);
-			if (!doc.exists) throw new Error("PR Article not found");
-			const data = doc.data();
-			if (!data || !data.contents || !data.contents[lang])
-				throw new Error("Article content for language not found");
-			tx.update(ref, {
-				[`contents.${lang}.likeCount`]: FieldValue.increment(delta),
-			});
-		});
+		const updatePayload = {
+			[`contents.${lang}.likeCount`]: FieldValue.increment(delta),
+			totalLikeCount: FieldValue.increment(delta),
+		};
+		if (tx) {
+			tx.update(ref, updatePayload);
+		} else {
+			await ref.update(updatePayload);
+		}
 	},
 	async getRanking({
 		period = "all",
@@ -96,6 +103,9 @@ export const prRepoFirestore = (db: Firestore): PrRepoPort => ({
 		// 言語指定がある場合はその言語のlikeCountでorderBy
 		if (language && language !== "all") {
 			query = query.orderBy(`contents.${language}.likeCount`, "desc");
+		} else {
+			// "all" または指定なしの場合は totalLikeCount でソート
+			query = query.orderBy("totalLikeCount", "desc");
 		}
 		// ページング
 		query = query.limit(limit + (offset || 0));
@@ -105,23 +115,46 @@ export const prRepoFirestore = (db: Firestore): PrRepoPort => ({
 			.filter((a): a is PullRequestArticle => !!a);
 		// offset対応
 		if (offset) articles = articles.slice(offset);
-		// 全言語合算ランキングの場合は手動で合計likeCountでソート
-		if (!language || language === "all") {
-			type ArticleWithLike = PullRequestArticle & { _likeCount: number };
-			const articlesWithLike: ArticleWithLike[] = articles.map((a) => ({
-				...a,
-				_likeCount: a.contents
-					? Object.values(a.contents).reduce(
-							(sum, c) => sum + ((c as { likeCount?: number }).likeCount || 0),
-							0,
-						)
-					: 0,
-			}));
-			articlesWithLike.sort((a, b) => b._likeCount - a._likeCount);
-			articles = articlesWithLike.map(
-				({ _likeCount, ...rest }) => rest as PullRequestArticle,
-			);
-		}
 		return articles;
+	},
+	async findArticlesByIds(ids: string[]): Promise<PullRequestArticle[]> {
+		if (!ids || ids.length === 0) return [];
+		const BATCH_SIZE = 30;
+		const results: PullRequestArticle[] = [];
+		for (let i = 0; i < ids.length; i += BATCH_SIZE) {
+			const batchIds = ids.slice(i, i + BATCH_SIZE);
+			const snap = await db
+				.collection(COLLECTION)
+				.where("id", "in", batchIds)
+				.get();
+			const articles = snap.docs
+				.map((doc) => articleFromDoc(doc))
+				.filter((a): a is PullRequestArticle => !!a);
+			results.push(...articles);
+		}
+		return results;
+	},
+	async checkArticlesExist(owner, repo, prNumbers) {
+		if (!prNumbers || prNumbers.length === 0) return [];
+		const repoFull = `${owner}/${repo}`;
+		const BATCH_SIZE = 30;
+		const exists: number[] = [];
+		for (let i = 0; i < prNumbers.length; i += BATCH_SIZE) {
+			const batchNumbers = prNumbers.slice(i, i + BATCH_SIZE);
+			const snap = await db
+				.collection(COLLECTION)
+				.where("repository", "==", repoFull)
+				.where("prNumber", "in", batchNumbers)
+				.get();
+			exists.push(...snap.docs.map((doc) => doc.data().prNumber));
+		}
+		return exists;
+	},
+	executeTransaction: async <T>(
+		operation: (
+			tx: import("firebase-admin/firestore").Transaction,
+		) => Promise<T>,
+	): Promise<T> => {
+		return db.runTransaction(operation);
 	},
 });

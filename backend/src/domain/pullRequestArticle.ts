@@ -18,6 +18,7 @@ export type ArticleContent = {
 
 export type PullRequestArticle = PullRequest & {
 	contents?: Record<string, ArticleContent>;
+	totalLikeCount?: number;
 	createdAt?: string;
 	updatedAt?: string;
 };

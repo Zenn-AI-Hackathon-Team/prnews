@@ -1,16 +1,20 @@
 import { serve } from "@hono/node-server";
-import { Hono } from "hono";
+import { swaggerUI } from "@hono/swagger-ui";
+import { OpenAPIHono } from "@hono/zod-openapi";
 import { type Dependencies, buildDependencies } from "./config/di";
 import {
 	type AuthVariables,
 	authMiddleware,
 } from "./presentation/middlewares/authMiddleware";
+import { errorHandlerMiddleware } from "./presentation/middlewares/errorHandler";
 import generalRoutes from "./presentation/routes/generalRoutes";
 import prRoutes from "./presentation/routes/prRoutes";
 import rankingRoutes from "./presentation/routes/rankingRoutes";
 import userRoutes from "./presentation/routes/userRoutes";
 
-const app = new Hono<{ Variables: Dependencies & AuthVariables }>();
+const app = new OpenAPIHono<{ Variables: Dependencies & AuthVariables }>();
+
+app.use("*", errorHandlerMiddleware);
 
 app.use("*", async (c, next) => {
 	const deps = buildDependencies();
@@ -28,14 +32,40 @@ app.use("*", async (c, next) => {
 });
 
 // app.use("/repos/*", authMiddleware);
+// app.use("/repos/:owner/:repo/pulls/*", authMiddleware);
 app.use("/users/*", authMiddleware);
-app.use("/auth/*", authMiddleware);
+app.use("/auth/*", (c, next) => {
+	if (c.req.path === "/auth/signup") return next();
+	return authMiddleware(c, next);
+});
 // app.use("/articles/*", authMiddleware);
 
 app.route("/", generalRoutes);
 app.route("/", prRoutes);
 app.route("/", userRoutes);
 app.route("/", rankingRoutes);
+
+app.openAPIRegistry.registerComponent("securitySchemes", "bearerAuth", {
+	type: "http",
+	scheme: "bearer",
+	bearerFormat: "JWT",
+	description: "Firebase IDトークンを Bearer トークンとして指定します。",
+});
+
+app.doc("/specification", {
+	openapi: "3.0.3",
+	info: {
+		version: "1.0.0",
+		title: "PR News Backend API",
+	},
+	security: [
+		{
+			bearerAuth: [],
+		},
+	],
+});
+
+app.get("/doc", swaggerUI({ url: "/specification" }));
 
 serve(
 	{

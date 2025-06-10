@@ -1,41 +1,89 @@
-import { ErrorCode } from "@prnews/common";
-import { Hono } from "hono";
+import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
+import {
+	ErrorCode,
+	apiResponseSchema,
+	errorResponseSchema,
+	rankedArticleInfoSchema,
+} from "@prnews/common";
 import type { Dependencies } from "../../config/di";
-import { respondError, respondSuccess } from "../../utils/apiResponder";
+import {
+	respondOpenApiError,
+	respondOpenApiSuccess,
+} from "../../utils/apiResponder";
 
-const rankingRoutes = new Hono<{ Variables: Dependencies }>();
+const rankingRoutes = new OpenAPIHono<{ Variables: Dependencies }>();
 
-rankingRoutes.get("/ranking/articles/likes", async (c) => {
+const getArticleLikeRankingRoute = createRoute({
+	method: "get",
+	path: "/ranking/articles/likes",
+	summary: "記事いいねランキング取得",
+	description: "指定期間・言語のPullRequest記事のいいね数ランキングを返す。",
+	tags: ["Ranking"],
+	request: {
+		query: z.object({
+			period: z.enum(["weekly", "monthly", "all"]).optional(),
+			language: z.string().optional(),
+			limit: z.string().optional(),
+			offset: z.string().optional(),
+		}),
+	},
+	responses: {
+		200: {
+			description: "ランキング取得成功",
+			content: {
+				"application/json": {
+					schema: apiResponseSchema(
+						z.object({
+							data: z.array(rankedArticleInfoSchema),
+							pagination: z.object({
+								totalItems: z.number(),
+								limit: z.number(),
+								offset: z.number(),
+							}),
+						}),
+					),
+				},
+			},
+		},
+		500: {
+			description: "サーバーエラー",
+			content: { "application/json": { schema: errorResponseSchema } },
+		},
+	},
+});
+
+rankingRoutes.openapi(getArticleLikeRankingRoute, async (c) => {
 	const { rankingService } = c.var;
 	try {
-		const period = c.req.query("period") as
-			| "weekly"
-			| "monthly"
-			| "all"
-			| undefined;
-		const language = c.req.query("language") || undefined;
-		const limit = c.req.query("limit")
-			? Number(c.req.query("limit"))
-			: undefined;
-		const offset = c.req.query("offset")
-			? Number(c.req.query("offset"))
-			: undefined;
+		const { period, language, limit, offset } = c.req.valid("query");
+		const numLimit = limit ? Number(limit) : undefined;
+		const numOffset = offset ? Number(offset) : undefined;
 		const { data, totalItems } = await rankingService.getArticleLikeRanking({
 			period,
 			language,
-			limit,
-			offset,
+			limit: numLimit,
+			offset: numOffset,
 		});
-		return respondSuccess(c, {
-			data,
-			pagination: { totalItems, limit: limit ?? 10, offset: offset ?? 0 },
-		});
-	} catch (e) {
-		console.error("/ranking/articles/likes error", e);
-		return respondError(
+		return respondOpenApiSuccess(
 			c,
-			ErrorCode.INTERNAL_SERVER_ERROR,
-			"ランキング取得に失敗しました",
+			{
+				data,
+				pagination: {
+					totalItems,
+					limit: numLimit ?? 10,
+					offset: numOffset ?? 0,
+				},
+			},
+			200,
+		);
+	} catch (e) {
+		return respondOpenApiError(
+			c,
+			{
+				code: ErrorCode.INTERNAL_SERVER_ERROR,
+				message: "ランキング取得に失敗しました",
+			},
+			200,
 		);
 	}
 });

@@ -2,6 +2,7 @@ import { type Context, Hono, type Next } from "hono";
 import type { PrService } from "../../application/prService";
 import type { Dependencies } from "../../config/di";
 import type { PullRequest } from "../../domain/pullRequest";
+import { NotFoundError } from "../../errors/NotFoundError";
 import type { PrRepoPort } from "../../ports/prRepoPort";
 import type {
 	AuthVariables,
@@ -88,6 +89,7 @@ describe("prRoutes", () => {
 		mockPrService = {
 			getPullRequest: jest.fn(),
 			likeArticle: jest.fn(),
+			ingestPr: jest.fn(),
 		} as unknown as jest.Mocked<PrService>;
 		mockPrRepo = {
 			findByOwnerRepoNumber: jest.fn(),
@@ -119,7 +121,7 @@ describe("prRoutes", () => {
 	});
 
 	it("GET /repos/:owner/:repo/pulls/:number 異常系: PRが存在しない", async () => {
-		mockPrService.getPullRequest.mockResolvedValue(null);
+		(mockPrService.getPullRequest as jest.Mock).mockResolvedValue(null);
 		mockPrRepo.findByOwnerRepoNumber.mockResolvedValue(null);
 		const req = new Request("http://localhost/repos/owner/repo/pulls/999");
 		const res = await app.request(req);
@@ -163,5 +165,37 @@ describe("prRoutes", () => {
 		expect(json.error.code).toBe("UNAUTHENTICATED");
 
 		authSpy.mockRestore();
+	});
+
+	describe("POST /repos/:owner/:repo/pulls/:number/ingest", () => {
+		it("異常系: サービスがNotFoundErrorをスローした場合、404を返す", async () => {
+			mockPrService.ingestPr.mockRejectedValue(
+				new NotFoundError("NOT_FOUND", "Pull request not found"),
+			);
+
+			const req = new Request(
+				"http://localhost/repos/owner/repo/pulls/999/ingest",
+				{ method: "POST" },
+			);
+			const res = await app.request(req);
+
+			expect(res.status).toBe(404);
+			const json = await res.json();
+			expect(json.success).toBe(false);
+			expect(json.error.code).toBe("NOT_FOUND");
+		});
+
+		it("異常系: パスパラメータが不正な場合、422を返す", async () => {
+			const req = new Request(
+				"http://localhost/repos/owner/repo/pulls/not-a-number/ingest",
+				{ method: "POST" },
+			);
+			const res = await app.request(req);
+
+			expect(res.status).toBe(422);
+			const json = await res.json();
+			expect(json.success).toBe(false);
+			expect(json.error.code).toBe("VALIDATION_ERROR");
+		});
 	});
 });

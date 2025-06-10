@@ -7,10 +7,10 @@ import {
 	type User as UserSchemaType,
 } from "@prnews/common";
 import { favoriteRepositorySchema } from "@prnews/common";
-import {
-	createUser,
-	createUserObjectFromAuthenticatedUser,
-} from "../domain/user";
+import { AppError } from "../errors/AppError";
+import { ForbiddenError } from "../errors/ForbiddenError";
+import { NotFoundError } from "../errors/NotFoundError";
+import { ValidationError } from "../errors/ValidationError";
 import type { AuthSessionRepoPort } from "../ports/authSessionRepoPort";
 import type { FavoriteRepositoryRepoPort } from "../ports/favoriteRepositoryRepoPort.js";
 import type { GithubPort } from "../ports/githubPort.js";
@@ -101,26 +101,68 @@ export const createUserService = (deps: {
 			);
 			return null;
 		}
-		// 既存ユーザーのチェックをfindByFirebaseUidに変更
-		const existing = await deps.userRepo.findByFirebaseUid(
+		// 既存ユーザーのチェック
+		const existingUser = await deps.userRepo.findByFirebaseUid(
 			authenticatedUser.firebaseUid,
 		);
-		if (existing) {
+		if (existingUser) {
 			console.warn(
 				`[UserService] User already exists for FirebaseUID (${authenticatedUser.firebaseUid})`,
 			);
 			return null;
 		}
-
-		const newUserInputData = createUserObjectFromAuthenticatedUser(
-			authenticatedUser,
-			language ?? "ja",
+		// トークン取得
+		const userTokenRecord = await deps.userRepo.findByFirebaseUid(
+			authenticatedUser.firebaseUid,
 		);
-		const userToSave: UserSchemaType = {
-			id: randomUUID(), // 新しいIDをここで生成
-			...newUserInputData,
-			createdAt: new Date().toISOString(),
-			updatedAt: new Date().toISOString(),
+		if (!userTokenRecord?.encryptedGitHubAccessToken) {
+			console.error(
+				"[UserService] No encrypted GitHub access token found for user",
+				authenticatedUser.firebaseUid,
+			);
+			throw new ForbiddenError("GitHub access token is not registered.");
+		}
+		let githubAccessToken: string;
+		try {
+			githubAccessToken = decrypt(userTokenRecord.encryptedGitHubAccessToken);
+		} catch (e) {
+			console.error("[UserService] Failed to decrypt GitHub access token", e);
+			throw new ForbiddenError("Failed to decrypt GitHub access token");
+		}
+
+		// 2. GitHub APIから正規ユーザー情報を取得
+		let githubUserInfo: {
+			id: number;
+			login: string;
+			name: string | null;
+			email: string | null;
+			avatar_url: string | null;
+		};
+		try {
+			githubUserInfo =
+				await deps.githubPort.getAuthenticatedUserInfo(githubAccessToken);
+		} catch (e) {
+			console.error("[UserService] Failed to fetch GitHub user info", e);
+			throw new AppError(
+				"INTERNAL_SERVER_ERROR",
+				"Failed to fetch GitHub user info",
+			);
+		}
+
+		// 3. Userオブジェクトを生成
+		const now = new Date().toISOString();
+		const userToSave: import("../domain/user").User = {
+			id: randomUUID(),
+			githubUserId: githubUserInfo.id,
+			githubUsername: githubUserInfo.login,
+			language: language ?? "ja",
+			firebaseUid: authenticatedUser.firebaseUid,
+			githubDisplayName: githubUserInfo.name,
+			email: githubUserInfo.email,
+			avatarUrl: githubUserInfo.avatar_url,
+			createdAt: now,
+			updatedAt: now,
+			encryptedGitHubAccessToken: userTokenRecord.encryptedGitHubAccessToken,
 		};
 		const validationResult = UserSchema.safeParse(userToSave);
 		if (!validationResult.success) {
@@ -128,7 +170,10 @@ export const createUserService = (deps: {
 				"[UserService] New user data validation failed before saving:",
 				validationResult.error.flatten().fieldErrors,
 			);
-			return null;
+			throw new ValidationError(
+				"User data validation failed",
+				validationResult.error.flatten().fieldErrors,
+			);
 		}
 		const validatedNewUser = validationResult.data;
 		const savedUser = await deps.userRepo.save(validatedNewUser);
@@ -137,7 +182,10 @@ export const createUserService = (deps: {
 				"[UserService] Failed to save new user to DB for ID:",
 				authenticatedUser.id,
 			);
-			return null;
+			throw new AppError(
+				"INTERNAL_SERVER_ERROR",
+				"Failed to save new user to DB",
+			);
 		}
 		console.log("[UserService] Successfully saved new user to DB:", savedUser);
 		return savedUser;
@@ -163,29 +211,22 @@ export const createUserService = (deps: {
 			createdAt: now,
 			revokedAt: undefined,
 		};
-		const saved = await deps.authSessionRepo.save(session);
-		if (!saved) {
-			console.error("[UserService] Failed to save new session");
-			return null;
-		}
-		console.log("[UserService] Created new session:", saved);
-		return saved;
+		return session;
 	};
 
 	const registerFavoriteRepository = async (
 		authenticatedUser: AuthenticatedUser | undefined,
 		owner: string,
 		repo: string,
-	): Promise<
-		| { alreadyExists: boolean; favorite: FavoriteRepository }
-		| { error: ErrorCode }
-	> => {
+	): Promise<{ alreadyExists: boolean; favorite: FavoriteRepository }> => {
 		if (!authenticatedUser) {
-			return { error: ErrorCode.UNAUTHENTICATED };
+			throw new ForbiddenError("User is not authenticated.");
 		}
 		const user = await deps.userRepo.findById(authenticatedUser.id);
 		if (!user?.encryptedGitHubAccessToken) {
-			return { error: ErrorCode.UNAUTHENTICATED };
+			throw new ForbiddenError(
+				"GitHub access token is not registered. Please connect your GitHub account.",
+			);
 		}
 		const accessToken = decrypt(user.encryptedGitHubAccessToken);
 		let repoInfo: import("../domain/repository.js").RepositoryInfo;
@@ -197,9 +238,15 @@ export const createUserService = (deps: {
 			);
 		} catch (e: unknown) {
 			if (e instanceof Error && e.message === ErrorCode.GITHUB_REPO_NOT_FOUND) {
-				return { error: ErrorCode.GITHUB_REPO_NOT_FOUND };
+				throw new NotFoundError(
+					"GITHUB_REPO_NOT_FOUND",
+					"GitHub repository not found",
+				);
 			}
-			return { error: ErrorCode.INTERNAL_SERVER_ERROR };
+			throw new AppError(
+				"INTERNAL_SERVER_ERROR",
+				"Failed to fetch repository info",
+			);
 		}
 		const existing =
 			await deps.favoriteRepositoryRepo.findByUserIdAndGithubRepoId(
@@ -221,7 +268,10 @@ export const createUserService = (deps: {
 		};
 		const validation = favoriteRepositorySchema.safeParse(favorite);
 		if (!validation.success) {
-			return { error: ErrorCode.VALIDATION_ERROR };
+			throw new ValidationError(
+				"FavoriteRepository validation failed",
+				validation.error.flatten().fieldErrors,
+			);
 		}
 		const saved = await deps.favoriteRepositoryRepo.save(favorite);
 		return { alreadyExists: false, favorite: saved };
@@ -246,6 +296,31 @@ export const createUserService = (deps: {
 		}
 	};
 
+	const getFavoriteRepositories = async (
+		userId: string,
+		options: { limit: number; offset: number },
+	): Promise<{ favorites: FavoriteRepository[]; total: number }> => {
+		return deps.favoriteRepositoryRepo.findByUserId(userId, options);
+	};
+
+	const deleteFavoriteRepository = async (
+		userId: string,
+		favoriteId: string,
+	): Promise<{ success: boolean }> => {
+		const favorite = await deps.favoriteRepositoryRepo.findById(favoriteId);
+		if (!favorite) {
+			throw new NotFoundError("Favorite repository not found");
+		}
+		if (favorite.userId !== userId) {
+			throw new ForbiddenError("Forbidden to delete this favorite repository");
+		}
+		const deleted = await deps.favoriteRepositoryRepo.delete(favoriteId);
+		if (!deleted) {
+			throw new NotFoundError("Favorite repository not found");
+		}
+		return { success: true };
+	};
+
 	return {
 		getCurrentUser,
 		logoutUser,
@@ -253,6 +328,8 @@ export const createUserService = (deps: {
 		createSession,
 		registerFavoriteRepository,
 		saveGitHubToken,
+		getFavoriteRepositories,
+		deleteFavoriteRepository,
 	};
 };
 

@@ -9,3 +9,4 @@ export * from "./schemas/favoriteRepositorySchema";
 export * from "./schemas/articleLikeSchema";
 export * from "./schemas/likedArticleInfoSchema";
 export * from "./schemas/rankedArticleInfoSchema";
+export * from "./schemas/pullRequestListItemSchema";

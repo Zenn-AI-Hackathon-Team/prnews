@@ -108,12 +108,52 @@
         ```
 
 - **GET /users/me/favorite-repositories**
-    - 実装: 未実装（2024/6/8時点）
-    - 今後の拡張候補として記載。
+    - 認証: 必須
+    - クエリ: `limit`, `offset` (デフォルトはサーバー側で設定)
+    - 出力: `{ data: FavoriteRepository[], pagination: Pagination }`
+    - レスポンス例:
+        ```json
+        {
+            "success": true,
+            "data": {
+                "data": [
+                    {
+                        "id": "uuid-of-favorite",
+                        "userId": "uuid-of-user",
+                        "githubRepoId": 12345,
+                        "repositoryFullName": "owner/repo",
+                        "owner": "owner",
+                        "repo": "repo",
+                        "registeredAt": "2024-01-01T00:00:00Z"
+                    }
+                ],
+                "pagination": {
+                    "totalItems": 1,
+                    "limit": 10,
+                    "offset": 0
+                }
+            },
+            "message": null
+        }
+        ```
+    - 用途: 認証ユーザーが登録したお気に入りリポジトリの一覧を、ページネーション付きで取得する。
 
-- **DELETE /users/me/favorite-repositories**
-    - 実装: 未実装（2024/6/8時点）
-    - 今後の拡張候補として記載。
+- **DELETE /users/me/favorite-repositories/{favoriteId}**
+    - 認証: 必須
+    - 入力: なし（パスパラメータ `favoriteId` で指定）
+    - 出力: `{ message: string }`
+    - レスポンス例:
+        ```json
+        {
+            "success": true,
+            "data": {
+                "message": "Favorite repository deleted successfully."
+            },
+            "message": "Favorite repository deleted successfully."
+        }
+        ```
+    - 処理: 指定されたIDのお気に入りリポジトリを削除する。**認証ユーザー自身が登録したお気に入り以外は削除できない。**
+    - エラー: `NOT_FOUND` (指定された`favoriteId`のお気に入りが見つからない場合), `FORBIDDEN` (認証ユーザーがそのお気に入りの所有者でない場合)
 
 ---
 

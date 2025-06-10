@@ -8,9 +8,6 @@ export type AuthSession = {
 	revokedAt?: string;
 };
 
-export const createAuthSession = (
-	props: Omit<AuthSession, "id">,
-): AuthSession => ({
-	id: crypto.randomUUID(),
+export const createAuthSession = (props: AuthSession): AuthSession => ({
 	...props,
 });
