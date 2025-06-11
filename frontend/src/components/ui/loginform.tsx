@@ -1,16 +1,15 @@
-'use client';
+"use client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
 type LoginFormProps = {
-  onGithubLogin: () => void
-} & React.ComponentProps<"div">
-
+	onGithubLogin: () => void;
+} & React.ComponentProps<"div">;
 
 export function LoginForm({
-    onGithubLogin,
+	onGithubLogin,
 	className,
 	...props
 }: LoginFormProps) {
@@ -33,7 +32,12 @@ export function LoginForm({
 								</p>
 							</div>
 
-							<Button variant="outline" className="w-full" type="button" onClick={onGithubLogin}>
+							<Button
+								variant="outline"
+								className="w-full"
+								type="button"
+								onClick={onGithubLogin}
+							>
 								<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
 									<title>GitHub icon</title>
 									<path
