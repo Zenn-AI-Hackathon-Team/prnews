@@ -5,6 +5,7 @@ import { ZodError } from "zod";
 import { buildDependencies } from "./config/di";
 import { createApp } from "./presentation/hono-app";
 import generalRoutes from "./presentation/routes/generalRoutes";
+import issueRoutes from "./presentation/routes/issueRoutes";
 import prRoutes from "./presentation/routes/prRoutes";
 import rankingRoutes from "./presentation/routes/rankingRoutes";
 import userRoutes from "./presentation/routes/userRoutes";
@@ -23,6 +24,8 @@ app.use("*", async (c, next) => {
 	c.set("userService", deps.userService);
 	c.set("rankingService", deps.rankingService);
 	c.set("auth", deps.auth);
+	c.set("issueRepo", deps.issueRepo);
+	c.set("issueService", deps.issueService);
 	await next();
 });
 
@@ -30,6 +33,7 @@ const api = app
 	.route("/", generalRoutes)
 	.route("/", prRoutes)
 	.route("/", userRoutes)
+	.route("/", issueRoutes)
 	.route("/", rankingRoutes);
 
 export type AppType = typeof api;
@@ -82,5 +86,3 @@ serve(
 		console.log(`Server is running on http://localhost:${info.port}`);
 	},
 );
-
-export type AppType = typeof app;

@@ -1,3 +1,4 @@
+import type { Issue } from "@prnews/common";
 import type { PullRequest } from "../domain/pullRequest.js";
 import type { RepositoryInfo } from "../domain/repository.js";
 
@@ -42,4 +43,10 @@ export interface GithubPort {
 			page?: number;
 		},
 	): Promise<GithubPullRequestSummary[]>;
+	fetchIssue(
+		accessToken: string,
+		owner: string,
+		repo: string,
+		issueNumber: number,
+	): Promise<Issue | null>;
 }

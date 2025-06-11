@@ -745,7 +745,9 @@ const privateRoutes = createApp()
 // =============================
 const prRoutes = createApp()
 	.route("/", publicRoutes)
-	.use("/repos/*", authMiddleware)
+	.use("/repos/{owner}/{repo}/pulls", authMiddleware)
+	.use("/repos/{owner}/{repo}/pulls/{number}/ingest", authMiddleware)
+	.use("/repos/{owner}/{repo}/pulls/{number}/article", authMiddleware)
 	.use("/articles/*", authMiddleware)
 	.route("/", privateRoutes);
 

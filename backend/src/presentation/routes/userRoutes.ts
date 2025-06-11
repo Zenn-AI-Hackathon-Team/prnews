@@ -511,6 +511,7 @@ GitHubアクセストークンを保存します。
 その後、ユーザ作成API(POST /auth/signup)を呼び出してください。
 `,
 	tags: ["User & Auth"],
+	security: [{ bearerAuth: [] }],
 	request: {
 		body: {
 			content: {
@@ -563,6 +564,7 @@ GitHubアクセストークンを保存します。
 });
 
 // 公開ルート（token/exchange のみ）
+/** 
 const publicRoutes = createApp().openapi(tokenExchangeRoute, async (c) => {
 	const { userService } = c.var;
 	const authHeader = c.req.header("Authorization");
@@ -597,6 +599,7 @@ const publicRoutes = createApp().openapi(tokenExchangeRoute, async (c) => {
 		200,
 	);
 });
+*/
 
 // 保護ルート
 const privateRoutes = createApp()
@@ -746,14 +749,52 @@ const privateRoutes = createApp()
 			},
 			200,
 		);
+	})
+	.openapi(tokenExchangeRoute, async (c) => {
+		const { userService } = c.var;
+		console.log("header", c.req.header);
+
+		const authHeader = c.req.header("Authorization");
+		if (!authHeader || !authHeader.startsWith("Bearer ")) {
+			throw new HTTPException(401, {
+				message: "Bearer token is missing or invalid",
+			});
+		}
+		const idToken = authHeader.substring(7);
+		let decodedToken: DecodedIdToken;
+		try {
+			decodedToken = await getAuth().verifyIdToken(idToken);
+		} catch (error) {
+			throw new HTTPException(401, {
+				message: "Invalid Firebase ID token",
+				cause: error,
+			});
+		}
+		const { githubAccessToken } = c.req.valid("json");
+		if (!githubAccessToken) {
+			throw new HTTPException(400, {
+				message: "githubAccessToken is required",
+			});
+		}
+		const result = await userService.saveGitHubToken(
+			decodedToken.uid,
+			githubAccessToken,
+		);
+		if (!result.success) {
+			throw new HTTPException(500, { message: "Failed to save token." });
+		}
+		return c.json(
+			{
+				success: true as const,
+				data: { message: "Token saved successfully." },
+			},
+			200,
+		);
 	});
 
 const userRoutes = createApp()
-	.route("/", publicRoutes) // /auth/token/exchange は認証不要
-	.use("/auth/signup", authMiddleware) // /auth/signup にミドルウェアを適用
-	.use("/auth/session", authMiddleware) // /auth/session にミドルウェアを適用
-	.use("/auth/logout", authMiddleware) // /auth/logout にミドルウェアを適用
-	.use("/users/*", authMiddleware) // /users/以下の全パスにミドルウェアを適用
+	.use("/auth/*", authMiddleware)
+	.use("/users/*", authMiddleware)
 	.route("/", privateRoutes); // 保護ルートを定義
 
 export default userRoutes;

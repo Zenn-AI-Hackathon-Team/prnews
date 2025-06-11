@@ -6,6 +6,7 @@ import {
 } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
 import { getFirestore } from "firebase-admin/firestore";
+import { createIssueService } from "src/application/issueService";
 import serviceAccount from "../../.gcloud/firebase-admin.json" assert {
 	type: "json",
 };
@@ -18,6 +19,7 @@ import { githubClient } from "../infrastructure/adapters/githubClient";
 import { articleLikeRepoFirestore } from "../infrastructure/repositories/articleLikeRepoFirestore";
 import { authSessionRepoFirestore } from "../infrastructure/repositories/authSessionRepoFirestore";
 import { favoriteRepositoryRepoFirestore } from "../infrastructure/repositories/favoriteRepositoryRepoFirestore";
+import { issueRepoFirestore } from "../infrastructure/repositories/issueRepoFirestore";
 import { prRepoFirestore } from "../infrastructure/repositories/prRepoFirestore";
 import { userRepoFirestore } from "../infrastructure/repositories/userRepoFirestore";
 
@@ -40,6 +42,7 @@ const prRepo = prRepoFirestore(firestore);
 const github = githubClient();
 const gemini = geminiClient();
 const auth = getAuth();
+const issueRepo = issueRepoFirestore(firestore);
 
 export const buildDependencies = () => {
 	const generalService = createGeneralService({});
@@ -56,6 +59,12 @@ export const buildDependencies = () => {
 		favoriteRepositoryRepo,
 		githubPort: github,
 	});
+	const issueService = createIssueService({
+		github,
+		gemini,
+		issueRepo,
+		userRepo,
+	});
 	const rankingService = createRankingService({ prRepo, articleLikeRepo });
 	return {
 		github,
@@ -70,6 +79,8 @@ export const buildDependencies = () => {
 		userService,
 		rankingService,
 		auth,
+		issueRepo,
+		issueService,
 	};
 };
 

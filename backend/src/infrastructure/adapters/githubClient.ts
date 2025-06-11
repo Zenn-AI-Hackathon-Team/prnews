@@ -145,4 +145,89 @@ export const githubClient = (): GithubPort => ({
 			throw new HTTPException(500, { message: "Internal server error" });
 		}
 	},
+	async fetchIssue(accessToken, owner, repo, issueNumber) {
+		const octokit = getOctokit(accessToken);
+		try {
+			const { data: issueData } = await octokit.issues.get({
+				owner,
+				repo,
+				issue_number: issueNumber,
+			});
+			const { data: commentsData } = await octokit.issues.listComments({
+				owner,
+				repo,
+				issue_number: issueNumber,
+			});
+			const issue = {
+				issueNumber: issueData.number,
+				repositoryFullName: `${owner}/${repo}`,
+				githubIssueUrl: issueData.html_url,
+				title: issueData.title,
+				body: issueData.body ?? null,
+				author: issueData.user
+					? {
+							login: issueData.user.login,
+							avatar_url: issueData.user.avatar_url,
+							html_url: issueData.user.html_url,
+						}
+					: { login: "", avatar_url: "", html_url: "" },
+				state: issueData.state as "open" | "closed",
+				labels: issueData.labels.map((label) =>
+					typeof label === "string"
+						? { name: label, color: "ffffff", description: null }
+						: {
+								name: label.name ?? "unknown label",
+								color: label.color ?? "ffffff",
+								description: label.description ?? null,
+							},
+				),
+				assignee: issueData.assignee
+					? {
+							login: issueData.assignee.login,
+							avatar_url: issueData.assignee.avatar_url,
+							html_url: issueData.assignee.html_url,
+						}
+					: null,
+				assignees:
+					issueData.assignees?.map((user) => ({
+						login: user.login,
+						avatar_url: user.avatar_url,
+						html_url: user.html_url,
+					})) ?? null,
+				milestone: issueData.milestone
+					? {
+							title: issueData.milestone.title,
+							state: issueData.milestone.state,
+						}
+					: null,
+				comments: commentsData.map((comment) => ({
+					author: comment.user
+						? {
+								login: comment.user.login,
+								avatar_url: comment.user.avatar_url,
+								html_url: comment.user.html_url,
+							}
+						: null,
+					body: comment.body ?? "",
+					createdAt: comment.created_at,
+				})),
+				githubIssueCreatedAt: issueData.created_at,
+				githubIssueUpdatedAt: issueData.updated_at,
+			};
+			return issue;
+		} catch (error) {
+			if (
+				typeof error === "object" &&
+				error !== null &&
+				"status" in error &&
+				error.status === 404
+			) {
+				return null;
+			}
+			console.error("Failed to fetch issue from GitHub:", error);
+			throw new HTTPException(500, {
+				message: "Failed to fetch issue from GitHub",
+			});
+		}
+	},
 });
