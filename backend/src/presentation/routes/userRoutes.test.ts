@@ -1,3 +1,4 @@
+import type { DecodedIdToken } from "firebase-admin/auth";
 import { type Context, Hono, type Next } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { ZodError } from "zod";
@@ -13,6 +14,26 @@ type TestVariables = {
 	prService: jest.Mocked<PrService>;
 	user: AuthenticatedUser;
 };
+
+jest.mock("../middlewares/authMiddleware", () => ({
+	authMiddleware: jest.fn((c: Context, next: Next) => {
+		// テストでは既にc.var.userがセットされてるので、ここでは単純に次の処理へ進める
+		return next();
+	}),
+}));
+
+jest.mock("firebase-admin/auth", () => ({
+	getAuth: () => ({
+		verifyIdToken: jest
+			.fn()
+			.mockImplementation(async (token: string): Promise<DecodedIdToken> => {
+				if (token === "dummy-token") {
+					return { uid: "test-firebase-uid" } as DecodedIdToken;
+				}
+				throw new HTTPException(401, { message: "Invalid test token" });
+			}),
+	}),
+}));
 
 describe("userRoutes", () => {
 	let app: Hono<{ Variables: TestVariables }>;
@@ -321,6 +342,124 @@ describe("userRoutes", () => {
 			const json = await res.json();
 			expect(json.code).toBe("HTTP_EXCEPTION");
 			expect(json.message).toBe("GitHub repository not found");
+		});
+	});
+
+	describe("POST /auth/signup", () => {
+		it("正常系: ユーザー作成で201", async () => {
+			const user: User = {
+				id: "11111111-1111-1111-1111-111111111111",
+				githubUserId: 1,
+				githubUsername: "foo",
+				language: "ja",
+				firebaseUid: "f1",
+				githubDisplayName: "Foo Bar",
+				email: "foo@example.com",
+				avatarUrl: "http://example.com/avatar.png",
+				createdAt: "2024-01-01T00:00:00Z",
+				updatedAt: "2024-01-01T00:00:00Z",
+			};
+			mockUserService.createUser.mockResolvedValue(user);
+			const req = new Request("http://localhost/auth/signup", {
+				method: "POST",
+				body: JSON.stringify({ language: "ja" }),
+				headers: { "content-type": "application/json" },
+			});
+			const res = await app.request(req);
+			expect(res.status).toBe(201);
+			const json = await res.json();
+			expect(json.success).toBe(true);
+			expect(json.data.id).toBe("11111111-1111-1111-1111-111111111111");
+		});
+		it("異常系: 既存ユーザーなら409", async () => {
+			mockUserService.createUser.mockResolvedValue("already_exists");
+			const req = new Request("http://localhost/auth/signup", {
+				method: "POST",
+				body: JSON.stringify({ language: "ja" }),
+				headers: { "content-type": "application/json" },
+			});
+			const res = await app.request(req);
+			expect(res.status).toBe(409);
+			const json = await res.json();
+			expect(json.code).toBe("HTTP_EXCEPTION");
+			expect(json.message).toMatch(/already exists/);
+		});
+		it("異常系: createUserがnullなら500", async () => {
+			mockUserService.createUser.mockResolvedValue(null);
+			const req = new Request("http://localhost/auth/signup", {
+				method: "POST",
+				body: JSON.stringify({ language: "ja" }),
+				headers: { "content-type": "application/json" },
+			});
+			const res = await app.request(req);
+			expect(res.status).toBe(500);
+			const json = await res.json();
+			expect(json.code).toBe("HTTP_EXCEPTION");
+			expect(json.message).toMatch(/create/);
+		});
+		it("異常系: 未認証なら401", async () => {
+			const unauthApp = new Hono();
+			unauthApp.route("/", userRoutes);
+			const req = new Request("http://localhost/auth/signup", {
+				method: "POST",
+				body: JSON.stringify({ language: "ja" }),
+				headers: { "content-type": "application/json" },
+			});
+			const res = await unauthApp.request(req);
+			expect(res.status).toBe(401);
+		});
+	});
+
+	describe("POST /auth/token/exchange", () => {
+		it("正常系: saveGitHubTokenがsuccessなら200", async () => {
+			mockUserService.saveGitHubToken.mockResolvedValue({ success: true });
+			const req = new Request("http://localhost/auth/token/exchange", {
+				method: "POST",
+				body: JSON.stringify({ githubAccessToken: "ghp_abc" }),
+				headers: {
+					"content-type": "application/json",
+					authorization: "Bearer dummy-token",
+				},
+			});
+			const res = await app.request(req);
+			expect(res.status).toBe(200);
+			const json = await res.json();
+			expect(json.success).toBe(true);
+			expect(json.data.message).toMatch(/Token saved/);
+		});
+		it("異常系: Authorizationヘッダーが無い場合は401", async () => {
+			const req = new Request("http://localhost/auth/token/exchange", {
+				method: "POST",
+				body: JSON.stringify({ githubAccessToken: "ghp_abc" }),
+				headers: { "content-type": "application/json" },
+			});
+			const res = await app.request(req);
+			expect(res.status).toBe(401);
+		});
+		it("異常系: githubAccessTokenが無い場合は422", async () => {
+			const req = new Request("http://localhost/auth/token/exchange", {
+				method: "POST",
+				body: JSON.stringify({}),
+				headers: {
+					"content-type": "application/json",
+					authorization: "Bearer dummy-token",
+				},
+			});
+			const res = await app.request(req);
+			expect(res.status).toBe(422);
+		});
+		it("異常系: saveGitHubTokenがsuccess=falseなら500", async () => {
+			mockUserService.saveGitHubToken.mockResolvedValue({ success: false });
+			const req = new Request("http://localhost/auth/token/exchange", {
+				method: "POST",
+				body: JSON.stringify({ githubAccessToken: "ghp_abc" }),
+				headers: {
+					"content-type": "application/json",
+					authorization: "Bearer dummy-token",
+				},
+			});
+			const res = await app.request(req);
+			expect(res.status).toBe(500);
 		});
 	});
 });

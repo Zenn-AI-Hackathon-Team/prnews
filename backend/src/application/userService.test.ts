@@ -12,6 +12,7 @@ import { createUserService } from "./userService";
 // cryptoモジュールをモック化
 jest.mock("../utils/crypto", () => ({
 	decrypt: jest.fn(),
+	encrypt: jest.fn((text: string) => `encrypted_${text}`),
 }));
 
 describe("userService", () => {
@@ -100,21 +101,22 @@ describe("userService", () => {
 	});
 
 	describe("createUser", () => {
-		it("新規ユーザーが正常に作成される", async () => {
-			userRepo.findByFirebaseUid.mockResolvedValueOnce(null);
-			userRepo.findByFirebaseUid.mockResolvedValueOnce({
+		it("仮ユーザー（githubUserId=0, encryptedGitHubAccessTokenあり）をGitHub情報で上書きする", async () => {
+			const mockUser: User = {
 				id: "u2",
 				firebaseUid: "f2",
-				githubUsername: "bar",
-				githubUserId: 54321,
+				githubUsername: "",
+				githubUserId: 0,
 				language: "en",
 				createdAt: "2024-01-01T00:00:00Z",
 				updatedAt: "2024-01-01T00:00:00Z",
 				encryptedGitHubAccessToken: "encrypted-token-string",
-			});
-
+				githubDisplayName: null,
+				email: null,
+				avatarUrl: null,
+			};
+			userRepo.findByFirebaseUid.mockResolvedValue(mockUser);
 			(decrypt as jest.Mock).mockReturnValue("decrypted-access-token");
-
 			(githubPort.getAuthenticatedUserInfo as jest.Mock).mockResolvedValue({
 				id: 54321,
 				login: "bar_from_github",
@@ -122,23 +124,28 @@ describe("userService", () => {
 				email: "bar@github.com",
 				avatar_url: "http://example.com/bar.png",
 			});
-
-			userRepo.save.mockImplementation(async (u: User) => u);
-
+			userRepo.update.mockImplementation(async (id, update) => ({
+				...mockUser,
+				...update,
+			}));
 			const authUser: AuthenticatedUser = {
 				id: "u2",
 				firebaseUid: "f2",
-				githubUsername: "bar",
+				githubUsername: "",
 			};
 			const result = await service.createUser(authUser, "en");
-
-			expect(result).not.toBeNull();
-			expect(result?.githubUserId).toBe(54321);
-			expect(result?.githubUsername).toBe("bar_from_github");
-			expect(result?.language).toBe("en");
-			expect(result?.firebaseUid).toBe("f2");
+			if (result !== "already_exists" && result !== null) {
+				expect(result.githubUserId).toBe(54321);
+				expect(result.githubUsername).toBe("bar_from_github");
+				expect(result.language).toBe("en");
+			}
+			expect(userRepo.update).toHaveBeenCalledWith(
+				"u2",
+				expect.objectContaining({ githubUserId: 54321 }),
+			);
 		});
-		it("既存ユーザーがいる場合はnull", async () => {
+
+		it("既存ユーザー（githubUserId>0）がいる場合は'already_exists'を返す", async () => {
 			const existingUser: User = {
 				id: "u2",
 				githubUserId: 2,
@@ -150,22 +157,41 @@ describe("userService", () => {
 				avatarUrl: "http://example.com/avatar.png",
 				createdAt: "2024-01-01T00:00:00Z",
 				updatedAt: "2024-01-01T00:00:00Z",
+				encryptedGitHubAccessToken: "encrypted-token-string",
 			};
 			userRepo.findByFirebaseUid.mockResolvedValue(existingUser);
 			const authUser: AuthenticatedUser = {
 				id: "u2",
 				firebaseUid: "f2",
 				githubUsername: "bar",
-				githubDisplayName: "Bar",
-				email: "bar@example.com",
-				avatarUrl: "http://example.com/avatar.png",
 			};
 			const result = await service.createUser(authUser, "en");
-			expect(result).toBeNull();
+			expect(result).toBe("already_exists");
 		});
-		it("未認証の場合はnull", async () => {
-			const result = await service.createUser(undefined, "en");
-			expect(result).toBeNull();
+
+		it("仮ユーザーだがGitHubトークン未登録の場合は400エラー", async () => {
+			const mockUser: User = {
+				id: "u2",
+				firebaseUid: "f2",
+				githubUsername: "",
+				githubUserId: 0,
+				language: "en",
+				createdAt: "2024-01-01T00:00:00Z",
+				updatedAt: "2024-01-01T00:00:00Z",
+				githubDisplayName: null,
+				email: null,
+				avatarUrl: null,
+				// encryptedGitHubAccessToken: undefined,
+			};
+			userRepo.findByFirebaseUid.mockResolvedValue(mockUser);
+			const authUser: AuthenticatedUser = {
+				id: "u2",
+				firebaseUid: "f2",
+				githubUsername: "",
+			};
+			await expect(service.createUser(authUser, "en")).rejects.toThrow(
+				"GitHub token is not exchanged yet.",
+			);
 		});
 	});
 
@@ -350,6 +376,58 @@ describe("userService", () => {
 				service.registerFavoriteRepository(authUser, "unknown", "repo"),
 			).rejects.toThrow(HTTPException);
 			expect(favoriteRepositoryRepo.save).not.toHaveBeenCalled();
+		});
+	});
+
+	describe("saveGitHubToken", () => {
+		it("仮ユーザーがいない場合は新規作成される", async () => {
+			userRepo.findByFirebaseUid.mockResolvedValue(null);
+			userRepo.save.mockResolvedValue({
+				id: "newid",
+				firebaseUid: "f3",
+				githubUserId: 0,
+				githubUsername: "",
+				language: "ja",
+				githubDisplayName: "",
+				email: "",
+				avatarUrl: "",
+				createdAt: "",
+				updatedAt: "",
+				encryptedGitHubAccessToken: "",
+			});
+			const result = await service.saveGitHubToken("f3", "token123");
+			expect(userRepo.save).toHaveBeenCalledWith(
+				expect.objectContaining({ firebaseUid: "f3" }),
+			);
+			expect(result.success).toBe(true);
+		});
+		it("仮ユーザーがいる場合はencryptedGitHubAccessTokenが更新される", async () => {
+			const mockUser: User = {
+				id: "u4",
+				firebaseUid: "f4",
+				githubUserId: 0,
+				githubUsername: "",
+				language: "ja",
+				githubDisplayName: "",
+				email: "",
+				avatarUrl: "",
+				createdAt: "",
+				updatedAt: "",
+				encryptedGitHubAccessToken: "",
+			};
+			userRepo.findByFirebaseUid.mockResolvedValue(mockUser);
+			userRepo.update.mockResolvedValue({
+				...mockUser,
+				encryptedGitHubAccessToken: "encrypted",
+			});
+			const result = await service.saveGitHubToken("f4", "token456");
+			expect(userRepo.update).toHaveBeenCalledWith(
+				"u4",
+				expect.objectContaining({
+					encryptedGitHubAccessToken: expect.any(String),
+				}),
+			);
+			expect(result.success).toBe(true);
 		});
 	});
 });
