@@ -7,8 +7,11 @@ import {
 	userSchema,
 	// 他必要なスキーマ
 } from "@prnews/common";
+import { getAuth } from "firebase-admin/auth";
+import type { DecodedIdToken } from "firebase-admin/auth";
 import { HTTPException } from "hono/http-exception";
 import { createApp } from "../hono-app";
+import { authMiddleware } from "../middlewares/authMiddleware";
 
 // --- GET /users/me ---
 const getMyProfileRoute = createRoute({
@@ -503,9 +506,10 @@ const tokenExchangeRoute = createRoute({
 	summary: "GitHubアクセストークン保存",
 	description: `\
 GitHubアクセストークンを保存します。
-- 本APIは認証（Bearerトークン）が必須です。
+ユーザ作成時にGitHubアクセストークンを保存するためのAPIです。
+ユーザ作成時は、まずこのAPIを呼び出して、GitHubアクセストークンを保存してください。
+その後、ユーザ作成API(POST /auth/signup)を呼び出してください。
 `,
-	security: [{ bearerAuth: [] }],
 	tags: ["User & Auth"],
 	request: {
 		body: {
@@ -558,7 +562,65 @@ GitHubアクセストークンを保存します。
 	},
 });
 
-const userRoutes = createApp()
+// 公開ルート（token/exchange のみ）
+const publicRoutes = createApp().openapi(tokenExchangeRoute, async (c) => {
+	const { userService } = c.var;
+	const authHeader = c.req.header("Authorization");
+	if (!authHeader || !authHeader.startsWith("Bearer ")) {
+		throw new HTTPException(401, {
+			message: "Bearer token is missing or invalid",
+		});
+	}
+	const idToken = authHeader.substring(7);
+	let decodedToken: DecodedIdToken;
+	try {
+		decodedToken = await getAuth().verifyIdToken(idToken);
+	} catch (error) {
+		throw new HTTPException(401, {
+			message: "Invalid Firebase ID token",
+			cause: error,
+		});
+	}
+	const { githubAccessToken } = c.req.valid("json");
+	if (!githubAccessToken) {
+		throw new HTTPException(400, { message: "githubAccessToken is required" });
+	}
+	const result = await userService.saveGitHubToken(
+		decodedToken.uid,
+		githubAccessToken,
+	);
+	if (!result.success) {
+		throw new HTTPException(500, { message: "Failed to save token." });
+	}
+	return c.json(
+		{ success: true as const, data: { message: "Token saved successfully." } },
+		200,
+	);
+});
+
+// 保護ルート
+const privateRoutes = createApp()
+	.openapi(signupRoute, async (c) => {
+		const { userService } = c.var;
+		const authenticatedUser = c.var.user;
+		if (!authenticatedUser) {
+			throw new HTTPException(401, { message: "Unauthenticated" });
+		}
+		const body = c.req.valid("json");
+		const result = await userService.createUser(
+			authenticatedUser,
+			body.language,
+		);
+		if (result === "already_exists") {
+			throw new HTTPException(409, { message: "User already exists" });
+		}
+		if (result === null) {
+			throw new HTTPException(500, {
+				message: "Failed to create/update user.",
+			});
+		}
+		return c.json({ success: true as const, data: result }, 201);
+	})
 	.openapi(getMyProfileRoute, async (c) => {
 		const { userService } = c.var;
 		const authenticatedUser = c.var.user;
@@ -584,25 +646,6 @@ const userRoutes = createApp()
 			});
 		}
 		return c.json({ success: true as const, data: {} }, 200);
-	})
-	.openapi(signupRoute, async (c) => {
-		const { userService } = c.var;
-		const authenticatedUser = c.var.user;
-		if (!authenticatedUser) {
-			throw new HTTPException(401, { message: "Unauthenticated" });
-		}
-		const body = c.req.valid("json");
-		const language =
-			typeof body.language === "string" ? body.language : undefined;
-		const created = await userService.createUser(authenticatedUser, language);
-		if (!created) {
-			const already = await userService.getCurrentUser(authenticatedUser);
-			if (already) {
-				throw new HTTPException(409, { message: "User already exists" });
-			}
-			throw new HTTPException(500, { message: "Failed to create user" });
-		}
-		return c.json({ success: true as const, data: created }, 201);
 	})
 	.openapi(sessionRoute, async (c) => {
 		const { userService } = c.var;
@@ -703,31 +746,14 @@ const userRoutes = createApp()
 			},
 			200,
 		);
-	})
-	.openapi(tokenExchangeRoute, async (c) => {
-		const { userService } = c.var;
-		const authenticatedUser = c.var.user;
-		if (!authenticatedUser) {
-			throw new HTTPException(401, { message: "Unauthenticated" });
-		}
-		const { githubAccessToken } = c.req.valid("json");
-		if (!githubAccessToken) {
-			throw new HTTPException(401, { message: "Invalid request" });
-		}
-		const result = await userService.saveGitHubToken(
-			authenticatedUser.id,
-			githubAccessToken,
-		);
-		if (!result.success) {
-			throw new HTTPException(500, { message: "Failed to save token." });
-		}
-		return c.json(
-			{
-				success: true as const,
-				data: { message: "Token saved successfully." },
-			},
-			200,
-		);
 	});
+
+const userRoutes = createApp()
+	.route("/", publicRoutes) // /auth/token/exchange は認証不要
+	.use("/auth/signup", authMiddleware) // /auth/signup にミドルウェアを適用
+	.use("/auth/session", authMiddleware) // /auth/session にミドルウェアを適用
+	.use("/auth/logout", authMiddleware) // /auth/logout にミドルウェアを適用
+	.use("/users/*", authMiddleware) // /users/以下の全パスにミドルウェアを適用
+	.route("/", privateRoutes); // 保護ルートを定義
 
 export default userRoutes;
