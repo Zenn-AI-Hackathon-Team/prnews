@@ -1,17 +1,39 @@
-'use client';
+"use client";
+import { GithubAuthProvider, signInWithPopup } from "firebase/auth";
 import Image from "next/image";
 import { useEffect } from "react";
+import { getAuth } from "../lib/firebase";
+
 
 export default function Home() {
-	
 	//urlのcode以下を取得
-	useEffect(()=>{
-		const url = window.location.search;
-		const params = new URLSearchParams(url);
-		const code = params.get("code");
-		console.log(code);
-	},[]);
+	useEffect(() => {
+		async function signIn() {
+			const url = window.location.search;
+			const params = new URLSearchParams(url);
+			const githubAccessToken = params.get("code");
 
+			const auth = getAuth();
+			const provider = new GithubAuthProvider();
+
+			const result = await signInWithPopup(auth, provider);
+			const user = result.user;
+			const firebaseToken = user.getIdToken();
+			console.log("firebaseToken", firebaseToken);
+
+			await fetch("http://localhost:8080/auth/token/exchange", {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+					Authorization: `Bearer ${firebaseToken}`,
+				},
+				body: JSON.stringify({
+					githubAccessToken: `${githubAccessToken}`,
+				}),
+			});
+		}
+		signIn();
+	}, []);
 
 	return (
 		<div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
