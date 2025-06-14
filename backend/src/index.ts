@@ -6,10 +6,10 @@ import { buildDependencies } from "./config/di";
 import { createApp } from "./presentation/hono-app";
 import { authMiddleware } from "./presentation/middlewares/authMiddleware";
 import generalRoutes from "./presentation/routes/generalRoutes";
+import issuePrivateRoutes from "./presentation/routes/issuePrivateRoutes";
 import issuePublicRoutes from "./presentation/routes/issuePublicRoutes";
-import issueRoutes from "./presentation/routes/issueRoutes";
+import prPrivateRoutes from "./presentation/routes/prPrivateRoutes";
 import prPublicRoutes from "./presentation/routes/prPublicRoutes";
-import prRoutes from "./presentation/routes/prRoutes";
 import rankingRoutes from "./presentation/routes/rankingRoutes";
 import userRoutes from "./presentation/routes/userRoutes";
 
@@ -41,8 +41,8 @@ const api = app
 	.use("/users/*", authMiddleware)
 	.use("/repos/*", authMiddleware)
 	.route("/", userRoutes)
-	.route("/", issueRoutes)
-	.route("/", prRoutes);
+	.route("/", issuePrivateRoutes)
+	.route("/", prPrivateRoutes);
 
 app.openAPIRegistry.registerComponent("securitySchemes", "bearerAuth", {
 	type: "http",

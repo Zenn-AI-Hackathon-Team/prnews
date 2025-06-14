@@ -1,6 +1,6 @@
 // HonoのRPCのサンプルページ
 // SSR(サーバーサイドレンダリング)バージョン
-import { prClient, rankingClient } from "@/lib/hono";
+import { rankingClient } from "@/lib/hono";
 import type { RankedArticleInfo } from "@prnews/common";
 
 const page = async () => {
@@ -12,16 +12,6 @@ const page = async () => {
 			language: "ja",
 		},
 	});
-	const res2 = await prClient.repos[":owner"][":repo"].pulls[
-		":number"
-	].article.$get({
-		param: {
-			owner: "owner",
-			repo: "repo",
-			number: "1",
-		},
-	});
-	console.log(res2);
 
 	// --- エラーハンドリングはここに集約 ---
 	if (!res.ok) {

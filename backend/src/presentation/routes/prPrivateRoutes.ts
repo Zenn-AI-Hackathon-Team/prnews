@@ -774,7 +774,7 @@ const likeArticleRoute = createRoute({
 	security: [{ bearerAuth: [] }],
 });
 
-const prRoutes = createApp()
+const prPrivateRoutes = createApp()
 	.openapi(ingestPrRoute, async (c) => {
 		const { prService } = c.var;
 		const user = c.var.user;
@@ -832,6 +832,6 @@ const prRoutes = createApp()
 		return c.json({ success: true as const, data: parsed }, 200);
 	});
 
-export type PrRoutesType = typeof prRoutes;
+export type PrPrivateRoutesType = typeof prPrivateRoutes;
 
-export default prRoutes;
+export default prPrivateRoutes;

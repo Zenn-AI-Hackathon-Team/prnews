@@ -104,7 +104,7 @@ const listRepoIssuesRoute = createRoute({
 	},
 });
 
-const issueRoutes = createApp()
+const issuePrivateRoutes = createApp()
 	// 保護POST/GET
 	.openapi(ingestIssueRoute, async (c) => {
 		const { issueService } = c.var;
@@ -146,6 +146,6 @@ const issueRoutes = createApp()
 		return c.json({ success: true, data: issueList });
 	});
 
-export type IssueRoutesType = typeof issueRoutes;
+export type IssuePrivateRoutesType = typeof issuePrivateRoutes;
 
-export default issueRoutes;
+export default issuePrivateRoutes;
