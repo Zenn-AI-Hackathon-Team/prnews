@@ -1829,20 +1829,20 @@
 									"properties": {
 										"success": { "type": "boolean", "example": true },
 										"data": {
-											"type": "array",
-											"items": {
-												"$ref": "#/components/schemas/LikedArticleInfo"
-											}
-										},
-										"message": { "type": "string", "nullable": true },
-										"pagination": {
 											"type": "object",
 											"properties": {
-												"totalItems": { "type": "integer" },
-												"limit": { "type": "integer" },
-												"offset": { "type": "integer" }
+												"data": {
+													"type": "array",
+													"items": {
+														"$ref": "#/components/schemas/LikedArticleInfo"
+													}
+												},
+												"pagination": {
+													"$ref": "#/components/schemas/Pagination"
+												}
 											}
-										}
+										},
+										"message": { "type": "string", "nullable": true }
 									}
 								}
 							}
@@ -1907,12 +1907,19 @@
 									"properties": {
 										"success": { "type": "boolean", "example": true },
 										"data": {
-											"type": "array",
-											"items": {
-												"$ref": "#/components/schemas/RankedArticleInfo"
+											"type": "object",
+											"properties": {
+												"data": {
+													"type": "array",
+													"items": {
+														"$ref": "#/components/schemas/RankedArticleInfo"
+													}
+												},
+												"pagination": {
+													"$ref": "#/components/schemas/Pagination"
+												}
 											}
 										},
-										"pagination": { "$ref": "#/components/schemas/Pagination" },
 										"message": { "type": "string", "nullable": true }
 									}
 								}

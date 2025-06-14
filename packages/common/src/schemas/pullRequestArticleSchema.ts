@@ -35,7 +35,7 @@ const notablePointSchema = z.object({
 });
 
 // 言語ごとの記事内容のスキーマ
-const articleContentSchema = z.object({
+const prArticleContentSchema = z.object({
 	aiGeneratedTitle: z
 		.string()
 		.min(1, "AI 生成タイトルは必須です")
@@ -51,7 +51,7 @@ const articleContentSchema = z.object({
 		.default(0)
 		.describe("この言語版の記事のいいね数"),
 });
-export type ArticleContent = z.infer<typeof articleContentSchema>;
+export type PrArticleContent = z.infer<typeof prArticleContentSchema>;
 
 export const pullRequestArticleSchema = pullRequestSchema.extend({
 	id: z.string().uuid("記事 ID は UUID 形式で入力してください"),
@@ -66,7 +66,7 @@ export const pullRequestArticleSchema = pullRequestSchema.extend({
 			z
 				.string()
 				.length(2, "言語コードは2文字である必要があります (例: ja, en)"),
-			articleContentSchema,
+			prArticleContentSchema,
 		)
 		.optional()
 		.describe(

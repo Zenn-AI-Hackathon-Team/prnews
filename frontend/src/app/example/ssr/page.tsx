@@ -1,11 +1,10 @@
 // HonoのRPCのサンプルページ
 // SSR(サーバーサイドレンダリング)バージョン
-
-import { client } from "@/lib/hono";
+import { rankingClient } from "@/lib/hono";
 import type { RankedArticleInfo } from "@prnews/common";
 
 const page = async () => {
-	const res = await client.ranking.articles.likes.$get({
+	const res = await rankingClient.ranking.articles.likes.$get({
 		query: {
 			limit: "10",
 			offset: "0",

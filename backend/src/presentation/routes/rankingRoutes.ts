@@ -54,7 +54,15 @@ const getArticleLikeRankingRoute = createRoute({
 						success: true,
 						data: {
 							data: [
-								{ id: "article1", title: "AI解説", lang: "ja", likeCount: 42 },
+								{
+									rank: 1,
+									articleId: "11111111-1111-1111-1111-111111111111",
+									languageCode: "ja",
+									aiGeneratedTitle: "AI 生成タイトルの例",
+									repositoryFullName: "vercel/next.js",
+									prNumber: 42,
+									likeCount: 42,
+								},
 							],
 							pagination: { totalItems: 1, limit: 10, offset: 0 },
 						},
@@ -108,3 +116,5 @@ const rankingRoutes = createApp().openapi(
 );
 
 export default rankingRoutes;
+
+export type RankingRoutesType = typeof rankingRoutes;

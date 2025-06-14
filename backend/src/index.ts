@@ -4,8 +4,12 @@ import { HTTPException } from "hono/http-exception";
 import { ZodError } from "zod";
 import { buildDependencies } from "./config/di";
 import { createApp } from "./presentation/hono-app";
+import { authMiddleware } from "./presentation/middlewares/authMiddleware";
 import generalRoutes from "./presentation/routes/generalRoutes";
-import prRoutes from "./presentation/routes/prRoutes";
+import issuePrivateRoutes from "./presentation/routes/issuePrivateRoutes";
+import issuePublicRoutes from "./presentation/routes/issuePublicRoutes";
+import prPrivateRoutes from "./presentation/routes/prPrivateRoutes";
+import prPublicRoutes from "./presentation/routes/prPublicRoutes";
 import rankingRoutes from "./presentation/routes/rankingRoutes";
 import userRoutes from "./presentation/routes/userRoutes";
 
@@ -23,16 +27,22 @@ app.use("*", async (c, next) => {
 	c.set("userService", deps.userService);
 	c.set("rankingService", deps.rankingService);
 	c.set("auth", deps.auth);
+	c.set("issueRepo", deps.issueRepo);
+	c.set("issueService", deps.issueService);
 	await next();
 });
 
 const api = app
 	.route("/", generalRoutes)
-	.route("/", prRoutes)
+	.route("/", rankingRoutes)
+	.route("/", issuePublicRoutes)
+	.route("/", prPublicRoutes)
+	.use("/auth/*", authMiddleware)
+	.use("/users/*", authMiddleware)
+	.use("/repos/*", authMiddleware)
 	.route("/", userRoutes)
-	.route("/", rankingRoutes);
-
-export type AppType = typeof api;
+	.route("/", issuePrivateRoutes)
+	.route("/", prPrivateRoutes);
 
 app.openAPIRegistry.registerComponent("securitySchemes", "bearerAuth", {
 	type: "http",
@@ -82,5 +92,3 @@ serve(
 		console.log(`Server is running on http://localhost:${info.port}`);
 	},
 );
-
-export type AppType = typeof app;

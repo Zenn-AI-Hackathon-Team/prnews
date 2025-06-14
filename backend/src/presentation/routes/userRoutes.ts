@@ -11,7 +11,6 @@ import { getAuth } from "firebase-admin/auth";
 import type { DecodedIdToken } from "firebase-admin/auth";
 import { HTTPException } from "hono/http-exception";
 import { createApp } from "../hono-app";
-import { authMiddleware } from "../middlewares/authMiddleware";
 
 // --- GET /users/me ---
 const getMyProfileRoute = createRoute({
@@ -122,6 +121,7 @@ const signupRoute = createRoute({
 - 本APIは認証（Bearerトークン）が必須です。
 `,
 	security: [{ bearerAuth: [] }],
+
 	tags: ["User & Auth"],
 	request: {
 		body: {
@@ -281,7 +281,15 @@ const addFavoriteRepoRoute = createRoute({
 					schema: successResponseSchema(favoriteRepositorySchema),
 					example: {
 						success: true,
-						data: { id: "fav1", owner: "vercel", repo: "next.js" },
+						data: {
+							id: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+							userId: "11111111-1111-1111-1111-111111111111",
+							githubRepoId: 123456,
+							repositoryFullName: "vercel/next.js",
+							owner: "vercel",
+							repo: "next.js",
+							registeredAt: "2024-01-04T00:00:00Z",
+						},
 					},
 				},
 			},
@@ -293,7 +301,15 @@ const addFavoriteRepoRoute = createRoute({
 					schema: successResponseSchema(favoriteRepositorySchema),
 					example: {
 						success: true,
-						data: { id: "fav2", owner: "vercel", repo: "next.js" },
+						data: {
+							id: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+							userId: "11111111-1111-1111-1111-111111111111",
+							githubRepoId: 123456,
+							repositoryFullName: "vercel/next.js",
+							owner: "vercel",
+							repo: "next.js",
+							registeredAt: "2024-01-04T00:00:00Z",
+						},
 					},
 				},
 			},
@@ -361,10 +377,12 @@ const getLikedArticlesRoute = createRoute({
 						data: {
 							data: [
 								{
-									id: "article1",
-									title: "AI解説",
-									lang: "ja",
-									likedAt: "2024-01-01T00:00:00Z",
+									articleId: "11111111-1111-1111-1111-111111111111",
+									languageCode: "ja",
+									likedAt: "2024-01-03T00:00:00Z",
+									aiGeneratedTitle: "AI 生成タイトルの例",
+									repositoryFullName: "vercel/next.js",
+									prNumber: 42,
 								},
 							],
 							pagination: { totalItems: 1, limit: 10, offset: 0 },
@@ -426,7 +444,17 @@ const getFavoriteReposRoute = createRoute({
 					example: {
 						success: true,
 						data: {
-							data: [{ id: "fav1", owner: "vercel", repo: "next.js" }],
+							data: [
+								{
+									id: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+									userId: "11111111-1111-1111-1111-111111111111",
+									githubRepoId: 123456,
+									repositoryFullName: "vercel/next.js",
+									owner: "vercel",
+									repo: "next.js",
+									registeredAt: "2024-01-04T00:00:00Z",
+								},
+							],
 							pagination: { totalItems: 1, limit: 20, offset: 0 },
 						},
 					},
@@ -511,6 +539,7 @@ GitHubアクセストークンを保存します。
 その後、ユーザ作成API(POST /auth/signup)を呼び出してください。
 `,
 	tags: ["User & Auth"],
+	security: [{ bearerAuth: [] }],
 	request: {
 		body: {
 			content: {
@@ -563,6 +592,7 @@ GitHubアクセストークンを保存します。
 });
 
 // 公開ルート（token/exchange のみ）
+/** 
 const publicRoutes = createApp().openapi(tokenExchangeRoute, async (c) => {
 	const { userService } = c.var;
 	const authHeader = c.req.header("Authorization");
@@ -597,20 +627,15 @@ const publicRoutes = createApp().openapi(tokenExchangeRoute, async (c) => {
 		200,
 	);
 });
+*/
 
-// 保護ルート
 const privateRoutes = createApp()
 	.openapi(signupRoute, async (c) => {
 		const { userService } = c.var;
-		const authenticatedUser = c.var.user;
-		if (!authenticatedUser) {
-			throw new HTTPException(401, { message: "Unauthenticated" });
-		}
 		const body = c.req.valid("json");
-		const result = await userService.createUser(
-			authenticatedUser,
-			body.language,
-		);
+		const user = c.var.user;
+		if (!user) throw new HTTPException(401, { message: "Unauthenticated" });
+		const result = await userService.createUser(user, body.language);
 		if (result === "already_exists") {
 			throw new HTTPException(409, { message: "User already exists" });
 		}
@@ -623,11 +648,9 @@ const privateRoutes = createApp()
 	})
 	.openapi(getMyProfileRoute, async (c) => {
 		const { userService } = c.var;
-		const authenticatedUser = c.var.user;
-		if (!authenticatedUser) {
-			throw new HTTPException(401, { message: "Unauthenticated" });
-		}
-		const userProfile = await userService.getCurrentUser(authenticatedUser);
+		const user = c.var.user;
+		if (!user) throw new HTTPException(401, { message: "Unauthenticated" });
+		const userProfile = await userService.getCurrentUser(user);
 		if (!userProfile) {
 			throw new HTTPException(404, { message: "User profile not found" });
 		}
@@ -635,11 +658,9 @@ const privateRoutes = createApp()
 	})
 	.openapi(logoutRoute, async (c) => {
 		const { userService } = c.var;
-		const authenticatedUser = c.var.user;
-		if (!authenticatedUser) {
-			throw new HTTPException(401, { message: "Unauthenticated" });
-		}
-		const result = await userService.logoutUser(authenticatedUser);
+		const user = c.var.user;
+		if (!user) throw new HTTPException(401, { message: "Unauthenticated" });
+		const result = await userService.logoutUser(user);
 		if (!result.success) {
 			throw new HTTPException(500, {
 				message: result.message || "Logout failed",
@@ -649,11 +670,9 @@ const privateRoutes = createApp()
 	})
 	.openapi(sessionRoute, async (c) => {
 		const { userService } = c.var;
-		const authenticatedUser = c.var.user;
-		if (!authenticatedUser) {
-			throw new HTTPException(401, { message: "Unauthenticated" });
-		}
-		const created = await userService.createSession(authenticatedUser);
+		const user = c.var.user;
+		if (!user) throw new HTTPException(401, { message: "Unauthenticated" });
+		const created = await userService.createSession(user);
 		if (!created) {
 			throw new HTTPException(500, { message: "Failed to create session" });
 		}
@@ -661,13 +680,11 @@ const privateRoutes = createApp()
 	})
 	.openapi(addFavoriteRepoRoute, async (c) => {
 		const { userService } = c.var;
-		const authenticatedUser = c.var.user;
-		if (!authenticatedUser) {
-			throw new HTTPException(401, { message: "Unauthenticated" });
-		}
+		const user = c.var.user;
+		if (!user) throw new HTTPException(401, { message: "Unauthenticated" });
 		const { owner, repo } = c.req.valid("json");
 		const result = await userService.registerFavoriteRepository(
-			authenticatedUser,
+			user,
 			owner,
 			repo,
 		);
@@ -678,17 +695,17 @@ const privateRoutes = createApp()
 	})
 	.openapi(getLikedArticlesRoute, async (c) => {
 		const { prService } = c.var;
-		const authenticatedUser = c.var.user;
-		if (!authenticatedUser) {
-			throw new HTTPException(401, { message: "Unauthenticated" });
-		}
+		const user = c.var.user;
+		if (!user) throw new HTTPException(401, { message: "Unauthenticated" });
 		const { lang, limit, offset, sort } = c.req.valid("query");
 		const numLimit = limit ? Number(limit) : undefined;
 		const numOffset = offset ? Number(offset) : undefined;
-		const { data, totalItems } = await prService.getLikedArticles(
-			authenticatedUser.id,
-			{ lang, limit: numLimit, offset: numOffset, sort },
-		);
+		const { data, totalItems } = await prService.getLikedArticles(user.id, {
+			lang,
+			limit: numLimit,
+			offset: numOffset,
+			sort,
+		});
 		return c.json(
 			{
 				success: true as const,
@@ -706,15 +723,13 @@ const privateRoutes = createApp()
 	})
 	.openapi(getFavoriteReposRoute, async (c) => {
 		const { userService } = c.var;
-		const authenticatedUser = c.var.user;
-		if (!authenticatedUser) {
-			throw new HTTPException(401, { message: "Unauthenticated" });
-		}
+		const user = c.var.user;
+		if (!user) throw new HTTPException(401, { message: "Unauthenticated" });
 		const { limit, offset } = c.req.valid("query");
 		const numLimit = limit ? Number(limit) : 20;
 		const numOffset = offset ? Number(offset) : 0;
 		const { favorites, total } = await userService.getFavoriteRepositories(
-			authenticatedUser.id,
+			user.id,
 			{ limit: numLimit, offset: numOffset },
 		);
 		return c.json(
@@ -730,15 +745,10 @@ const privateRoutes = createApp()
 	})
 	.openapi(deleteFavoriteRepoRoute, async (c) => {
 		const { userService } = c.var;
-		const authenticatedUser = c.var.user;
-		if (!authenticatedUser) {
-			throw new HTTPException(401, { message: "Unauthenticated" });
-		}
+		const user = c.var.user;
+		if (!user) throw new HTTPException(401, { message: "Unauthenticated" });
 		const { favoriteId } = c.req.valid("param");
-		await userService.deleteFavoriteRepository(
-			authenticatedUser.id,
-			favoriteId,
-		);
+		await userService.deleteFavoriteRepository(user.id, favoriteId);
 		return c.json(
 			{
 				success: true as const,
@@ -746,14 +756,52 @@ const privateRoutes = createApp()
 			},
 			200,
 		);
+	})
+	.openapi(tokenExchangeRoute, async (c) => {
+		const { userService } = c.var;
+		const user = c.var.user;
+		if (!user) throw new HTTPException(401, { message: "Unauthenticated" });
+
+		const authHeader = c.req.header("Authorization");
+		if (!authHeader || !authHeader.startsWith("Bearer ")) {
+			throw new HTTPException(401, {
+				message: "Bearer token is missing or invalid",
+			});
+		}
+		const idToken = authHeader.substring(7);
+		let decodedToken: DecodedIdToken;
+		try {
+			decodedToken = await getAuth().verifyIdToken(idToken);
+		} catch (error) {
+			throw new HTTPException(401, {
+				message: "Invalid Firebase ID token",
+				cause: error,
+			});
+		}
+		const { githubAccessToken } = c.req.valid("json");
+		if (!githubAccessToken) {
+			throw new HTTPException(400, {
+				message: "githubAccessToken is required",
+			});
+		}
+		const result = await userService.saveGitHubToken(
+			user.id,
+			githubAccessToken,
+		);
+		if (!result.success) {
+			throw new HTTPException(500, { message: "Failed to save token." });
+		}
+		return c.json(
+			{
+				success: true as const,
+				data: { message: "Token saved successfully." },
+			},
+			200,
+		);
 	});
 
-const userRoutes = createApp()
-	.route("/", publicRoutes) // /auth/token/exchange は認証不要
-	.use("/auth/signup", authMiddleware) // /auth/signup にミドルウェアを適用
-	.use("/auth/session", authMiddleware) // /auth/session にミドルウェアを適用
-	.use("/auth/logout", authMiddleware) // /auth/logout にミドルウェアを適用
-	.use("/users/*", authMiddleware) // /users/以下の全パスにミドルウェアを適用
-	.route("/", privateRoutes); // 保護ルートを定義
+const userRoutes = createApp().route("/", privateRoutes);
+
+export type UserRoutesType = typeof userRoutes;
 
 export default userRoutes;

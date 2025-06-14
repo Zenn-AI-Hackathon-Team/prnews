@@ -48,3 +48,5 @@ const generalRoutes = createApp().openapi(healthzRoute, async (c) => {
 });
 
 export default generalRoutes;
+
+export type GeneralRoutesType = typeof generalRoutes;

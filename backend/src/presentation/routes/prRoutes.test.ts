@@ -10,7 +10,7 @@ import type {
 	AuthVariables,
 	AuthenticatedUser,
 } from "../middlewares/authMiddleware";
-import prRoutes from "./prRoutes";
+import prPrivateRoutes from "./prPrivateRoutes";
 
 const testUser: AuthenticatedUser = {
 	id: "11111111-1111-1111-1111-111111111111",
@@ -62,7 +62,7 @@ const prApiResponseMock = {
 
 type AppContext = Context<{ Variables: Dependencies & AuthVariables }>;
 
-describe("prRoutes", () => {
+describe("prPrivateRoutes", () => {
 	let app: Hono<{ Variables: TestVariables }>;
 	let mockPrService: jest.Mocked<PrService>;
 	let mockPrRepo: jest.Mocked<PrRepoPort>;
@@ -110,7 +110,7 @@ describe("prRoutes", () => {
 			return next();
 		});
 
-		app.route("/", prRoutes);
+		app.route("/", prPrivateRoutes);
 	});
 
 	it("GET /repos/:owner/:repo/pulls/:number 正常系", async () => {
@@ -156,7 +156,7 @@ describe("prRoutes", () => {
 
 	it("POST /articles/:articleId/language/:langCode/like 異常系: 認証エラー", async () => {
 		const unauthApp = createApp();
-		unauthApp.route("/", prRoutes);
+		unauthApp.route("/", prPrivateRoutes);
 		unauthApp.onError((err, c) => {
 			if (err instanceof HTTPException) {
 				return c.json(
