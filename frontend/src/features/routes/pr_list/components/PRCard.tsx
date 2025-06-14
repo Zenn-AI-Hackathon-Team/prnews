@@ -3,39 +3,78 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { GitPullRequest, ThumbsUp } from "lucide-react";
 import Link from "next/link";
-import React, { useState } from "react";
+import { useState } from "react";
 
-// PR型定義
+// PR型定義 - 新しいAPIのデータ構造に合わせて更新
 export type PR = {
-	id: number;
-	title: string;
-	repository: string;
-	goods: number;
-	author: string;
-	authorAvatar: string;
-	createdAt: string;
-	language: string;
-	status: "merged" | "open";
+	articleId: string;
+	aiGeneratedTitle: string;
+	languageCode: string;
+	likeCount: number;
+	prNumber: number;
+	rank: number;
+	repositoryFullName: string;
 };
 
 const PRCard = ({ pr }: { pr: PR }) => {
-	const [likedPRs, setLikedPRs] = useState<number[]>([]);
+	const [likedPRs, setLikedPRs] = useState<string[]>([]);
 
-	const isLiked = likedPRs.includes(pr.id);
+	const isLiked = likedPRs.includes(pr.articleId);
 
-	const handleLike = (prId: number) => {
+	const handleLike = (prId: string) => {
 		setLikedPRs((prev) =>
 			prev.includes(prId) ? prev.filter((id) => id !== prId) : [...prev, prId],
 		);
 	};
 
+	// 言語表示用のマッピング
+	const getLanguageDisplay = (langCode: string) => {
+		if (!langCode) {
+			return "Unknown";
+		}
+
+		const languageMap: Record<string, string> = {
+			ja: "Japanese",
+			en: "English",
+			zh: "Chinese",
+			ko: "Korean",
+			es: "Spanish",
+			fr: "French",
+			de: "German",
+			pt: "Portuguese",
+			ru: "Russian",
+			ar: "Arabic",
+		};
+		return languageMap[langCode] || langCode.toUpperCase();
+	};
+
+	// リポジトリ名から作者名を推測（実際のAPIに作者情報があれば置き換え）
+	const getAuthorFromRepo = (repoFullName: string) => {
+		const parts = repoFullName.split("/");
+		return parts[0] || "anonymous";
+	};
+
+	// アバターイニシャルを生成
+	const getAvatarInitials = (author: string) => {
+		return author.slice(0, 2).toUpperCase();
+	};
+
+	const author = getAuthorFromRepo(pr.repositoryFullName);
+	const authorAvatar = getAvatarInitials(author);
+
+	// PRのステータスを判定（PR番号やランクに基づいて仮のロジック）
+	const status = pr.prNumber % 3 === 0 ? "open" : "merged";
+
 	return (
-		<Link href={`/home/${pr.id}`}>
+		<Link href={`/home/${pr.articleId}`}>
 			<div className="group relative bg-white rounded-xl border border-gray-100 p-6 transition-all duration-300 hover:border-gray-200 hover:shadow-lg hover:shadow-gray-200/50">
-				{/* Status Indicator */}
-				<div className="absolute top-6 right-6">
+				{/* Rank Badge */}
+				<div className="absolute top-6 right-6 flex items-center gap-2">
+					<Badge variant="secondary" className="font-bold">
+						#{pr.rank}
+					</Badge>
 					<div
-						className={`h-2 w-2 rounded-full ${pr.status === "merged" ? "bg-purple-500" : "bg-green-500"} animate-pulse`}
+						className={`h-2 w-2 rounded-full ${status === "merged" ? "bg-purple-500" : "bg-green-500"} animate-pulse`}
 					/>
 				</div>
 
@@ -45,22 +84,24 @@ const PRCard = ({ pr }: { pr: PR }) => {
 						<div className="flex items-center gap-3">
 							<div className="relative">
 								<div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-gray-100 to-gray-200 text-sm font-semibold text-gray-700">
-									{pr.authorAvatar}
+									{authorAvatar}
 								</div>
 							</div>
 							<div>
 								<div className="flex items-center gap-2">
 									<span className="text-sm font-medium text-gray-900">
-										@{pr.author}
+										@{author}
 									</span>
 									<span className="text-gray-300">•</span>
-									<span className="text-sm text-gray-500">{pr.createdAt}</span>
+									<span className="text-sm text-gray-500">
+										PR #{pr.prNumber}
+									</span>
 								</div>
 								<Badge
 									variant="secondary"
 									className="mt-1 font-mono text-xs px-2 py-0.5 bg-gray-100/80"
 								>
-									{pr.repository}
+									{pr.repositoryFullName}
 								</Badge>
 							</div>
 						</div>
@@ -69,14 +110,14 @@ const PRCard = ({ pr }: { pr: PR }) => {
 					{/* PR Title */}
 					<div className="flex items-start gap-3">
 						<div
-							className={`mt-1 rounded-lg p-1.5 ${pr.status === "merged" ? "bg-purple-50" : "bg-green-50"}`}
+							className={`mt-1 rounded-lg p-1.5 ${status === "merged" ? "bg-purple-50" : "bg-green-50"}`}
 						>
 							<GitPullRequest
-								className={`h-4 w-4 ${pr.status === "merged" ? "text-purple-600" : "text-green-600"}`}
+								className={`h-4 w-4 ${status === "merged" ? "text-purple-600" : "text-green-600"}`}
 							/>
 						</div>
 						<h3 className="flex-1 font-semibold text-gray-900 leading-relaxed group-hover:text-primary transition-colors cursor-pointer">
-							{pr.title}
+							{pr.aiGeneratedTitle}
 						</h3>
 					</div>
 
@@ -87,13 +128,13 @@ const PRCard = ({ pr }: { pr: PR }) => {
 								variant="outline"
 								className="text-xs gap-1.5 border-gray-200"
 							>
-								{pr.language}
+								{getLanguageDisplay(pr.languageCode)}
 							</Badge>
 							<Badge
 								variant="outline"
 								className="text-xs capitalize border-gray-200"
 							>
-								{pr.status}
+								{status}
 							</Badge>
 						</div>
 
@@ -106,13 +147,16 @@ const PRCard = ({ pr }: { pr: PR }) => {
 									? "bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-md"
 									: "hover:bg-gray-100"
 							}`}
-							onClick={() => handleLike(pr.id)}
+							onClick={(e) => {
+								e.preventDefault();
+								handleLike(pr.articleId);
+							}}
 						>
 							<ThumbsUp
 								className={`h-4 w-4 transition-transform duration-200 ${isLiked ? "fill-current scale-110" : ""}`}
 							/>
 							<span className="font-semibold tabular-nums">
-								{pr.goods + (isLiked ? 1 : 0)}
+								{pr.likeCount + (isLiked ? 1 : 0)}
 							</span>
 						</Button>
 					</div>
