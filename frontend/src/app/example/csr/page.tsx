@@ -3,7 +3,7 @@
 // HonoのRPCのサンプルページ
 // CSR(クライアントサイドレンダリング)バージョン
 
-import { client } from "@/lib/hono";
+import { rankingClient } from "@/lib/hono";
 import type { RankedArticleInfo } from "@prnews/common";
 import { useEffect, useState } from "react";
 
@@ -18,7 +18,7 @@ const page = () => {
 
 	useEffect(() => {
 		const fetchRanking = async () => {
-			const res = await client.ranking.articles.likes.$get({
+			const res = await rankingClient.ranking.articles.likes.$get({
 				query: {
 					limit: "10",
 					offset: "0",

@@ -4,8 +4,11 @@ import { HTTPException } from "hono/http-exception";
 import { ZodError } from "zod";
 import { buildDependencies } from "./config/di";
 import { createApp } from "./presentation/hono-app";
+import { authMiddleware } from "./presentation/middlewares/authMiddleware";
 import generalRoutes from "./presentation/routes/generalRoutes";
+import issuePublicRoutes from "./presentation/routes/issuePublicRoutes";
 import issueRoutes from "./presentation/routes/issueRoutes";
+import prPublicRoutes from "./presentation/routes/prPublicRoutes";
 import prRoutes from "./presentation/routes/prRoutes";
 import rankingRoutes from "./presentation/routes/rankingRoutes";
 import userRoutes from "./presentation/routes/userRoutes";
@@ -31,12 +34,15 @@ app.use("*", async (c, next) => {
 
 const api = app
 	.route("/", generalRoutes)
-	.route("/", prRoutes)
+	.route("/", rankingRoutes)
+	.route("/", issuePublicRoutes)
+	.route("/", prPublicRoutes)
+	.use("/auth/*", authMiddleware)
+	.use("/users/*", authMiddleware)
+	.use("/repos/*", authMiddleware)
 	.route("/", userRoutes)
 	.route("/", issueRoutes)
-	.route("/", rankingRoutes);
-
-export type AppType = typeof api;
+	.route("/", prRoutes);
 
 app.openAPIRegistry.registerComponent("securitySchemes", "bearerAuth", {
 	type: "http",

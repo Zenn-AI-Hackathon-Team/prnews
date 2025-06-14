@@ -37,4 +37,34 @@ export const issueRepoFirestore = (db: Firestore): IssueRepoPort => ({
 		const doc = tx ? await tx.get(docRef) : await docRef.get();
 		return articleFromDoc(doc);
 	},
+
+	async checkArticlesExist(
+		owner: string,
+		repo: string,
+		issueNumbers: number[],
+	) {
+		if (!issueNumbers || issueNumbers.length === 0) {
+			return [];
+		}
+		const repoFull = `${owner}/${repo}`;
+		const BATCH_SIZE = 30;
+		const existingNumbers: number[] = [];
+
+		for (let i = 0; i < issueNumbers.length; i += BATCH_SIZE) {
+			const batchNumbers = issueNumbers.slice(i, i + BATCH_SIZE);
+			const snap = await db
+				.collection(COLLECTION)
+				.where("repositoryFullName", "==", repoFull)
+				.where("issueNumber", "in", batchNumbers)
+				.get();
+
+			if (!snap.empty) {
+				const numbers = snap.docs.map(
+					(doc) => doc.data().issueNumber as number,
+				);
+				existingNumbers.push(...numbers);
+			}
+		}
+		return existingNumbers;
+	},
 });

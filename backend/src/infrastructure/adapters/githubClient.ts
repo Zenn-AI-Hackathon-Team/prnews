@@ -145,6 +145,45 @@ export const githubClient = (): GithubPort => ({
 			throw new HTTPException(500, { message: "Internal server error" });
 		}
 	},
+	async listIssues(accessToken, owner, repo, options) {
+		const octokit = getOctokit(accessToken);
+		try {
+			const response = await octokit.issues.listForRepo({
+				owner,
+				repo,
+				state: options.state,
+				per_page: options.per_page,
+				page: options.page,
+			});
+
+			// PRを除外
+			const issuesOnly = response.data.filter((issue) => !issue.pull_request);
+
+			// 必要なプロパティのみ返す
+			return issuesOnly.map((issue) => ({
+				number: issue.number,
+				title: issue.title,
+				html_url: issue.html_url,
+				state: issue.state,
+				created_at: issue.created_at,
+				user: issue.user ? { login: issue.user.login } : null,
+			}));
+		} catch (error) {
+			if (
+				error &&
+				typeof error === "object" &&
+				"status" in error &&
+				error.status === 404
+			) {
+				console.warn(
+					`[githubClient] Repository not found for listing issues: ${owner}/${repo}`,
+				);
+				throw new HTTPException(404, { message: "Repository not found" });
+			}
+			console.error("[githubClient] Failed to list issues:", error);
+			throw new HTTPException(500, { message: "Internal server error" });
+		}
+	},
 	async fetchIssue(accessToken, owner, repo, issueNumber) {
 		const octokit = getOctokit(accessToken);
 		try {

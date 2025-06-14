@@ -15,5 +15,11 @@ export interface IssueRepoPort {
 		tx?: Transaction,
 	): Promise<IssueArticle | null>;
 
+	checkArticlesExist(
+		owner: string,
+		repo: string,
+		issueNumbers: number[],
+	): Promise<number[]>;
+
 	// 今後、いいね機能などのために他のメソッドを追加する可能性があります
 }

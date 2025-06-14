@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import type { Issue, IssueArticle } from "@prnews/common";
+import type { Issue, IssueArticle, IssueListItem } from "@prnews/common";
 import { HTTPException } from "hono/http-exception";
 import type { GeminiPort } from "../ports/geminiPort";
 import type { GithubPort } from "../ports/githubPort";
@@ -121,10 +121,71 @@ export const createIssueService = (deps: {
 		return article;
 	};
 
+	/**
+	 * 3. 指定されたリポジトリのIssue一覧を、記事の有無と合わせて取得する
+	 */
+	const getIssueListForRepo = async (
+		userId: string,
+		owner: string,
+		repo: string,
+		query: {
+			state?: "open" | "closed" | "all";
+			per_page?: number;
+			page?: number;
+		},
+	): Promise<IssueListItem[]> => {
+		// 1. ユーザーのGitHubトークンを取得
+		const user = await deps.userRepo.findById(userId);
+		if (!user?.encryptedGitHubAccessToken) {
+			throw new HTTPException(403, {
+				message: "GitHub access token is not registered.",
+			});
+		}
+		const accessToken = decrypt(user.encryptedGitHubAccessToken);
+
+		// 2. GitHubからIssue一覧を取得
+		const githubIssues = await deps.github.listIssues(
+			accessToken,
+			owner,
+			repo,
+			{
+				state: query.state ?? "open",
+				per_page: query.per_page ?? 30,
+				page: query.page ?? 1,
+			},
+		);
+
+		if (githubIssues.length === 0) {
+			return [];
+		}
+
+		// 3. DBに記事が存在するかを一括チェック
+		const issueNumbers = githubIssues.map((issue) => issue.number);
+		const existingArticleNumbers = await deps.issueRepo.checkArticlesExist(
+			owner,
+			repo,
+			issueNumbers,
+		);
+
+		// 4. GitHubの情報とDBの情報をマージして、最終的なレスポンスデータを作成
+		const responseData: IssueListItem[] = githubIssues.map((issue) => ({
+			issueNumber: issue.number,
+			title: issue.title,
+			authorLogin: issue.user?.login ?? "unknown",
+			githubIssueUrl: issue.html_url,
+			state: issue.state,
+			createdAt: issue.created_at,
+			articleExists: existingArticleNumbers.includes(issue.number),
+		}));
+
+		return responseData;
+	};
+
 	return {
 		ingestIssue,
 		generateIssueArticle,
 		getArticle,
+		getIssueListForRepo,
 	};
 };
 

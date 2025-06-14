@@ -14,6 +14,18 @@ export type GithubPullRequestSummary = {
 	} | null;
 };
 
+// 新しくIssueのサマリー型を定義
+export type GithubIssueSummary = {
+	number: number;
+	title: string;
+	html_url: string;
+	state: string;
+	created_at: string;
+	user: {
+		login: string;
+	} | null;
+};
+
 export interface GithubPort {
 	fetchPullRequest(
 		accessToken: string,
@@ -43,6 +55,16 @@ export interface GithubPort {
 			page?: number;
 		},
 	): Promise<GithubPullRequestSummary[]>;
+	listIssues(
+		accessToken: string,
+		owner: string,
+		repo: string,
+		options: {
+			state?: "open" | "closed" | "all";
+			per_page?: number;
+			page?: number;
+		},
+	): Promise<GithubIssueSummary[]>;
 	fetchIssue(
 		accessToken: string,
 		owner: string,

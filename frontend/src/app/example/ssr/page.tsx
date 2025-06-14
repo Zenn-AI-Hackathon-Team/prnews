@@ -1,11 +1,10 @@
 // HonoのRPCのサンプルページ
 // SSR(サーバーサイドレンダリング)バージョン
-
-import { client } from "@/lib/hono";
+import { prClient, rankingClient } from "@/lib/hono";
 import type { RankedArticleInfo } from "@prnews/common";
 
 const page = async () => {
-	const res = await client.ranking.articles.likes.$get({
+	const res = await rankingClient.ranking.articles.likes.$get({
 		query: {
 			limit: "10",
 			offset: "0",
@@ -13,6 +12,16 @@ const page = async () => {
 			language: "ja",
 		},
 	});
+	const res2 = await prClient.repos[":owner"][":repo"].pulls[
+		":number"
+	].article.$get({
+		param: {
+			owner: "owner",
+			repo: "repo",
+			number: "1",
+		},
+	});
+	console.log(res2);
 
 	// --- エラーハンドリングはここに集約 ---
 	if (!res.ok) {
