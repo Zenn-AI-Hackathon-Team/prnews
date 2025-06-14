@@ -16,3 +16,13 @@ export const issueClient = hc<IssuePublicRoutesType & IssuePrivateRoutesType>(
 );
 export const userClient = hc<UserRoutesType>(apiUrl);
 export const generalClient = hc<GeneralRoutesType>(apiUrl);
+
+export const client = hc<
+	RankingRoutesType &
+		PrPublicRoutesType &
+		PrPrivateRoutesType &
+		IssuePublicRoutesType &
+		IssuePrivateRoutesType &
+		UserRoutesType &
+		GeneralRoutesType
+>(apiUrl);
