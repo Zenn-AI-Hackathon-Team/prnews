@@ -169,6 +169,8 @@ export const createIssueService = (deps: {
 
 		// 4. GitHubの情報とDBの情報をマージして、最終的なレスポンスデータを作成
 		const responseData: IssueListItem[] = githubIssues.map((issue) => ({
+			owner,
+			repo,
 			issueNumber: issue.number,
 			title: issue.title,
 			authorLogin: issue.user?.login ?? "unknown",

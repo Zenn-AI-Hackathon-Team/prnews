@@ -10,9 +10,8 @@ export const rankedArticleInfoSchema = z.object({
 			"記事の言語コード (ランキングの絞り込みに使われた言語、または記事自体の言語)",
 		),
 	aiGeneratedTitle: z.string().describe("AIによって生成された記事タイトル"),
-	repositoryFullName: z
-		.string()
-		.describe("リポジトリのフルネーム (owner/repo)"),
+	owner: z.string().describe("リポジトリのオーナー名"),
+	repo: z.string().describe("リポジトリ名"),
 	prNumber: z.number().int().positive().describe("Pull Requestの番号"),
 	likeCount: z.number().int().nonnegative().describe("いいね数"),
 });

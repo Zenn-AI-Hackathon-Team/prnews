@@ -10,7 +10,6 @@ function favoriteFromDoc(doc: DocumentSnapshot): FavoriteRepository | null {
 		id: data.id,
 		userId: data.userId,
 		githubRepoId: data.githubRepoId,
-		repositoryFullName: data.repositoryFullName,
 		owner: data.owner,
 		repo: data.repo,
 		registeredAt: data.registeredAt,

@@ -14,6 +14,8 @@ export type PullRequest = {
 	authorLogin: string;
 	createdAt: string;
 	comments: Comment[];
+	owner: string;
+	repo: string;
 };
 
 export const createPullRequest = (props: PullRequest): PullRequest => ({

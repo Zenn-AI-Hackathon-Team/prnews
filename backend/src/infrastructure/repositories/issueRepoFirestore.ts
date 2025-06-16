@@ -21,7 +21,8 @@ export const issueRepoFirestore = (db: Firestore): IssueRepoPort => ({
 		const repoFull = `${owner}/${repo}`;
 		const snap = await db
 			.collection(COLLECTION)
-			.where("repositoryFullName", "==", repoFull)
+			.where("owner", "==", owner)
+			.where("repo", "==", repo)
 			.where("issueNumber", "==", issueNumber)
 			.limit(1)
 			.get();
@@ -54,7 +55,8 @@ export const issueRepoFirestore = (db: Firestore): IssueRepoPort => ({
 			const batchNumbers = issueNumbers.slice(i, i + BATCH_SIZE);
 			const snap = await db
 				.collection(COLLECTION)
-				.where("repositoryFullName", "==", repoFull)
+				.where("owner", "==", owner)
+				.where("repo", "==", repo)
 				.where("issueNumber", "in", batchNumbers)
 				.get();
 

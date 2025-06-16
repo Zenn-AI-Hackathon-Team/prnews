@@ -8,6 +8,8 @@ export const issueListItemSchema = z.object({
 	state: z.string().describe("Issueの状態 (e.g., 'open', 'closed')"),
 	createdAt: z.string().datetime().describe("Issue作成日時"),
 	articleExists: z.boolean().describe("解説記事がPR News内に存在するかどうか"),
+	owner: z.string().describe("リポジトリのオーナー名"),
+	repo: z.string().describe("リポジトリ名"),
 });
 
 export type IssueListItem = z.infer<typeof issueListItemSchema>;
