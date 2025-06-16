@@ -444,7 +444,7 @@ const likeResponseSchema = z.object({
 });
 const likeArticleRoute = createRoute({
 	method: "post",
-	path: "/articles/{articleId}/language/{langCode}/like",
+	path: "/repos/{owner}/{repo}/pulls/{number}/language/{langCode}/like",
 	summary: "AI解説記事の特定言語版に「いいね」を付与",
 	description: `\
 指定されたAI解説記事（Pull Request記事）の特定言語版（例: 日本語 "ja"）に「いいね」を付けます。
@@ -456,13 +456,24 @@ const likeArticleRoute = createRoute({
 
 	request: {
 		params: z.object({
-			articleId: z
+			owner: z.string().openapi({
+				param: { name: "owner", in: "path" },
+				description: "リポジトリのオーナー名",
+				example: "vercel",
+			}),
+			repo: z.string().openapi({
+				param: { name: "repo", in: "path" },
+				description: "リポジトリ名",
+				example: "next.js",
+			}),
+			number: z
 				.string()
-				.min(1)
+				.regex(/^\d+$/)
+				.transform(Number)
 				.openapi({
-					param: { name: "articleId", in: "path" },
-					description: "対象AI解説記事のID（UUID形式推奨）",
-					example: "11111111-1111-1111-1111-111111111111",
+					param: { name: "number", in: "path" },
+					description: "Pull Requestの番号",
+					example: "42",
 				}),
 			langCode: z
 				.string()
@@ -577,11 +588,18 @@ const prPrivateRoutes = createApp()
 		return c.json({ success: true as const, data: parsed }, 200);
 	})
 	.openapi(likeArticleRoute, async (c) => {
-		const { prService } = c.var;
+		const { prService, prRepo } = c.var;
 		const user = c.var.user;
 		if (!user) throw new HTTPException(401, { message: "Unauthenticated" });
-		const { articleId, langCode } = c.req.valid("param");
-		const result = await prService.likeArticle(user.id, articleId, langCode);
+		const { owner, repo, number, langCode } = c.req.valid("param");
+		// owner/repo/number から記事を特定し、記事IDを取得
+		const article = await prRepo.findByOwnerRepoNumber(owner, repo, number);
+		if (!article?.id) {
+			throw new HTTPException(404, {
+				message: "指定された記事が見つかりません。",
+			});
+		}
+		const result = await prService.likeArticle(user.id, article.id, langCode);
 		const responseData = likeResponseSchema.parse({
 			likeCount: result.likeCount,
 			message: result.message,
