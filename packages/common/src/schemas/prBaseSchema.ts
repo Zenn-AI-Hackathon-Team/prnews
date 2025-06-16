@@ -5,7 +5,6 @@ export const pullRequestSchema = z.object({
 		.number()
 		.int("PR 番号は整数で入力してください")
 		.positive("PR 番号は正の数で入力してください"),
-	repositoryFullName: z.string(),
 	githubPrUrl: z.string().url("正しい URL 形式で入力してください"),
 	title: z.string(),
 	body: z.string().nullable(),
@@ -19,7 +18,7 @@ export const pullRequestSchema = z.object({
 			createdAt: z.string(),
 		}),
 	),
-	owner: z.string().describe("リポジトリのオーナー名"),
+	owner: z.string().describe("リポジトリオーナー"),
 	repo: z.string().describe("リポジトリ名"),
 });
 export type PullRequest = z.infer<typeof pullRequestSchema>;

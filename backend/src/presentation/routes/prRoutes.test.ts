@@ -46,11 +46,14 @@ const prMock: PullRequest = {
 	authorLogin: "author",
 	createdAt: "2024-01-01T00:00:00Z",
 	comments: [],
+	owner: "owner",
+	repo: "repo",
 };
 
 const prApiResponseMock = {
 	prNumber: 1,
-	repositoryFullName: "owner/repo",
+	owner: "owner",
+	repo: "repo",
 	githubPrUrl: "https://github.com/owner/repo/pull/1",
 	title: "PR Title",
 	body: null,

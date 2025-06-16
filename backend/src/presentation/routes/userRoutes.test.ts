@@ -231,7 +231,6 @@ describe("userRoutes", () => {
 			id: "fav-uuid-1",
 			userId: "user-uuid-1",
 			githubRepoId: 12345,
-			repositoryFullName: "owner/repo-1",
 			owner: "owner",
 			repo: "repo-1",
 			registeredAt: new Date().toISOString(),

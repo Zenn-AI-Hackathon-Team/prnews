@@ -46,9 +46,8 @@ export const createRankingService = (deps: {
 						articleId: a.id,
 						languageCode: lang,
 						aiGeneratedTitle: c?.aiGeneratedTitle || "",
-						repositoryFullName:
-							(a as { repositoryFullName?: string }).repositoryFullName ||
-							a.repository,
+						owner: a.owner,
+						repo: a.repo,
 						prNumber: a.prNumber,
 						likeCount:
 							language === "all" ? (a.totalLikeCount ?? 0) : c?.likeCount || 0,
