@@ -379,12 +379,12 @@ const listRepoPullsRoute = createRoute({
 			owner: z.string().openapi({
 				param: { name: "owner", in: "path" },
 				description: "リポジトリのオーナー名",
-				example: "masa-massara",
+				example: "vercel",
 			}),
 			repo: z.string().openapi({
 				param: { name: "repo", in: "path" },
 				description: "リポジトリ名",
-				example: "NotiPal",
+				example: "next.js",
 			}),
 		}),
 		query: z.object({
@@ -397,8 +397,8 @@ const listRepoPullsRoute = createRoute({
 				example: "20",
 			}),
 			page: z.string().optional().transform(Number).openapi({
-				description: "ページ番号",
-				example: "1",
+				description: "ページ番号(0インデックス)",
+				example: "0",
 			}),
 		}),
 	},
@@ -416,7 +416,6 @@ const listRepoPullsRoute = createRoute({
 			content: {
 				"application/json": {
 					schema: errorResponseSchema,
-					example: { code: "HTTP_EXCEPTION", message: "Repository not found" },
 				},
 			},
 		},
@@ -425,10 +424,6 @@ const listRepoPullsRoute = createRoute({
 			content: {
 				"application/json": {
 					schema: errorResponseSchema,
-					example: {
-						code: "INTERNAL_SERVER_ERROR",
-						message: "Internal Server Error",
-					},
 				},
 			},
 		},
@@ -437,18 +432,6 @@ const listRepoPullsRoute = createRoute({
 			content: {
 				"application/json": {
 					schema: errorResponseSchema,
-					example: {
-						code: "VALIDATION_ERROR",
-						message: "Validation Failed",
-						details: [
-							{
-								code: "invalid_string",
-								type: "string",
-								path: ["owner"],
-								message: "owner is required",
-							},
-						],
-					},
 				},
 			},
 		},
