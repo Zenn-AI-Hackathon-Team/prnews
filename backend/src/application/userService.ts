@@ -193,7 +193,6 @@ export const createUserService = (deps: {
 			id: randomUUID(),
 			userId: authenticatedUser.id,
 			githubRepoId: repoInfo.githubRepoId,
-			repositoryFullName: repoInfo.repositoryFullName,
 			owner: repoInfo.owner,
 			repo: repoInfo.repo,
 			registeredAt: now,

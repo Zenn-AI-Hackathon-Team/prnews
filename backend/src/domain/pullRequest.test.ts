@@ -19,6 +19,8 @@ describe("createPullRequest", () => {
 					createdAt: new Date().toISOString(),
 				},
 			],
+			owner: "test-owner",
+			repo: "test-repo",
 		};
 
 		const pullRequest = createPullRequest(props);
@@ -34,5 +36,7 @@ describe("createPullRequest", () => {
 		expect(pullRequest.authorLogin).toBe(props.authorLogin);
 		expect(pullRequest.createdAt).toBe(props.createdAt);
 		expect(pullRequest.comments).toEqual(props.comments);
+		expect(pullRequest.owner).toBe(props.owner);
+		expect(pullRequest.repo).toBe(props.repo);
 	});
 });

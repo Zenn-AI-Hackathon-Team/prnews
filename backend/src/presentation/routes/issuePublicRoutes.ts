@@ -11,9 +11,25 @@ const getIssueArticleRoute = createRoute({
 	tags: ["Issue"],
 	request: {
 		params: z.object({
-			owner: z.string(),
-			repo: z.string(),
-			number: z.string().regex(/^\d+$/).transform(Number),
+			owner: z.string().openapi({
+				param: { name: "owner", in: "path" },
+				description: "リポジトリのオーナー名",
+				example: "vercel",
+			}),
+			repo: z.string().openapi({
+				param: { name: "repo", in: "path" },
+				description: "リポジトリ名",
+				example: "next.js",
+			}),
+			number: z
+				.string()
+				.regex(/^\d+$/)
+				.transform(Number)
+				.openapi({
+					param: { name: "number", in: "path" },
+					description: "Issueの番号",
+					example: "80528",
+				}),
 		}),
 	},
 	responses: {

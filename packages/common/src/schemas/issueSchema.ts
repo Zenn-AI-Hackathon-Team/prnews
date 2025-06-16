@@ -22,9 +22,8 @@ export const issueSchema = z.object({
 		.int()
 		.positive()
 		.describe("リポジトリ内でのIssue番号"),
-	repositoryFullName: z
-		.string()
-		.describe("リポジトリのフルネーム (owner/repo)"),
+	owner: z.string().describe("リポジトリのオーナー名"),
+	repo: z.string().describe("リポジトリ名"),
 	githubIssueUrl: z.string().url().describe("GitHub上のIssueへのURL"),
 	title: z.string().describe("Issueのタイトル"),
 	author: githubUserSchema.describe("Issueの作成者"),

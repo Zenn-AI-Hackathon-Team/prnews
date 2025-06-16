@@ -5,9 +5,8 @@ export const likedArticleInfoSchema = z.object({
 	languageCode: z.string().length(2).describe("いいねされた記事の言語コード"),
 	likedAt: z.string().datetime().describe("いいねした日時"),
 	aiGeneratedTitle: z.string().describe("AIによって生成された記事タイトル"),
-	repositoryFullName: z
-		.string()
-		.describe("リポジトリのフルネーム (owner/repo)"),
+	owner: z.string().describe("リポジトリのオーナー名"),
+	repo: z.string().describe("リポジトリ名"),
 	prNumber: z.number().int().positive().describe("Pull Requestの番号"),
 	// articleUrl: z.string().url().optional().describe("記事詳細ページへのURL (フロントエンドで生成する場合や、固定のパスがある場合)"),
 });

@@ -105,13 +105,16 @@ export const createPrService = (deps: {
 			createdAt: rawPr.createdAt,
 			body: rawPr.body ?? null,
 			comments: rawPr.comments ?? [],
+			owner,
+			repo,
 		};
 		const pr = createPullRequest(prProps);
 
 		// 5. バリデーション
 		const validation = pullRequestSchema.safeParse({
 			prNumber: pr.prNumber,
-			repositoryFullName: pr.repository,
+			owner: pr.owner,
+			repo: pr.repo,
 			githubPrUrl: `https://github.com/${pr.repository}/pull/${pr.prNumber}`,
 			title: pr.title,
 			body: pr.body,
@@ -133,6 +136,8 @@ export const createPrService = (deps: {
 		return {
 			prNumber: pr.prNumber,
 			repositoryFullName: pr.repository,
+			owner: pr.owner,
+			repo: pr.repo,
 			githubPrUrl: `https://github.com/${pr.repository}/pull/${pr.prNumber}`,
 			title: pr.title,
 			body: pr.body,
@@ -192,6 +197,8 @@ export const createPrService = (deps: {
 			githubPrCreatedAt: pr.createdAt,
 			updatedAt: now,
 			comments: pr.comments,
+			owner: pr.owner,
+			repo: pr.repo,
 			contents: {
 				ja: {
 					aiGeneratedTitle: aiResult.aiGeneratedTitle,
@@ -223,6 +230,8 @@ export const createPrService = (deps: {
 		return {
 			prNumber: pr.prNumber,
 			repositoryFullName: pr.repository,
+			owner: pr.owner,
+			repo: pr.repo,
 			githubPrUrl: `https://github.com/${pr.repository}/pull/${pr.prNumber}`,
 			title: pr.title,
 			body: pr.body,
@@ -292,6 +301,8 @@ export const createPrService = (deps: {
 			body: article.body,
 			githubPrCreatedAt: article.createdAt,
 			comments: article.comments,
+			owner: article.owner,
+			repo: article.repo,
 			contents:
 				Object.keys(transformedContents).length > 0
 					? transformedContents
@@ -429,7 +440,8 @@ export const createPrService = (deps: {
 					languageCode: like.languageCode,
 					likedAt: like.likedAt,
 					aiGeneratedTitle: content.aiGeneratedTitle,
-					repositoryFullName: article.repository,
+					owner: article.owner,
+					repo: article.repo,
 					prNumber: article.prNumber,
 				};
 			})

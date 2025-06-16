@@ -29,21 +29,6 @@ const getMyProfileRoute = createRoute({
 			content: {
 				"application/json": {
 					schema: successResponseSchema(userSchema),
-					example: {
-						success: true,
-						data: {
-							id: "11111111-1111-1111-1111-111111111111",
-							githubUserId: 1,
-							githubUsername: "foo",
-							language: "ja",
-							firebaseUid: "f1",
-							githubDisplayName: "Foo Bar",
-							email: "foo@example.com",
-							avatarUrl: "http://example.com/avatar.png",
-							createdAt: "2024-01-01T00:00:00Z",
-							updatedAt: "2024-01-01T00:00:00Z",
-						},
-					},
 				},
 			},
 		},
@@ -52,7 +37,6 @@ const getMyProfileRoute = createRoute({
 			content: {
 				"application/json": {
 					schema: errorResponseSchema,
-					example: { code: "HTTP_EXCEPTION", message: "Unauthenticated" },
 				},
 			},
 		},
@@ -61,10 +45,6 @@ const getMyProfileRoute = createRoute({
 			content: {
 				"application/json": {
 					schema: errorResponseSchema,
-					example: {
-						code: "HTTP_EXCEPTION",
-						message: "User profile not found",
-					},
 				},
 			},
 		},
@@ -87,7 +67,6 @@ const logoutRoute = createRoute({
 			content: {
 				"application/json": {
 					schema: successResponseSchema(z.object({})),
-					example: { success: true, data: {} },
 				},
 			},
 		},
@@ -96,7 +75,6 @@ const logoutRoute = createRoute({
 			content: {
 				"application/json": {
 					schema: errorResponseSchema,
-					example: { code: "HTTP_EXCEPTION", message: "Unauthenticated" },
 				},
 			},
 		},
@@ -105,7 +83,6 @@ const logoutRoute = createRoute({
 			content: {
 				"application/json": {
 					schema: errorResponseSchema,
-					example: { code: "INTERNAL_SERVER_ERROR", message: "Logout failed" },
 				},
 			},
 		},
@@ -143,21 +120,6 @@ const signupRoute = createRoute({
 			content: {
 				"application/json": {
 					schema: successResponseSchema(userSchema),
-					example: {
-						success: true,
-						data: {
-							id: "11111111-1111-1111-1111-111111111111",
-							githubUserId: 1,
-							githubUsername: "foo",
-							language: "ja",
-							firebaseUid: "f1",
-							githubDisplayName: "Foo Bar",
-							email: "foo@example.com",
-							avatarUrl: "http://example.com/avatar.png",
-							createdAt: "2024-01-01T00:00:00Z",
-							updatedAt: "2024-01-01T00:00:00Z",
-						},
-					},
 				},
 			},
 		},
@@ -166,7 +128,6 @@ const signupRoute = createRoute({
 			content: {
 				"application/json": {
 					schema: errorResponseSchema,
-					example: { code: "HTTP_EXCEPTION", message: "User already exists" },
 				},
 			},
 		},
@@ -175,7 +136,6 @@ const signupRoute = createRoute({
 			content: {
 				"application/json": {
 					schema: errorResponseSchema,
-					example: { code: "HTTP_EXCEPTION", message: "Unauthenticated" },
 				},
 			},
 		},
@@ -184,10 +144,6 @@ const signupRoute = createRoute({
 			content: {
 				"application/json": {
 					schema: errorResponseSchema,
-					example: {
-						code: "INTERNAL_SERVER_ERROR",
-						message: "Failed to create user",
-					},
 				},
 			},
 		},
@@ -210,13 +166,6 @@ const sessionRoute = createRoute({
 			content: {
 				"application/json": {
 					schema: successResponseSchema(z.any()),
-					example: {
-						success: true,
-						data: {
-							id: "session1",
-							userId: "11111111-1111-1111-1111-111111111111",
-						},
-					},
 				},
 			},
 		},
@@ -225,7 +174,6 @@ const sessionRoute = createRoute({
 			content: {
 				"application/json": {
 					schema: errorResponseSchema,
-					example: { code: "HTTP_EXCEPTION", message: "Unauthenticated" },
 				},
 			},
 		},
@@ -234,10 +182,6 @@ const sessionRoute = createRoute({
 			content: {
 				"application/json": {
 					schema: errorResponseSchema,
-					example: {
-						code: "INTERNAL_SERVER_ERROR",
-						message: "Failed to create session",
-					},
 				},
 			},
 		},
@@ -279,18 +223,6 @@ const addFavoriteRepoRoute = createRoute({
 			content: {
 				"application/json": {
 					schema: successResponseSchema(favoriteRepositorySchema),
-					example: {
-						success: true,
-						data: {
-							id: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
-							userId: "11111111-1111-1111-1111-111111111111",
-							githubRepoId: 123456,
-							repositoryFullName: "vercel/next.js",
-							owner: "vercel",
-							repo: "next.js",
-							registeredAt: "2024-01-04T00:00:00Z",
-						},
-					},
 				},
 			},
 		},
@@ -299,18 +231,6 @@ const addFavoriteRepoRoute = createRoute({
 			content: {
 				"application/json": {
 					schema: successResponseSchema(favoriteRepositorySchema),
-					example: {
-						success: true,
-						data: {
-							id: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
-							userId: "11111111-1111-1111-1111-111111111111",
-							githubRepoId: 123456,
-							repositoryFullName: "vercel/next.js",
-							owner: "vercel",
-							repo: "next.js",
-							registeredAt: "2024-01-04T00:00:00Z",
-						},
-					},
 				},
 			},
 		},
@@ -319,7 +239,6 @@ const addFavoriteRepoRoute = createRoute({
 			content: {
 				"application/json": {
 					schema: errorResponseSchema,
-					example: { code: "HTTP_EXCEPTION", message: "Repository not found" },
 				},
 			},
 		},
@@ -372,22 +291,6 @@ const getLikedArticlesRoute = createRoute({
 							}),
 						}),
 					),
-					example: {
-						success: true,
-						data: {
-							data: [
-								{
-									articleId: "11111111-1111-1111-1111-111111111111",
-									languageCode: "ja",
-									likedAt: "2024-01-03T00:00:00Z",
-									aiGeneratedTitle: "AI 生成タイトルの例",
-									repositoryFullName: "vercel/next.js",
-									prNumber: 42,
-								},
-							],
-							pagination: { totalItems: 1, limit: 10, offset: 0 },
-						},
-					},
 				},
 			},
 		},
@@ -396,7 +299,6 @@ const getLikedArticlesRoute = createRoute({
 			content: {
 				"application/json": {
 					schema: errorResponseSchema,
-					example: { code: "HTTP_EXCEPTION", message: "Unauthenticated" },
 				},
 			},
 		},
@@ -441,23 +343,6 @@ const getFavoriteReposRoute = createRoute({
 							}),
 						}),
 					),
-					example: {
-						success: true,
-						data: {
-							data: [
-								{
-									id: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
-									userId: "11111111-1111-1111-1111-111111111111",
-									githubRepoId: 123456,
-									repositoryFullName: "vercel/next.js",
-									owner: "vercel",
-									repo: "next.js",
-									registeredAt: "2024-01-04T00:00:00Z",
-								},
-							],
-							pagination: { totalItems: 1, limit: 20, offset: 0 },
-						},
-					},
 				},
 			},
 		},
@@ -466,7 +351,6 @@ const getFavoriteReposRoute = createRoute({
 			content: {
 				"application/json": {
 					schema: errorResponseSchema,
-					example: { code: "HTTP_EXCEPTION", message: "Unauthenticated" },
 				},
 			},
 		},
@@ -497,10 +381,6 @@ const deleteFavoriteRepoRoute = createRoute({
 			content: {
 				"application/json": {
 					schema: successResponseSchema(z.object({ message: z.string() })),
-					example: {
-						success: true,
-						data: { message: "Favorite repository deleted successfully." },
-					},
 				},
 			},
 		},
@@ -509,7 +389,6 @@ const deleteFavoriteRepoRoute = createRoute({
 			content: {
 				"application/json": {
 					schema: errorResponseSchema,
-					example: { code: "HTTP_EXCEPTION", message: "Unauthenticated" },
 				},
 			},
 		},
@@ -518,10 +397,6 @@ const deleteFavoriteRepoRoute = createRoute({
 			content: {
 				"application/json": {
 					schema: errorResponseSchema,
-					example: {
-						code: "HTTP_EXCEPTION",
-						message: "Favorite repository not found",
-					},
 				},
 			},
 		},
@@ -560,10 +435,6 @@ GitHubアクセストークンを保存します。
 			content: {
 				"application/json": {
 					schema: successResponseSchema(z.object({ message: z.string() })),
-					example: {
-						success: true,
-						data: { message: "Token saved successfully." },
-					},
 				},
 			},
 		},
@@ -572,7 +443,6 @@ GitHubアクセストークンを保存します。
 			content: {
 				"application/json": {
 					schema: errorResponseSchema,
-					example: { code: "HTTP_EXCEPTION", message: "Unauthenticated" },
 				},
 			},
 		},
@@ -581,10 +451,6 @@ GitHubアクセストークンを保存します。
 			content: {
 				"application/json": {
 					schema: errorResponseSchema,
-					example: {
-						code: "INTERNAL_SERVER_ERROR",
-						message: "Failed to save token.",
-					},
 				},
 			},
 		},

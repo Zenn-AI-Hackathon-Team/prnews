@@ -22,7 +22,6 @@ const healthzRoute = createRoute({
 			content: {
 				"application/json": {
 					schema: successResponseSchema(healthzResponseDataSchema),
-					example: { success: true, data: { ok: true } },
 				},
 			},
 		},
@@ -31,10 +30,6 @@ const healthzRoute = createRoute({
 			content: {
 				"application/json": {
 					schema: errorResponseSchema,
-					example: {
-						code: "INTERNAL_SERVER_ERROR",
-						message: "Internal Server Error",
-					},
 				},
 			},
 		},

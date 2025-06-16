@@ -66,6 +66,8 @@ export const githubClient = (): GithubPort => ({
 				authorLogin: prData.user?.login || "",
 				createdAt: prData.created_at,
 				comments: allComments,
+				owner: prData.base.repo.owner.login,
+				repo: prData.base.repo.name,
 			};
 			return pr;
 		} catch (error: unknown) {
@@ -86,7 +88,6 @@ export const githubClient = (): GithubPort => ({
 			const { data } = await octokit.repos.get({ owner, repo });
 			return {
 				githubRepoId: data.id,
-				repositoryFullName: data.full_name,
 				owner: data.owner.login,
 				repo: data.name,
 			};
@@ -199,7 +200,8 @@ export const githubClient = (): GithubPort => ({
 			});
 			const issue = {
 				issueNumber: issueData.number,
-				repositoryFullName: `${owner}/${repo}`,
+				owner,
+				repo,
 				githubIssueUrl: issueData.html_url,
 				title: issueData.title,
 				body: issueData.body ?? null,

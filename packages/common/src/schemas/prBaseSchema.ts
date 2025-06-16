@@ -19,5 +19,7 @@ export const pullRequestSchema = z.object({
 			createdAt: z.string(),
 		}),
 	),
+	owner: z.string().describe("リポジトリのオーナー名"),
+	repo: z.string().describe("リポジトリ名"),
 });
 export type PullRequest = z.infer<typeof pullRequestSchema>;

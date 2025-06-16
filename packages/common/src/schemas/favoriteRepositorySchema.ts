@@ -8,11 +8,6 @@ export const favoriteRepositorySchema = z.object({
 		.int()
 		.positive()
 		.describe("GitHubリポジトリの数値ID"),
-	repositoryFullName: z
-		.string()
-		.min(3)
-		.regex(/^[^/]+\/[^/]+$/)
-		.describe("リポジトリのフルネーム (owner/repo)"),
 	owner: z.string().min(1).describe("リポジトリのオーナー名"),
 	repo: z.string().min(1).describe("リポジトリ名"),
 	registeredAt: z.string().datetime().describe("お気に入り登録日時"),
