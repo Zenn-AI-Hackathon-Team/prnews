@@ -285,7 +285,6 @@ describe("userService", () => {
 				id: "fav-uuid-1",
 				userId: "user-uuid-1",
 				githubRepoId: 12345,
-				repositoryFullName: "owner/repo-1",
 				owner: "owner",
 				repo: "repo-1",
 				registeredAt: new Date().toISOString(),
@@ -307,7 +306,6 @@ describe("userService", () => {
 			id: favoriteId,
 			userId: userId, // このお気に入りは userId の所有物
 			githubRepoId: 1,
-			repositoryFullName: "owner/repo",
 			owner: "owner",
 			repo: "repo",
 			registeredAt: "2024-01-01T00:00:00Z",

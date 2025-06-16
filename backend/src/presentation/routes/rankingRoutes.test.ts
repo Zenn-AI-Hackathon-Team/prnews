@@ -14,7 +14,8 @@ const rankedMock: RankedArticleInfo = {
 	articleId: "00000000-0000-0000-0000-000000000001",
 	languageCode: "ja",
 	aiGeneratedTitle: "AIタイトル",
-	repositoryFullName: "owner/repo",
+	owner: "owner",
+	repo: "repo",
 	prNumber: 1,
 	likeCount: 10,
 };

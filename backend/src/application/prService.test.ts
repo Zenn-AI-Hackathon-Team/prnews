@@ -60,12 +60,15 @@ describe("prService", () => {
 			authorLogin: "alice",
 			createdAt: "2024-01-01T00:00:00Z",
 			comments: [],
+			owner: "owner",
+			repo: "repo",
 		};
 		prRepo.findByOwnerRepoNumber.mockResolvedValue(pr);
 		const result = await service.getPullRequest("owner", "repo", 1);
 		expect(result).toMatchObject({
 			prNumber: 1,
-			repositoryFullName: "owner/repo",
+			owner: "owner",
+			repo: "repo",
 			title: "PR Title",
 		});
 	});

@@ -113,8 +113,6 @@ export const createPrService = (deps: {
 		// 5. バリデーション
 		const validation = pullRequestSchema.safeParse({
 			prNumber: pr.prNumber,
-			owner: pr.owner,
-			repo: pr.repo,
 			githubPrUrl: `https://github.com/${pr.repository}/pull/${pr.prNumber}`,
 			title: pr.title,
 			body: pr.body,
@@ -122,6 +120,8 @@ export const createPrService = (deps: {
 			authorLogin: pr.authorLogin,
 			githubPrCreatedAt: pr.createdAt,
 			comments: pr.comments,
+			owner: pr.owner,
+			repo: pr.repo,
 		});
 		if (!validation.success) {
 			throw new HTTPException(422, {
@@ -135,7 +135,6 @@ export const createPrService = (deps: {
 
 		return {
 			prNumber: pr.prNumber,
-			repositoryFullName: pr.repository,
 			owner: pr.owner,
 			repo: pr.repo,
 			githubPrUrl: `https://github.com/${pr.repository}/pull/${pr.prNumber}`,
@@ -191,7 +190,6 @@ export const createPrService = (deps: {
 			diff: pr.diff,
 			authorLogin: pr.authorLogin,
 			createdAt: now,
-			repositoryFullName: pr.repository,
 			githubPrUrl: `https://github.com/${pr.repository}/pull/${pr.prNumber}`,
 			body: pr.body,
 			githubPrCreatedAt: pr.createdAt,
@@ -229,7 +227,6 @@ export const createPrService = (deps: {
 		// APIスキーマに整形
 		return {
 			prNumber: pr.prNumber,
-			repositoryFullName: pr.repository,
 			owner: pr.owner,
 			repo: pr.repo,
 			githubPrUrl: `https://github.com/${pr.repository}/pull/${pr.prNumber}`,
@@ -296,7 +293,6 @@ export const createPrService = (deps: {
 
 		return {
 			...article,
-			repositoryFullName: article.repository,
 			githubPrUrl: `https://github.com/${article.repository}/pull/${article.prNumber}`,
 			body: article.body,
 			githubPrCreatedAt: article.createdAt,
@@ -529,6 +525,8 @@ export const createPrService = (deps: {
 				state: pr.state,
 				createdAt: pr.created_at,
 				articleExists: existingArticleNumbers.includes(pr.number),
+				owner,
+				repo,
 			}));
 
 			return responseData;

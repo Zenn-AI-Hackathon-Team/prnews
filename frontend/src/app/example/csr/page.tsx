@@ -59,7 +59,7 @@ const page = () => {
 						{item.rank}位: {item.aiGeneratedTitle}
 					</p>
 					<p className="text-gray-600 text-sm">
-						{item.repositoryFullName} | いいね: {item.likeCount}
+						{item.owner}/{item.repo} | いいね: {item.likeCount}
 					</p>
 				</div>
 			))}

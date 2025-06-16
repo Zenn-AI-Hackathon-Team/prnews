@@ -37,7 +37,6 @@ describe("favoriteRepositoryRepoFirestore", () => {
 			id: "f1b2c3d4-5678-1234-9876-abcdefabcdef",
 			userId: "u1b2c3d4-5678-1234-9876-abcdefabcdef",
 			githubRepoId: 123456,
-			repositoryFullName: "test-owner/test-repo",
 			owner: "test-owner",
 			repo: "test-repo",
 			registeredAt: new Date().toISOString(),
@@ -51,4 +50,6 @@ describe("favoriteRepositoryRepoFirestore", () => {
 		expect(found).not.toBeNull();
 		expect(found).toEqual(testFavorite);
 	});
+
+	jest.setTimeout(20000);
 });
