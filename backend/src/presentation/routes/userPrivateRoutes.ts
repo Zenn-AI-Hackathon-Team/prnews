@@ -5,10 +5,7 @@ import {
 	likedArticleInfoSchema,
 	successResponseSchema,
 	userSchema,
-	// 他必要なスキーマ
 } from "@prnews/common";
-import { getAuth } from "firebase-admin/auth";
-import type { DecodedIdToken } from "firebase-admin/auth";
 import { HTTPException } from "hono/http-exception";
 import { createApp } from "../hono-app";
 
@@ -403,98 +400,6 @@ const deleteFavoriteRepoRoute = createRoute({
 	},
 });
 
-const tokenExchangeRoute = createRoute({
-	method: "post",
-	path: "/auth/token/exchange",
-	summary: "GitHubアクセストークン保存",
-	description: `\
-GitHubアクセストークンを保存します。
-ユーザ作成時にGitHubアクセストークンを保存するためのAPIです。
-ユーザ作成時は、まずこのAPIを呼び出して、GitHubアクセストークンを保存してください。
-その後、ユーザ作成API(POST /auth/signup)を呼び出してください。
-`,
-	tags: ["User & Auth"],
-	security: [{ bearerAuth: [] }],
-	request: {
-		body: {
-			content: {
-				"application/json": {
-					schema: z.object({
-						githubAccessToken: z.string().openapi({
-							description: "GitHubのアクセストークン",
-							example: "ghp_...",
-						}),
-					}),
-				},
-			},
-		},
-	},
-	responses: {
-		200: {
-			description: "保存成功",
-			content: {
-				"application/json": {
-					schema: successResponseSchema(z.object({ message: z.string() })),
-				},
-			},
-		},
-		401: {
-			description: "認証エラー。Bearerトークンが無効または未指定。",
-			content: {
-				"application/json": {
-					schema: errorResponseSchema,
-				},
-			},
-		},
-		500: {
-			description: "サーバーエラー。トークン保存失敗など。",
-			content: {
-				"application/json": {
-					schema: errorResponseSchema,
-				},
-			},
-		},
-	},
-});
-
-// 公開ルート（token/exchange のみ）
-/** 
-const publicRoutes = createApp().openapi(tokenExchangeRoute, async (c) => {
-	const { userService } = c.var;
-	const authHeader = c.req.header("Authorization");
-	if (!authHeader || !authHeader.startsWith("Bearer ")) {
-		throw new HTTPException(401, {
-			message: "Bearer token is missing or invalid",
-		});
-	}
-	const idToken = authHeader.substring(7);
-	let decodedToken: DecodedIdToken;
-	try {
-		decodedToken = await getAuth().verifyIdToken(idToken);
-	} catch (error) {
-		throw new HTTPException(401, {
-			message: "Invalid Firebase ID token",
-			cause: error,
-		});
-	}
-	const { githubAccessToken } = c.req.valid("json");
-	if (!githubAccessToken) {
-		throw new HTTPException(400, { message: "githubAccessToken is required" });
-	}
-	const result = await userService.saveGitHubToken(
-		decodedToken.uid,
-		githubAccessToken,
-	);
-	if (!result.success) {
-		throw new HTTPException(500, { message: "Failed to save token." });
-	}
-	return c.json(
-		{ success: true as const, data: { message: "Token saved successfully." } },
-		200,
-	);
-});
-*/
-
 const privateRoutes = createApp()
 	.openapi(signupRoute, async (c) => {
 		const { userService } = c.var;
@@ -622,52 +527,10 @@ const privateRoutes = createApp()
 			},
 			200,
 		);
-	})
-	.openapi(tokenExchangeRoute, async (c) => {
-		const { userService } = c.var;
-		const user = c.var.user;
-		if (!user) throw new HTTPException(401, { message: "Unauthenticated" });
-
-		const authHeader = c.req.header("Authorization");
-		if (!authHeader || !authHeader.startsWith("Bearer ")) {
-			throw new HTTPException(401, {
-				message: "Bearer token is missing or invalid",
-			});
-		}
-		const idToken = authHeader.substring(7);
-		let decodedToken: DecodedIdToken;
-		try {
-			decodedToken = await getAuth().verifyIdToken(idToken);
-		} catch (error) {
-			throw new HTTPException(401, {
-				message: "Invalid Firebase ID token",
-				cause: error,
-			});
-		}
-		const { githubAccessToken } = c.req.valid("json");
-		if (!githubAccessToken) {
-			throw new HTTPException(400, {
-				message: "githubAccessToken is required",
-			});
-		}
-		const result = await userService.saveGitHubToken(
-			user.id,
-			githubAccessToken,
-		);
-		if (!result.success) {
-			throw new HTTPException(500, { message: "Failed to save token." });
-		}
-		return c.json(
-			{
-				success: true as const,
-				data: { message: "Token saved successfully." },
-			},
-			200,
-		);
 	});
 
-const userRoutes = createApp().route("/", privateRoutes);
+const userPrivateRoutes = createApp().route("/", privateRoutes);
 
-export type UserRoutesType = typeof userRoutes;
+export type UserPrivateRoutesType = typeof userPrivateRoutes;
 
-export default userRoutes;
+export default userPrivateRoutes;

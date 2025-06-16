@@ -11,7 +11,8 @@ import issuePublicRoutes from "./presentation/routes/issuePublicRoutes";
 import prPrivateRoutes from "./presentation/routes/prPrivateRoutes";
 import prPublicRoutes from "./presentation/routes/prPublicRoutes";
 import rankingRoutes from "./presentation/routes/rankingRoutes";
-import userRoutes from "./presentation/routes/userRoutes";
+import userPrivateRoutes from "./presentation/routes/userPrivateRoutes";
+import userPublicRoutes from "./presentation/routes/userPublicRoutes";
 
 const app = createApp();
 
@@ -37,10 +38,11 @@ const api = app
 	.route("/", rankingRoutes)
 	.route("/", issuePublicRoutes)
 	.route("/", prPublicRoutes)
+	.route("/", userPublicRoutes)
 	.use("/auth/*", authMiddleware)
 	.use("/users/*", authMiddleware)
 	.use("/repos/*", authMiddleware)
-	.route("/", userRoutes)
+	.route("/", userPrivateRoutes)
 	.route("/", issuePrivateRoutes)
 	.route("/", prPrivateRoutes);
 
