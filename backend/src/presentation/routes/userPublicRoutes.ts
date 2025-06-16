@@ -16,6 +16,7 @@ GitHubアクセストークンを保存します。
 その後、ユーザ作成API(POST /auth/signup)を呼び出してください。
 `,
 	tags: ["User & Auth"],
+	security: [{ bearerAuth: [] }],
 	request: {
 		body: {
 			content: {
