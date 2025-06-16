@@ -50,23 +50,6 @@ const getArticleLikeRankingRoute = createRoute({
 							}),
 						}),
 					),
-					example: {
-						success: true,
-						data: {
-							data: [
-								{
-									rank: 1,
-									articleId: "11111111-1111-1111-1111-111111111111",
-									languageCode: "ja",
-									aiGeneratedTitle: "AI 生成タイトルの例",
-									repositoryFullName: "vercel/next.js",
-									prNumber: 42,
-									likeCount: 42,
-								},
-							],
-							pagination: { totalItems: 1, limit: 10, offset: 0 },
-						},
-					},
 				},
 			},
 		},
@@ -75,10 +58,6 @@ const getArticleLikeRankingRoute = createRoute({
 			content: {
 				"application/json": {
 					schema: errorResponseSchema,
-					example: {
-						code: "INTERNAL_SERVER_ERROR",
-						message: "Internal Server Error",
-					},
 				},
 			},
 		},
