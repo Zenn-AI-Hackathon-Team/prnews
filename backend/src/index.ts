@@ -1,5 +1,6 @@
 import { serve } from "@hono/node-server";
 import { swaggerUI } from "@hono/swagger-ui";
+import { cors } from "hono/cors";
 import { HTTPException } from "hono/http-exception";
 import { ZodError } from "zod";
 import { buildDependencies } from "./config/di";
@@ -15,6 +16,15 @@ import userPrivateRoutes from "./presentation/routes/userPrivateRoutes";
 import userPublicRoutes from "./presentation/routes/userPublicRoutes";
 
 const app = createApp();
+
+app.use(
+	"*",
+	cors({
+		origin: ["http://localhost:3000"],
+		allowHeaders: ["Authorization", "Content-Type"],
+		allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+	}),
+);
 
 app.use("*", async (c, next) => {
 	const deps = buildDependencies();

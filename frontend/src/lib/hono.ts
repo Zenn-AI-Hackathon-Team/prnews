@@ -10,6 +10,9 @@ import { hc } from "hono/client";
 
 const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
+// テスト用のトークン：ログイン機能ができるまではトークンを固定値で設定
+const token = "hogehoge";
+
 export const rankingClient = hc<RankingRoutesType>(apiUrl);
 export const prClient = hc<PrPublicRoutesType & PrPrivateRoutesType>(apiUrl);
 export const issueClient = hc<IssuePublicRoutesType & IssuePrivateRoutesType>(
@@ -17,6 +20,11 @@ export const issueClient = hc<IssuePublicRoutesType & IssuePrivateRoutesType>(
 );
 export const userClient = hc<UserPublicRoutesType & UserPrivateRoutesType>(
 	apiUrl,
+	{
+		headers: {
+			Authorization: `Bearer ${token}`,
+		},
+	},
 );
 export const generalClient = hc<GeneralRoutesType>(apiUrl);
 
