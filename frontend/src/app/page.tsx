@@ -19,16 +19,28 @@ export default function Home() {
 			const user = result.user;
 			const firebaseToken = await user.getIdToken();
 
-			await fetch("http://localhost:8080/auth/token/exchange", {
-				method: "POST",
-				headers: {
-					"Content-Type": "application/json",
-					Authorization: `Bearer ${firebaseToken}`,
-				},
-				body: JSON.stringify({
-					githubAccessToken: `${githubAccessToken}`,
-				}),
-			});
+			try {
+				const response = await fetch(
+					`${process.env.NEXT_PUBLIC_BACKEND_URL}auth/token/exchange`,
+					{
+						method: "POST",
+						headers: {
+							"Content-Type": "application/json",
+							Authorization: `Bearer ${firebaseToken}`,
+						},
+						body: JSON.stringify({
+							githubAccessToken: `${githubAccessToken}`,
+						}),
+					},
+				);
+				if (!response.ok) {
+					throw new Error(`HTTP error! status: ${response.status}`);
+				}
+				const data = await response.json();
+				console.log("response", data);
+			} catch (error) {
+				console.log("fetcherror", error);
+			}
 		}
 		signIn();
 	}, []);
