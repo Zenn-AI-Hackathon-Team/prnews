@@ -1,33 +1,22 @@
 "use client";
+import type { newPR } from "@/app/pr/page";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Logo from "@/features/common/logo/components/Logo";
-import { Calendar, Clock, Flame, TrendingUp } from "lucide-react";
+import { Clock, Sparkles, TrendingUp } from "lucide-react";
 import type React from "react";
 import { useState } from "react";
-import PRCard from "./PRCard";
-
-// PR型定義 - 新しいAPIのデータ構造に合わせて更新
-export type PR = {
-	articleId: string;
-	aiGeneratedTitle: string;
-	languageCode: string;
-	likeCount: number;
-	prNumber: number;
-	rank: number;
-	repositoryFullName: string;
-};
+import NewPRCard from "./NewPRCard";
 
 // Props型定義
 type PRListProps = {
-	weeklyPRs: PR[];
-	goodPRs: PR[];
+	newPRs: newPR[];
 	onRefresh?: () => void;
 };
 
-const PRList: React.FC<PRListProps> = ({ weeklyPRs, goodPRs, onRefresh }) => {
-	const [activeTab, setActiveTab] = useState("weekly");
+const PRList: React.FC<PRListProps> = ({ newPRs, onRefresh }) => {
+	const [activeTab, setActiveTab] = useState("new");
 
 	return (
 		<div className="w-full max-w-7xl mx-auto space-y-8">
@@ -44,33 +33,26 @@ const PRList: React.FC<PRListProps> = ({ weeklyPRs, goodPRs, onRefresh }) => {
 
 			{/* Tabs */}
 			<Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-				<TabsList className="grid w-full max-w-md grid-cols-2 h-12 p-1 bg-gray-100/50">
+				<TabsList className="grid w-full max-w-lg grid-cols-1 h-12 p-1 bg-gray-100/50">
 					<TabsTrigger
-						value="weekly"
+						value="new"
 						className="gap-2 data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all duration-200"
 					>
-						<Calendar className="h-4 w-4" />
-						<span className="font-medium">週間ランキング</span>
-					</TabsTrigger>
-					<TabsTrigger
-						value="good"
-						className="gap-2 data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all duration-200"
-					>
-						<Flame className="h-4 w-4" />
-						<span className="font-medium">総合ランキング</span>
+						<Sparkles className="h-4 w-4" />
+						<span className="font-medium">New PR</span>
 					</TabsTrigger>
 				</TabsList>
 
-				{/* Weekly PRs */}
-				<TabsContent value="weekly" className="space-y-6 mt-8">
+				{/* New PRs */}
+				<TabsContent value="new" className="space-y-6 mt-8">
 					<div className="flex items-center justify-between">
 						<div className="flex items-center gap-3">
 							<h2 className="text-2xl font-bold text-gray-900">
-								今週の注目プルリクエスト
+								New PullRequests
 							</h2>
 							<Badge className="gap-1.5 bg-blue-100 text-blue-700 hover:bg-blue-100">
 								<TrendingUp className="h-3 w-3" />
-								{weeklyPRs.length} PRs
+								{newPRs.length} PRs
 							</Badge>
 						</div>
 						{onRefresh && (
@@ -86,39 +68,8 @@ const PRList: React.FC<PRListProps> = ({ weeklyPRs, goodPRs, onRefresh }) => {
 						)}
 					</div>
 					<div className="grid gap-4">
-						{weeklyPRs.map((pr) => (
-							<PRCard key={pr.articleId} pr={pr} />
-						))}
-					</div>
-				</TabsContent>
-
-				{/* Good PRs */}
-				<TabsContent value="good" className="space-y-6 mt-8">
-					<div className="flex items-center justify-between">
-						<div className="flex items-center gap-3">
-							<h2 className="text-2xl font-bold text-gray-900">
-								高評価のプルリクエスト
-							</h2>
-							<Badge className="gap-1.5 bg-purple-100 text-purple-700 hover:bg-purple-100">
-								<Flame className="h-3 w-3" />
-								{goodPRs.length} PRs
-							</Badge>
-						</div>
-						{onRefresh && (
-							<Button
-								variant="outline"
-								size="sm"
-								className="gap-2"
-								onClick={onRefresh}
-							>
-								<Clock className="h-4 w-4" />
-								更新
-							</Button>
-						)}
-					</div>
-					<div className="grid gap-4">
-						{goodPRs.map((pr) => (
-							<PRCard key={pr.articleId} pr={pr} />
+						{newPRs.map((pr) => (
+							<NewPRCard key={pr.prNumber} pr={pr} />
 						))}
 					</div>
 				</TabsContent>

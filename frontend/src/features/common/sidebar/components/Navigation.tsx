@@ -1,12 +1,13 @@
 "use client";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipTrigger } from "@/components/ui/tooltip";
-import { Heart, Home, Settings } from "lucide-react";
+import { GitPullRequest, Heart, Home, Settings } from "lucide-react";
 import Link from "next/link";
-import React, { useState } from "react";
+import { useState } from "react";
 
 const menuItems = [
-	{ id: "home", label: "Home", icon: Home, path: "/home" },
+	{ id: "home", label: "Home", icon: Home, path: "/" },
+	{ id: "pr", label: "PR", icon: GitPullRequest, path: "/pr" },
 	{ id: "favorites", label: "Favorites", icon: Heart, path: "/favorites" },
 	{ id: "settings", label: "Settings", icon: Settings, path: "/settings" },
 ];
