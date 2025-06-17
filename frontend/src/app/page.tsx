@@ -18,9 +18,6 @@ export default function Home() {
 			const result = await signInWithPopup(auth, provider);
 			const user = result.user;
 			const firebaseToken = await user.getIdToken();
-			console.log("firebaseToken", firebaseToken);	//pushする前にけす
-			console.log("githubtoken",githubAccessToken);	//pushする前にけす
-			
 
 			await fetch("http://localhost:8080/auth/token/exchange", {
 				method: "POST",
