@@ -4,7 +4,6 @@ import Image from "next/image";
 import { useEffect } from "react";
 import { getAuth } from "../lib/firebase";
 
-
 export default function Home() {
 	//urlのcode以下を取得
 	useEffect(() => {
@@ -18,8 +17,10 @@ export default function Home() {
 
 			const result = await signInWithPopup(auth, provider);
 			const user = result.user;
-			const firebaseToken = user.getIdToken();
-			console.log("firebaseToken", firebaseToken);
+			const firebaseToken = await user.getIdToken();
+			console.log("firebaseToken", firebaseToken);	//pushする前にけす
+			console.log("githubtoken",githubAccessToken);	//pushする前にけす
+			
 
 			await fetch("http://localhost:8080/auth/token/exchange", {
 				method: "POST",
