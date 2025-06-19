@@ -1,22 +1,12 @@
 "use client";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import type { RankedArticleInfo } from "@prnews/common";
 import { GitPullRequest, ThumbsUp } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 
-// PR型定義 - 新しいAPIのデータ構造に合わせて更新
-export type PR = {
-	articleId: string;
-	aiGeneratedTitle: string;
-	languageCode: string;
-	likeCount: number;
-	prNumber: number;
-	rank: number;
-	repositoryFullName: string;
-};
-
-const PRCard = ({ pr }: { pr: PR }) => {
+const ArticlePRCard = ({ pr }: { pr: RankedArticleInfo }) => {
 	const [likedPRs, setLikedPRs] = useState<string[]>([]);
 
 	const isLiked = likedPRs.includes(pr.articleId);
@@ -66,7 +56,7 @@ const PRCard = ({ pr }: { pr: PR }) => {
 	const status = pr.prNumber % 3 === 0 ? "open" : "merged";
 
 	return (
-		<Link href={`/home/${pr.articleId}`}>
+		<Link href={`/article/${pr.prNumber}`}>
 			<div className="group relative bg-white rounded-xl border border-gray-100 p-6 transition-all duration-300 hover:border-gray-200 hover:shadow-lg hover:shadow-gray-200/50">
 				{/* Rank Badge */}
 				<div className="absolute top-6 right-6 flex items-center gap-2">
@@ -169,4 +159,4 @@ const PRCard = ({ pr }: { pr: PR }) => {
 	);
 };
 
-export default PRCard;
+export default ArticlePRCard;

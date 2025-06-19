@@ -1,22 +1,27 @@
 "use client";
-import type { newPR } from "@/app/pr-issue/page";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Logo from "@/features/common/logo/components/Logo";
-import { Clock, Sparkles, TrendingUp } from "lucide-react";
+import type { RankedArticleInfo } from "@prnews/common";
+import { Calendar, Clock, Flame, TrendingUp } from "lucide-react";
 import type React from "react";
 import { useState } from "react";
-import NewPRCard from "./NewPRCard";
+import ArticlePRCard from "./ArticlePRCard";
 
 // Props型定義
-type PRListProps = {
-	newPRs: newPR[];
+type ArticleListProps = {
+	weeklyArticles: RankedArticleInfo[];
+	goodArticles: RankedArticleInfo[];
 	onRefresh?: () => void;
 };
 
-const PRList: React.FC<PRListProps> = ({ newPRs, onRefresh }) => {
-	const [activeTab, setActiveTab] = useState("newPRs");
+const ArticleList: React.FC<ArticleListProps> = ({
+	weeklyArticles,
+	goodArticles,
+	onRefresh,
+}) => {
+	const [activeTab, setActiveTab] = useState("weekly");
 
 	return (
 		<div className="w-full max-w-7xl mx-auto space-y-8">
@@ -35,31 +40,31 @@ const PRList: React.FC<PRListProps> = ({ newPRs, onRefresh }) => {
 			<Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
 				<TabsList className="grid w-full max-w-lg grid-cols-2 h-12 p-1 bg-gray-100/50">
 					<TabsTrigger
-						value="newPRs"
+						value="weekly"
 						className="gap-2 data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all duration-200"
 					>
-						<Sparkles className="h-4 w-4" />
-						<span className="font-medium">New PR</span>
+						<Calendar className="h-4 w-4" />
+						<span className="font-medium">週間ランキング</span>
 					</TabsTrigger>
 					<TabsTrigger
-						value="newIssues"
+						value="good"
 						className="gap-2 data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all duration-200"
 					>
-						<Sparkles className="h-4 w-4" />
-						<span className="font-medium">New Issue</span>
+						<Flame className="h-4 w-4" />
+						<span className="font-medium">総合ランキング</span>
 					</TabsTrigger>
 				</TabsList>
 
-				{/* New PRs */}
-				<TabsContent value="newPRs" className="space-y-6 mt-8">
+				{/* Weekly PRs */}
+				<TabsContent value="weekly" className="space-y-6 mt-8">
 					<div className="flex items-center justify-between">
 						<div className="flex items-center gap-3">
 							<h2 className="text-2xl font-bold text-gray-900">
-								New PullRequests
+								今週の注目プルリクエスト
 							</h2>
 							<Badge className="gap-1.5 bg-blue-100 text-blue-700 hover:bg-blue-100">
 								<TrendingUp className="h-3 w-3" />
-								{newPRs.length} PRs
+								{weeklyArticles.length} PRs
 							</Badge>
 						</div>
 						{onRefresh && (
@@ -75,20 +80,22 @@ const PRList: React.FC<PRListProps> = ({ newPRs, onRefresh }) => {
 						)}
 					</div>
 					<div className="grid gap-4">
-						{newPRs.map((pr) => (
-							<NewPRCard key={pr.prNumber} pr={pr} />
+						{weeklyArticles.map((article) => (
+							<ArticlePRCard key={article.articleId} pr={article} />
 						))}
 					</div>
 				</TabsContent>
 
-				{/* New Issues */}
-				<TabsContent value="newIssues" className="space-y-6 mt-8">
+				{/* Good PRs */}
+				<TabsContent value="good" className="space-y-6 mt-8">
 					<div className="flex items-center justify-between">
 						<div className="flex items-center gap-3">
-							<h2 className="text-2xl font-bold text-gray-900">New Issuses</h2>
-							<Badge className="gap-1.5 bg-blue-100 text-blue-700 hover:bg-blue-100">
-								<TrendingUp className="h-3 w-3" />
-								{newPRs.length} Issues
+							<h2 className="text-2xl font-bold text-gray-900">
+								高評価のプルリクエスト
+							</h2>
+							<Badge className="gap-1.5 bg-purple-100 text-purple-700 hover:bg-purple-100">
+								<Flame className="h-3 w-3" />
+								{goodArticles.length} PRs
 							</Badge>
 						</div>
 						{onRefresh && (
@@ -103,11 +110,15 @@ const PRList: React.FC<PRListProps> = ({ newPRs, onRefresh }) => {
 							</Button>
 						)}
 					</div>
-					<div className="grid gap-4">comming soon...</div>
+					<div className="grid gap-4">
+						{goodArticles.map((article) => (
+							<ArticlePRCard key={article.articleId} pr={article} />
+						))}
+					</div>
 				</TabsContent>
 			</Tabs>
 		</div>
 	);
 };
 
-export default PRList;
+export default ArticleList;
