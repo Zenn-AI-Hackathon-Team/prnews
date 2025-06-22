@@ -7,7 +7,7 @@
 	},
 	"files": {
 		"ignoreUnknown": false,
-		"ignore": [".next", "coverage"]
+		"ignore": [".next", "coverage", "packages/common/src/types"]
 	},
 	"formatter": {
 		"enabled": true,

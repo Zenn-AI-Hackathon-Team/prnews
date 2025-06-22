@@ -43,15 +43,27 @@ app.use("*", async (c, next) => {
 	await next();
 });
 
+app.doc("/specification", {
+	openapi: "3.0.3",
+	info: {
+		version: "1.0.0",
+		title: "PR News Backend API",
+	},
+});
+
+app.get("/doc", swaggerUI({ url: "/specification" }));
+
 const api = app
 	.route("/", generalRoutes)
 	.route("/", rankingRoutes)
 	.route("/", issuePublicRoutes)
 	.route("/", prPublicRoutes)
 	.route("/", userPublicRoutes)
-	.use("/auth/*", authMiddleware)
-	.use("/users/*", authMiddleware)
-	.use("/repos/*", authMiddleware)
+	// .use("/auth/*", authMiddleware)
+	// .use("/users/*", authMiddleware)
+	// .use("/repos/*", authMiddleware)
+	// Issue #3122の影響で、pathを指定すると型推論が効かなくなるので、pathを指定しない
+	.use(authMiddleware)
 	.route("/", userPrivateRoutes)
 	.route("/", issuePrivateRoutes)
 	.route("/", prPrivateRoutes);
@@ -62,16 +74,6 @@ app.openAPIRegistry.registerComponent("securitySchemes", "bearerAuth", {
 	bearerFormat: "JWT",
 	description: "Firebase IDトークンを Bearer トークンとして指定します。",
 });
-
-app.doc("/specification", {
-	openapi: "3.0.3",
-	info: {
-		version: "1.0.0",
-		title: "PR News Backend API",
-	},
-});
-
-app.get("/doc", swaggerUI({ url: "/specification" }));
 
 // グローバルエラーハンドラ
 app.onError((err, c) => {
@@ -104,3 +106,5 @@ serve(
 		console.log(`Server is running on http://localhost:${info.port}`);
 	},
 );
+
+export type AppType = typeof api;
