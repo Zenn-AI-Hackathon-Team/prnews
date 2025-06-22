@@ -53,15 +53,17 @@ export const favoriteRepositoryRepoFirestore = (
 		if (snap.empty) return null;
 		return favoriteFromDoc(snap.docs[0]);
 	},
-	async delete(favoriteId) {
-		const snap = await db
-			.collectionGroup("favoriteRepositories")
-			.where("id", "==", favoriteId)
-			.limit(1)
-			.get();
-		if (snap.empty) return false;
-		await snap.docs[0].ref.delete();
-		return true;
+	async delete(userId, favoriteId) {
+		const docRef = db
+			.collection(`users/${userId}/favoriteRepositories`)
+			.doc(favoriteId);
+		try {
+			await docRef.delete();
+			return true;
+		} catch (error) {
+			console.error("Failed to delete favorite repository:", error);
+			return false;
+		}
 	},
 	async findByUserId(userId, options) {
 		const collectionRef = db.collection(`users/${userId}/favoriteRepositories`);
