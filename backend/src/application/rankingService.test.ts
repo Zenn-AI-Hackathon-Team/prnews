@@ -37,6 +37,8 @@ describe("rankingService", () => {
 				createdAt: "",
 				body: "",
 				comments: [],
+				owner: "owner",
+				repo: "repo",
 			},
 		]);
 		const result = await service.getArticleLikeRanking();

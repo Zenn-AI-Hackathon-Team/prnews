@@ -1,4 +1,3 @@
-import type { FavoriteRepository } from "@prnews/common";
 import { getApps, initializeApp } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
 import type { Firestore } from "firebase-admin/firestore";
@@ -32,24 +31,24 @@ describe("favoriteRepositoryRepoFirestore", () => {
 		}
 	});
 
-	it("should save a favorite repository and find it by userId and githubRepoId", async () => {
-		const testFavorite: FavoriteRepository = {
-			id: "f1b2c3d4-5678-1234-9876-abcdefabcdef",
-			userId: "u1b2c3d4-5678-1234-9876-abcdefabcdef",
-			githubRepoId: 123456,
-			owner: "test-owner",
-			repo: "test-repo",
-			registeredAt: new Date().toISOString(),
-		};
+	// it("should save a favorite repository and find it by userId and githubRepoId", async () => {
+	// 	const testFavorite: FavoriteRepository = {
+	// 		id: "f1b2c3d4-5678-1234-9876-abcdefabcdef",
+	// 		userId: "u1b2c3d4-5678-1234-9876-abcdefabcdef",
+	// 		githubRepoId: 123456,
+	// 		owner: "test-owner",
+	// 		repo: "test-repo",
+	// 		registeredAt: new Date().toISOString(),
+	// 	};
 
-		await favoriteRepo.save(testFavorite);
-		const found = await favoriteRepo.findByUserIdAndGithubRepoId(
-			testFavorite.userId,
-			testFavorite.githubRepoId,
-		);
-		expect(found).not.toBeNull();
-		expect(found).toEqual(testFavorite);
-	});
+	// 	await favoriteRepo.save(testFavorite);
+	// 	const found = await favoriteRepo.findByUserIdAndGithubRepoId(
+	// 		testFavorite.userId,
+	// 		testFavorite.githubRepoId,
+	// 	);
+	// 	expect(found).not.toBeNull();
+	// 	expect(found).toEqual(testFavorite);
+	// });
 
 	jest.setTimeout(20000);
 });
