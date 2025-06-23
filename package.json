@@ -13,6 +13,8 @@
 		"lint": "biome lint --write .",
 		"check": "biome check --write .",
 
+		"build": "pnpm --filter frontend build",
+
 		"start": "node frontend/.next/standalone/server.js",
 
 		"prepare": "husky"
