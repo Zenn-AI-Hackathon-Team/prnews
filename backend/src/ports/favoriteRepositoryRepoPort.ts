@@ -10,6 +10,6 @@ export interface FavoriteRepositoryRepoPort {
 		userId: string,
 		options: { limit: number; offset: number },
 	): Promise<{ favorites: FavoriteRepository[]; total: number }>;
-	delete(favoriteId: string): Promise<boolean>;
+	delete(userId: string, favoriteId: string): Promise<boolean>;
 	findById(favoriteId: string): Promise<FavoriteRepository | null>;
 }

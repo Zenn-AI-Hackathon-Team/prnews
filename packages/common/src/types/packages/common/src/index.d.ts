@@ -12,4 +12,3 @@ export * from "./schemas/issueSchema";
 export * from "./schemas/issueArticleSchema";
 export * from "./schemas/issueArticleContentSchema";
 export * from "./schemas/issueListItemSchema";
-export * from "./types/backend/src/index";

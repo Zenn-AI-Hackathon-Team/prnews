@@ -9,6 +9,7 @@
 	"scripts": {
 		"dev": "tsx watch --env-file .env src/index.ts",
 		"build": "tsc",
+		"build:types": "tsc -p tsconfig.dts.json",
 		"start": "node dist/index.js",
 		"test": "jest",
 		"test:watch": "jest --watch",
