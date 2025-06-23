@@ -1,10 +1,11 @@
 echo "🐶 Husky: コミット前にBiomeのチェックを実行します..."
-bun run check
+pnpm lint-staged
 
 if [ $? -ne 0 ]; then
   echo "❌ Biomeのチェックに失敗しました。問題を修正して再度コミットしてください。"
   exit 1
 fi
+
 echo "✅ Biomeのチェックをパスしました！コミットを続行します..."
 
 # main、develop、devブランチへのコミットを制限

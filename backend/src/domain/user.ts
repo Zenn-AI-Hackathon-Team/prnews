@@ -2,10 +2,16 @@ export type User = {
 	id: string;
 	githubUserId: number;
 	githubUsername: string;
-	// 必要に応じて他のフィールドを追加
+	language: string;
+	firebaseUid: string;
+	githubDisplayName?: string | null;
+	email?: string | null;
+	avatarUrl?: string | null;
+	createdAt?: string;
+	updatedAt?: string;
+	encryptedGitHubAccessToken?: string;
 };
 
-export const createUser = (props: Omit<User, "id">): User => ({
-	id: crypto.randomUUID(),
+export const createUser = (props: User): User => ({
 	...props,
 });

@@ -38,7 +38,7 @@
 
     -   認証: 必須
     -   入力: なし
-    -   出力スキーマ: `User`
+    -   出力スキーマ: `User`（`id`, `githubUsername`, `avatarUrl`, `language` など）
     -   典型レスポンス例（成功）:
 
         ```json
@@ -47,7 +47,8 @@
         	"data": {
         		"id": "5f8c9c1d-…",
         		"githubUsername": "octocat",
-        		"avatarUrl": "https://avatars.githubusercontent.com/u/1?v=4"
+        		"avatarUrl": "https://avatars.githubusercontent.com/u/1?v=4",
+        		"language": "ja"
         	}
         }
         ```
@@ -69,112 +70,210 @@
 
     -   処理: `AuthSession.revokedAt` を現在時刻で更新し、以降のリクエストを 401 で拒否。
 
----
+### 2‑3. サインアップ
 
-## 3. Pull Request 取り込み
-
-### 3‑1. GitHub から PR を保存
-
--   **POST /repos/\:owner/\:repo/pulls/\:number/ingest**
+-   **POST /auth/signup**
 
     -   認証: 必須
-    -   入力: パスパラメータのみ
-    -   処理:
+    -   入力: `{ language?: string }`（2文字言語コード、省略時は"ja"）
+    -   出力スキーマ: `User`
+    -   備考: サインアップ時に希望言語を指定可能。未指定時は日本語（ja）で登録。
 
-        1. GitHub REST API で PR メタ・diff・コメントを取得。
-        2. `PullRequest` として保存（既存なら更新）。
+---
 
+## 3. お気に入りリポジトリ機能
+
+- **POST /users/me/favorite-repositories**
+    - 認証: 必須
+    - 入力: JSON `{ owner: string, repo: string }`
+    - 出力: `FavoriteRepository` オブジェクト
+    - GitHubリポジトリ存在確認あり。存在しない場合は `GITHUB_REPO_NOT_FOUND` エラー。
+    - 既に登録済みの場合は200、初回登録時は201。
+    - レスポンス例:
+
+        ```json
+        {
+        	"success": true,
+        	"data": {
+        		"id": "uuid",
+          "userId": "uuid",
+          "githubRepoId": 123456,
+          "repositoryFullName": "owner/repo",
+          "owner": "owner",
+          "repo": "repo",
+          "registeredAt": "2024-06-08T12:34:56Z"
+        },
+        "message": "お気に入り登録が完了しました"
+        }
+        ```
+
+- **GET /users/me/favorite-repositories**
+    - 認証: 必須
+    - クエリ: `limit`, `offset` (デフォルトはサーバー側で設定)
+    - 出力: `{ data: FavoriteRepository[], pagination: Pagination }`
+    - レスポンス例:
+        ```json
+        {
+            "success": true,
+            "data": {
+                "data": [
+                    {
+                        "id": "uuid-of-favorite",
+                        "userId": "uuid-of-user",
+                        "githubRepoId": 12345,
+                        "repositoryFullName": "owner/repo",
+                        "owner": "owner",
+                        "repo": "repo",
+                        "registeredAt": "2024-01-01T00:00:00Z"
+                    }
+                ],
+                "pagination": {
+                    "totalItems": 1,
+                    "limit": 10,
+                    "offset": 0
+                }
+            },
+            "message": null
+        }
+        ```
+    - 用途: 認証ユーザーが登録したお気に入りリポジトリの一覧を、ページネーション付きで取得する。
+
+- **DELETE /users/me/favorite-repositories/{favoriteId}**
+    - 認証: 必須
+    - 入力: なし（パスパラメータ `favoriteId` で指定）
+    - 出力: `{ message: string }`
+    - レスポンス例:
+        ```json
+        {
+            "success": true,
+            "data": {
+                "message": "Favorite repository deleted successfully."
+            },
+            "message": "Favorite repository deleted successfully."
+        }
+        ```
+    - 処理: 指定されたIDのお気に入りリポジトリを削除する。**認証ユーザー自身が登録したお気に入り以外は削除できない。**
+    - エラー: `NOT_FOUND` (指定された`favoriteId`のお気に入りが見つからない場合), `FORBIDDEN` (認証ユーザーがそのお気に入りの所有者でない場合)
+
+---
+
+## 4. Pull Request 解説記事・いいね機能
+
+- **POST /articles/{articleId}/language/{langCode}/like**
+    - 認証: 必須
+    - 入力: なし
+    - 出力: `{ message: string, likeCount: number, alreadyLiked: boolean }`
+    - 記事・言語が存在しない場合は `ARTICLE_NOT_FOUND` エラー。
+    - レスポンス例:
+
+      ```json
+      {
+        "success": true,
+        "data": {
+          "message": "いいねしました",
+          "likeCount": 5,
+          "alreadyLiked": false
+        }
+      }
+      ```
+
+- **DELETE /articles/{articleId}/language/{langCode}/like**
+    - 認証: 必須
+    - 入力: なし
+    - 出力: `{ likeCount: number }`
+    - 記事・言語が存在しない場合は `ARTICLE_NOT_FOUND` エラー。
+    - レスポンス例:
+
+      ```json
+      {
+        "success": true,
+        "data": {
+          "likeCount": 4
+        }
+      }
+      ```
+
+- **GET /users/me/liked-articles**
+    - 認証: 必須
+    - クエリ: `lang`, `limit`, `offset`, `sort`
+    - 出力: `{ data: LikedArticleInfo[], pagination: Pagination }`
+    - レスポンス例:
+
+        ```json
+        {
+        	"success": true,
+        	"data": {
+          "data": [
+            {
+              "articleId": "uuid",
+              "languageCode": "ja",
+              "likedAt": "2024-06-08T12:34:56Z",
+              "aiGeneratedTitle": "AI生成タイトル",
+              "repositoryFullName": "owner/repo",
+              "prNumber": 42
+            }
+          ],
+          "pagination": {
+            "totalItems": 1,
+            "limit": 10,
+            "offset": 0
+          }
+        	}
+        }
+        ```
+
+---
+
+## 5. いいね数ランキング
+
+- **GET /ranking/articles/likes**
+    - 認証: 不要
+    - クエリ: `period`, `language`, `limit`, `offset`
+    - 出力: `{ data: RankedArticleInfo[], pagination: Pagination }`
+    - レスポンス例:
+
+        ```json
+        {
+        	"success": true,
+        	"data": {
+          "data": [
+            {
+              "rank": 1,
+              "articleId": "uuid",
+              "languageCode": "ja",
+              "aiGeneratedTitle": "AI生成タイトル",
+              "repositoryFullName": "owner/repo",
+        		"prNumber": 42,
+              "likeCount": 10
+            }
+          ],
+          "pagination": {
+            "totalItems": 1,
+            "limit": 10,
+            "offset": 0
+          }
+        	}
+        }
+        ```
+
+---
+
+## 6. Pull Request 本体取得（キャッシュ）
+
+-   **GET /repos/:owner/:repo/pulls/:number**
+
+    -   認証: 必須
+    -   入力: なし
     -   出力スキーマ: `PullRequest`
-    -   典型レスポンス例（成功）:
 
-        ```json
-        {
-        	"success": true,
-        	"data": {
-        		"id": "uuid",
-        		"prNumber": 42,
-        		"repository": "acme/widgets",
-        		"title": "feat: add new widget",
-        		"authorLogin": "alice",
-        		"createdAt": "2025-06-04T12:34:56Z"
-        	}
-        }
-        ```
+> **【💡 なぜ認証が必須なのか】**
+> このエンドポイントでは、GitHub APIを呼び出す際に認証ユーザーのトークンを利用します。これには2つの重要な理由があります。
+>
+> 1.  **APIレート制限の回避**: GitHub APIは、認証なしのリクエストに対して**1時間あたり60回**という厳しい制限を設けています。しかし、ユーザーのトークンで認証すると、この制限が**1時間あたり5,000回**に大幅に緩和されます。これにより、多くのユーザーが同時に利用しても安定したサービスを提供できます。
+> 2.  **リッチな機能の実現**: PRのコード差分(`diff`)を取得するなど、本アプリのコア機能はAPIリクエスト数を消費します。認証によって緩和されたレート制限を確保することで、初めて詳細な分析や解説記事の生成といった価値を提供できます。
+>
+> そのため、PR情報の取得はログインユーザー限定の機能となっています。
 
----
-
-## 4. Pull Request 解説記事
-
-### 4‑1. AI 要約生成（オンデマンド）
-
--   **POST /repos/\:owner/\:repo/pulls/\:number/article**
-
-    -   認証: 必須
-    -   入力: なし
-    -   処理:
-
-        1. 既存 `PullRequest` を取得（ない場合は 404）。
-        2. Gemini で diff を要約し、`PullRequestArticle` を生成・保存。
-
-    -   出力スキーマ: `PullRequestArticle`
-    -   典型レスポンス例（成功）:
-
-        ```json
-        {
-        	"success": true,
-        	"data": {
-        		"id": "uuid",
-        		"prNumber": 42,
-        		"repository": "acme/widgets",
-        		"title": "feat: add new widget",
-        		"aiGeneratedTitle": "✨ 新しいウィジェット機能を追加",
-        		"summaryGeneratedAt": "2025-06-04T13:00:00Z"
-        	}
-        }
-        ```
-
-    -   レイテンシが高い場合は 202 を返し、WebSocket かポーリングで完了を通知する拡張も検討。
-
-### 4‑2. 解説記事の取得
-
--   **GET /repos/\:owner/\:repo/pulls/\:number/article**
-
-    -   認証: 必須
-    -   入力: なし
-    -   出力スキーマ: `PullRequestArticle`
-    -   典型レスポンス例（成功）:
-
-        ```json
-        {
-        	"success": true,
-        	"data": {
-        		"id": "uuid",
-        		"prNumber": 42,
-        		"repository": "acme/widgets",
-        		"aiGeneratedTitle": "✨ 新しいウィジェット機能を追加",
-        		"mainChanges": [
-        			{
-        				"fileName": "src/widget.ts",
-        				"changeType": "FEAT",
-        				"description": "Widget クラスを追加"
-        			}
-        		],
-        		"summaryGeneratedAt": "2025-06-04T13:00:00Z"
-        	}
-        }
-        ```
-
-    -   失敗時: 記事未生成なら `NOT_FOUND`。
-
----
-
-## 5. Pull Request 本体取得（キャッシュ）
-
--   **GET /repos/\:owner/\:repo/pulls/\:number**
-
-    -   認証: 必須
-    -   入力: なし
-    -   出力スキーマ: `PullRequest`
     -   典型レスポンス例（成功）:
 
         ```json
@@ -192,5 +291,102 @@
         ```
 
     -   メモ: GitHub API レート制限対策として DB キャッシュを優先。`?refresh=true` で強制更新を許可する予定。
+
+---
+
+## 7. スキーマ定義（抜粋）
+
+### FavoriteRepository
+```ts
+{
+  id: string; // uuid
+  userId: string; // uuid
+  githubRepoId: number;
+  repositoryFullName: string; // owner/repo
+  owner: string;
+  repo: string;
+  registeredAt: string; // ISO8601
+}
+```
+
+### ArticleLike
+```ts
+{
+  id: string; // uuid
+  userId: string; // uuid
+  articleId: string; // uuid
+  languageCode: string; // 2文字
+  likedAt: string; // ISO8601
+}
+```
+
+### LikedArticleInfo
+```ts
+{
+  articleId: string; // uuid
+  languageCode: string; // 2文字
+  likedAt: string; // ISO8601
+  aiGeneratedTitle: string;
+  repositoryFullName: string;
+  prNumber: number;
+}
+```
+
+### RankedArticleInfo
+```ts
+{
+  rank: number;
+  articleId: string; // uuid
+  languageCode: string; // 2文字
+  aiGeneratedTitle: string;
+  repositoryFullName: string;
+  prNumber: number;
+  likeCount: number;
+}
+```
+
+### Pagination
+```ts
+{
+  totalItems: number;
+  limit: number;
+  offset: number;
+}
+```
+
+### User
+```ts
+{
+  id: string; // uuid
+  githubUserId: number;
+  githubUsername: string;
+  githubDisplayName?: string | null;
+  email?: string | null;
+  avatarUrl?: string | null;
+  language: string; // 2文字, デフォルトja
+  createdAt?: string;
+  updatedAt?: string;
+}
+```
+
+### PullRequestArticle
+```ts
+{
+  // ...PullRequestの各フィールド
+  id: string; // uuid
+  contents?: {
+    [lang: string]: {
+      aiGeneratedTitle: string;
+      backgroundAndPurpose?: string;
+      mainChanges?: Array<{ fileName: string; changeTypes: string[]; description: string; }>;
+      notablePoints?: Array<{ categories: string[]; point: string; }>;
+      summaryGeneratedAt: string;
+      likeCount: number;
+    }
+  };
+  createdAt?: string;
+  updatedAt?: string;
+}
+```
 
 ---

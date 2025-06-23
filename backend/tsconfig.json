@@ -4,12 +4,17 @@
 		"module": "ESNext",
 		"moduleResolution": "bundler",
 		"strict": true,
+		"esModuleInterop": true,
 		"verbatimModuleSyntax": true,
 		"skipLibCheck": true,
-		"types": ["node"],
+		"types": ["node", "jest"],
 		"jsx": "react-jsx",
 		"jsxImportSource": "hono/jsx",
-		"outDir": "./dist"
+		"outDir": "./dist",
+		"baseUrl": ".",
+		"paths": {
+			"@prnews/common": ["../packages/common/src"]
+		}
 	},
 	"exclude": ["node_modules"]
 }
