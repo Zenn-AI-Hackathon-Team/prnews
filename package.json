@@ -12,6 +12,9 @@
 		"format": "biome format --write .",
 		"lint": "biome lint --write .",
 		"check": "biome check --write .",
+
+		"start": "node frontend/.next/standalone/server.js",
+
 		"prepare": "husky"
 	},
 	"keywords": [],
