@@ -1,11 +1,14 @@
 "use client";
+import type { ErrorResponse } from "@prnews/common";
 import { GithubAuthProvider, signInWithPopup } from "firebase/auth";
 import Image from "next/image";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { getAuth } from "../lib/firebase";
 
 export default function Home() {
-	//urlのcode以下を取得
+	const [user, setUser] = useState<string | null>(null); //型が変な気がする
+	const [error, setError] = useState<ErrorResponse | null>(null);
+
 	useEffect(() => {
 		async function signIn() {
 			const url = window.location.search;
@@ -16,31 +19,65 @@ export default function Home() {
 			const provider = new GithubAuthProvider();
 
 			const result = await signInWithPopup(auth, provider);
-			const user = result.user;
-			const firebaseToken = await user.getIdToken();
+			const userData = result.user;
+			const firebaseToken = await userData.getIdToken();
+			console.log("firebaseToken", firebaseToken);
 
-			try {
-				const response = await fetch(
-					`${process.env.NEXT_PUBLIC_BACKEND_URL}auth/token/exchange`,
-					{
-						method: "POST",
-						headers: {
-							"Content-Type": "application/json",
-							Authorization: `Bearer ${firebaseToken}`,
-						},
-						body: JSON.stringify({
-							githubAccessToken: `${githubAccessToken}`,
-						}),
+			const res = await fetch("http://localhost:8080/auth/token/exchange", {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+					Authorization: `Bearer ${firebaseToken}`,
+				},
+				body: JSON.stringify({
+					githubAccessToken: `${githubAccessToken}`,
+				}),
+			});
+			console.log("res", res);
+			if (res.ok) {
+				const res = await fetch("http://localhost:8080/auth/signup", {
+					method: "POST",
+					headers: {
+						"content-type": "application/json",
+						Authorization: `Bearer ${firebaseToken}`,
 					},
-				);
-				if (!response.ok) {
-					throw new Error(`HTTP error! status: ${response.status}`);
-				}
-				const data = await response.json();
-				console.log("response", data);
-			} catch (error) {
-				console.log("fetcherror", error);
+					body: JSON.stringify({
+						language: "ja",
+					}),
+				});
+				const text = await res.json();
+				console.log("text", text);
+				console.error("error", res.statusText);
+
+				console.log("res", res);
 			}
+
+			// const fetchUserClient = async ()=>{
+			// 	console.log("fetchUserClient");
+			// 	const res = await userClient.auth.token.exchange.$post({
+			// 		json:{
+			// 			githubAccessToken: `${githubAccessToken}`
+			// 		},
+			// 		},
+
+			// 	});
+
+			// 	console.log("res",res);
+			// 	if(res.ok){
+			// 		const data = await res.json();
+			// 		console.log("data",data);
+			// 		setUser(data.data.message);
+			// 	}else{
+			// 		setError({
+			// 			message: res.statusText,
+			// 			code: String(res.status),
+			// 		})
+			// 	}
+			// 	if(error){
+			// 		console.log("error",error.message);
+			// 	}
+			// }
+			// fetchUserClient();
 		}
 		signIn();
 	}, []);
