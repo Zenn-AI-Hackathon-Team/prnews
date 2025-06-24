@@ -1,6 +1,22 @@
+import type { Issue } from "@prnews/common";
 import type { GeminiPort } from "../../ports/geminiPort.js";
 
 export const geminiMock = (): GeminiPort => ({
+	async summarizeIssue(issue: Issue) {
+		return {
+			aiGeneratedTitle: "AI生成タイトル(issue)",
+			problemSummary: "このIssueで解決したい課題の要約",
+			solutionSuggestion: "考えられる解決策の要約",
+			discussionPoints: [
+				{
+					author: issue.author.login,
+					summary: "コメントの要約",
+				},
+			],
+			summaryGeneratedAt: new Date().toISOString(),
+			likeCount: 0,
+		};
+	},
 	async summarizeDiff(diff: string) {
 		return {
 			aiGeneratedTitle: "AI生成タイトル",

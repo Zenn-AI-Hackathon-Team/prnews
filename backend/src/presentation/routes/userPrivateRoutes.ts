@@ -356,19 +356,23 @@ const getFavoriteReposRoute = createRoute({
 
 const deleteFavoriteRepoRoute = createRoute({
 	method: "delete",
-	path: "/users/me/favorite-repositories/{favoriteId}",
+	path: "/users/me/favorite-repositories/{owner}/{repo}",
 	summary: "お気に入りリポジトリ削除",
-	description: `\
-指定したfavoriteIdのお気に入りリポジトリを削除します。
+	description: `\\
+指定したowner/repoのお気に入りリポジトリを削除します。
 - 本APIは認証（Bearerトークン）が必須です。
 `,
 	security: [{ bearerAuth: [] }],
 	tags: ["Favorites"],
 	request: {
 		params: z.object({
-			favoriteId: z.string().min(1).openapi({
-				description: "お気に入りリポジトリのID",
-				example: "fav1",
+			owner: z.string().openapi({
+				description: "リポジトリのオーナー名",
+				example: "vercel",
+			}),
+			repo: z.string().openapi({
+				description: "リポジトリ名",
+				example: "next.js",
 			}),
 		}),
 	},
@@ -390,7 +394,7 @@ const deleteFavoriteRepoRoute = createRoute({
 			},
 		},
 		404: {
-			description: "指定IDのお気に入りリポジトリが存在しない場合。",
+			description: "指定リポジトリのお気に入りが存在しない場合。",
 			content: {
 				"application/json": {
 					schema: errorResponseSchema,
@@ -518,8 +522,8 @@ const privateRoutes = createApp()
 		const { userService } = c.var;
 		const user = c.var.user;
 		if (!user) throw new HTTPException(401, { message: "Unauthenticated" });
-		const { favoriteId } = c.req.valid("param");
-		await userService.deleteFavoriteRepository(user.id, favoriteId);
+		const { owner, repo } = c.req.valid("param");
+		await userService.deleteFavoriteRepository(user.id, owner, repo);
 		return c.json(
 			{
 				success: true as const,
