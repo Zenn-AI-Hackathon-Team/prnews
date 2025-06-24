@@ -9,27 +9,23 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 const NewPRCard = ({ pr }: { pr: newPR }) => {
-	const [authorAvatar, setAuthorAvatar] = useState<string>("");
-	const [repositoryFullName, setRepositoryFullName] = useState<string>("");
 	const [isGenerating, setIsGenerating] = useState(false);
 	const router = useRouter();
 
-	const author = pr.owner;
-	const repoName = pr.repo;
+	const author = pr.owner ?? "";
+	const repoName = pr.repo ?? "";
 
 	// アバターイニシャルを生成
 	const getAvatarInitials = (author: string) => {
 		return author.slice(0, 2).toUpperCase();
 	};
+	const authorAvatar = getAvatarInitials(author);
 
+	// リポジトリ名を生成
 	const createRepositoryFullName = (owner: string, repo: string) => {
 		return `${owner}/${repo}`;
 	};
-
-	if (author && repoName && !authorAvatar) {
-		setAuthorAvatar(getAvatarInitials(author));
-		setRepositoryFullName(createRepositoryFullName(author, repoName));
-	}
+	const repositoryFullName = createRepositoryFullName(author, repoName);
 
 	// 記事生成のハンドラー
 	const handleGenerateArticle = async (e: React.MouseEvent) => {

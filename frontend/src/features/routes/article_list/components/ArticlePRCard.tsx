@@ -8,6 +8,8 @@ import { useState } from "react";
 
 const ArticlePRCard = ({ pr }: { pr: RankedArticleInfo }) => {
 	const [likedPRs, setLikedPRs] = useState<string[]>([]);
+	const [authorAvatar, setAuthorAvatar] = useState<string>("");
+	const [repositoryFullName, setRepositoryFullName] = useState<string>("");
 
 	const isLiked = likedPRs.includes(pr.articleId);
 
@@ -38,19 +40,22 @@ const ArticlePRCard = ({ pr }: { pr: RankedArticleInfo }) => {
 		return languageMap[langCode] || langCode.toUpperCase();
 	};
 
-	// リポジトリ名から作者名を推測（実際のAPIに作者情報があれば置き換え）
-	const getAuthorFromRepo = (repoFullName: string) => {
-		const parts = repoFullName.split("/");
-		return parts[0] || "anonymous";
-	};
+	const author = pr.owner;
+	const repoName = pr.repo;
 
 	// アバターイニシャルを生成
 	const getAvatarInitials = (author: string) => {
 		return author.slice(0, 2).toUpperCase();
 	};
 
-	const author = getAuthorFromRepo(pr.repositoryFullName);
-	const authorAvatar = getAvatarInitials(author);
+	const createRepositoryFullName = (owner: string, repo: string) => {
+		return `${owner}/${repo}`;
+	};
+
+	if (author && repoName && !authorAvatar) {
+		setAuthorAvatar(getAvatarInitials(author));
+		setRepositoryFullName(createRepositoryFullName(author, repoName));
+	}
 
 	// PRのステータスを判定（PR番号やランクに基づいて仮のロジック）
 	const status = pr.prNumber % 3 === 0 ? "open" : "merged";
@@ -91,7 +96,7 @@ const ArticlePRCard = ({ pr }: { pr: RankedArticleInfo }) => {
 									variant="secondary"
 									className="mt-1 font-mono text-xs px-2 py-0.5 bg-gray-100/80"
 								>
-									{pr.repositoryFullName}
+									{repositoryFullName}
 								</Badge>
 							</div>
 						</div>

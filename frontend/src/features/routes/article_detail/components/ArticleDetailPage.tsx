@@ -83,6 +83,10 @@ const ArticleDetailPage = ({
 	language = "ja",
 }: ArticleDetailPageProps) => {
 	const [isLiked, setIsLiked] = useState(false);
+
+	const repositoryFullName =
+		article.owner && article.repo ? `${article.owner}/${article.repo}` : "";
+
 	const goodsCount = article.totalLikeCount + (isLiked ? 1 : 0);
 
 	const handleLike = () => {
@@ -199,7 +203,7 @@ const ArticleDetailPage = ({
 								className="hover:text-blue-600 transition-colors"
 							>
 								<Badge variant="outline" className="font-mono">
-									{article.repositoryFullName}
+									{repositoryFullName}
 								</Badge>
 							</a>
 							<div className="flex items-center gap-1">
@@ -383,7 +387,7 @@ const ArticleDetailPage = ({
 					<div className="flex items-center justify-between">
 						<div className="space-y-1">
 							<p className="text-sm text-gray-600">オリジナルのPRを確認</p>
-							<p className="font-mono text-sm">{article.repositoryFullName}</p>
+							<p className="font-mono text-sm">{repositoryFullName}</p>
 							{content.summaryGeneratedAt && (
 								<p className="text-xs text-gray-500">
 									要約生成日時: {formatDate(content.summaryGeneratedAt)}

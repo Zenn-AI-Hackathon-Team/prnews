@@ -19,13 +19,18 @@ type Props = {
 };
 
 const FavoriteItemCard: React.FC<Props> = ({ fav, onRemove }) => {
+	// stateを削除し、propsから直接値を計算する通常の変数に変更
+	const repositoryFullName =
+		fav.owner && fav.repo ? `${fav.owner}/${fav.repo}` : "";
+
 	return (
 		<div className="group relative rounded-xl border border-gray-100 p-4 hover:shadow-lg hover:shadow-gray-200/50 transition-all">
 			<div className="flex items-center justify-between mb-3">
 				<div>
 					<div className="text-sm text-gray-500">@{fav.owner}</div>
 					<div className="text-lg font-semibold text-gray-900 font-mono">
-						{fav.repositoryFullName}
+						{/* 計算した変数をここで使用 */}
+						{repositoryFullName}
 					</div>
 				</div>
 				<AlertDialog>
