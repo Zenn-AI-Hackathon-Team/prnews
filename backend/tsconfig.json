@@ -1,5 +1,6 @@
 {
 	"compilerOptions": {
+		"composite": true,
 		"target": "ESNext",
 		"module": "ESNext",
 		"moduleResolution": "bundler",
@@ -16,5 +17,9 @@
 			"@prnews/common": ["../packages/common/src"]
 		}
 	},
-	"exclude": ["node_modules"]
+	"exclude": ["node_modules"],
+	"references": [
+		// ★追加
+		{ "path": "../packages/common" }
+	]
 }
