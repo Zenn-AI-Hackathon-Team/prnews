@@ -1,16 +1,10 @@
-import type { PR } from "@/features/routes/pr_list/components/PRCard";
-import PRList from "@/features/routes/pr_list/components/PRList";
-
-import { client } from "@/lib/hono";
+import ArticleList from "@/features/routes/article_list/components/ArticleList";
+import { rankingClient } from "@/lib/hono";
 import type { RankedArticleInfo } from "@prnews/common";
 
-// RankedArticleInfoはすでにPR型と同じ構造なので、型アサーションのみ必要
-const convertToPR = (article: RankedArticleInfo): PR => {
-	return article as PR;
-};
-
-const page = async () => {
-	const weeklyRes = await client.ranking.articles.likes.$get({
+export default async function page() {
+	// ランキングデータを取得
+	const weeklyRes = await rankingClient.ranking.articles.likes.$get({
 		query: {
 			limit: "10",
 			offset: "0",
@@ -19,7 +13,7 @@ const page = async () => {
 		},
 	});
 
-	const goodAllRes = await client.ranking.articles.likes.$get({
+	const goodAllRes = await rankingClient.ranking.articles.likes.$get({
 		query: {
 			limit: "10",
 			offset: "0",
@@ -28,7 +22,7 @@ const page = async () => {
 		},
 	});
 
-	// --- エラーハンドリングはここに集約 ---
+	// --- ランキングのエラーハンドリング ---
 	if (!weeklyRes.ok) {
 		const errorData = await weeklyRes.json();
 
@@ -52,28 +46,20 @@ const page = async () => {
 			</div>
 		);
 	}
+
 	// --- 成功時の処理 ---
 	const weeklyResponseData = await weeklyRes.json();
 	const weeklyRankingData: RankedArticleInfo[] = weeklyResponseData.data.data;
-	console.log(weeklyRankingData);
 
 	const goodAllResponseData = await goodAllRes.json();
 	const goodAllRankingData: RankedArticleInfo[] = goodAllResponseData.data.data;
-	console.log(goodAllRankingData);
-
-	// RankedArticleInfoをPR型に変換
-	const weeklyPRs: PR[] = weeklyRankingData.map((article) =>
-		convertToPR(article),
-	);
-	const goodPRs: PR[] = goodAllRankingData.map((article) =>
-		convertToPR(article),
-	);
 
 	return (
 		<div>
-			<PRList weeklyPRs={weeklyPRs} goodPRs={goodPRs} />
+			<ArticleList
+				weeklyArticles={weeklyRankingData}
+				goodArticles={goodAllRankingData}
+			/>
 		</div>
 	);
-};
-
-export default page;
+}

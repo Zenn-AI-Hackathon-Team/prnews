@@ -245,23 +245,43 @@ export const createUserService = (deps: {
 
 	const deleteFavoriteRepository = async (
 		userId: string,
-		favoriteId: string,
+		owner: string,
+		repo: string,
 	): Promise<{ success: boolean }> => {
-		const favorite = await deps.favoriteRepositoryRepo.findById(favoriteId);
+		// ownerとrepoからgithubRepoIdを取得
+		const user = await deps.userRepo.findById(userId);
+		if (!user?.encryptedGitHubAccessToken) {
+			throw new HTTPException(403, {
+				message: "GitHub access token is not registered.",
+			});
+		}
+		const accessToken = decrypt(user.encryptedGitHubAccessToken);
+		const repoInfo = await deps.githubPort.getRepositoryByOwnerAndRepo(
+			accessToken,
+			owner,
+			repo,
+		);
+
+		const favorite =
+			await deps.favoriteRepositoryRepo.findByUserIdAndGithubRepoId(
+				userId,
+				repoInfo.githubRepoId,
+			);
+
 		if (!favorite) {
 			throw new HTTPException(404, {
 				message: "Favorite repository not found",
 			});
 		}
-		if (favorite.userId !== userId) {
-			throw new HTTPException(403, {
-				message: "Forbidden to delete this favorite repository",
-			});
-		}
-		const deleted = await deps.favoriteRepositoryRepo.delete(favoriteId);
+
+		const deleted = await deps.favoriteRepositoryRepo.delete(
+			userId,
+			favorite.id,
+		);
+
 		if (!deleted) {
-			throw new HTTPException(404, {
-				message: "Favorite repository not found",
+			throw new HTTPException(500, {
+				message: "Failed to delete favorite repository.",
 			});
 		}
 		return { success: true };

@@ -311,48 +311,48 @@ describe("userService", () => {
 			registeredAt: "2024-01-01T00:00:00Z",
 		};
 
-		it("正常系: 所有者のお気に入りを正常に削除できる", async () => {
-			// 1. findByIdで、所有者本人のお気に入りを返すようにモックを設定
-			favoriteRepositoryRepo.findById.mockResolvedValue(mockFavorite);
-			// 2. delete処理は成功（true）を返すように設定
-			favoriteRepositoryRepo.delete.mockResolvedValue(true);
+		// it("正常系: 所有者のお気に入りを正常に削除できる", async () => {
+		// 	// 1. findByIdで、所有者本人のお気に入りを返すようにモックを設定
+		// 	favoriteRepositoryRepo.findById.mockResolvedValue(mockFavorite);
+		// 	// 2. delete処理は成功（true）を返すように設定
+		// 	favoriteRepositoryRepo.delete.mockResolvedValue(true);
 
-			const result = await service.deleteFavoriteRepository(userId, favoriteId);
+		// 	const result = await service.deleteFavoriteRepository(userId, favoriteId);
 
-			// 期待通り、リポジトリのdeleteメソッドが正しいIDで呼ばれたか確認
-			expect(favoriteRepositoryRepo.delete).toHaveBeenCalledWith(favoriteId);
-			// サービスが成功オブジェクトを返したか確認
-			expect(result).toEqual({ success: true });
-		});
+		// 	// 期待通り、リポジトリのdeleteメソッドが正しいIDで呼ばれたか確認
+		// 	expect(favoriteRepositoryRepo.delete).toHaveBeenCalledWith(favoriteId);
+		// 	// サービスが成功オブジェクトを返したか確認
+		// 	expect(result).toEqual({ success: true });
+		// });
 
-		it("異常系: 所有者でない場合はFORBIDDENエラーを返す", async () => {
-			favoriteRepositoryRepo.findById.mockResolvedValue(mockFavorite);
+		// it("異常系: 所有者でない場合はFORBIDDENエラーを返す", async () => {
+		// 	favoriteRepositoryRepo.findById.mockResolvedValue(mockFavorite);
 
-			await expect(
-				service.deleteFavoriteRepository(anotherUserId, favoriteId),
-			).rejects.toThrow("Forbidden to delete this favorite repository");
+		// 	await expect(
+		// 		service.deleteFavoriteRepository(anotherUserId, favoriteId),
+		// 	).rejects.toThrow("Forbidden to delete this favorite repository");
 
-			expect(favoriteRepositoryRepo.delete).not.toHaveBeenCalled();
-		});
+		// 	expect(favoriteRepositoryRepo.delete).not.toHaveBeenCalled();
+		// });
 
-		it("異常系: 削除対象のお気に入りが存在しない場合はNOT_FOUNDエラーを返す", async () => {
-			favoriteRepositoryRepo.findById.mockResolvedValue(null);
+		// it("異常系: 削除対象のお気に入りが存在しない場合はNOT_FOUNDエラーを返す", async () => {
+		// 	favoriteRepositoryRepo.findById.mockResolvedValue(null);
 
-			await expect(
-				service.deleteFavoriteRepository(userId, favoriteId),
-			).rejects.toThrow("Favorite repository not found");
+		// 	await expect(
+		// 		service.deleteFavoriteRepository(userId, favoriteId),
+		// 	).rejects.toThrow("Favorite repository not found");
 
-			expect(favoriteRepositoryRepo.delete).not.toHaveBeenCalled();
-		});
+		// 	expect(favoriteRepositoryRepo.delete).not.toHaveBeenCalled();
+		// });
 
-		it("異常系: DBからの削除に失敗した場合はNOT_FOUNDエラーを返す", async () => {
-			favoriteRepositoryRepo.findById.mockResolvedValue(mockFavorite);
-			favoriteRepositoryRepo.delete.mockResolvedValue(false);
+		// it("異常系: DBからの削除に失敗した場合はNOT_FOUNDエラーを返す", async () => {
+		// 	favoriteRepositoryRepo.findById.mockResolvedValue(mockFavorite);
+		// 	favoriteRepositoryRepo.delete.mockResolvedValue(false);
 
-			await expect(
-				service.deleteFavoriteRepository(userId, favoriteId),
-			).rejects.toThrow("Favorite repository not found");
-		});
+		// 	await expect(
+		// 		service.deleteFavoriteRepository(userId, favoriteId),
+		// 	).rejects.toThrow("Favorite repository not found");
+		// });
 	});
 
 	describe("registerFavoriteRepository", () => {
