@@ -16,6 +16,8 @@ export default function Home() {
 			const params = new URLSearchParams(url);
 			const githubAccessToken = params.get("code");
 
+			if (!githubAccessToken) return;
+
 			const auth = getAuth();
 			const provider = new GithubAuthProvider();
 
@@ -25,68 +27,41 @@ export default function Home() {
 				const firebaseToken = await userData.getIdToken();
 				console.log("firebaseToken", firebaseToken);
 
-				// 1. GitHubアクセストークンを保存
-				const tokenExchangeRes = await fetch(
-					"http://localhost:8080/auth/token/exchange",
-					{
-						method: "POST",
-						headers: {
-							"Content-Type": "application/json",
-							Authorization: `Bearer ${firebaseToken}`,
-						},
-						body: JSON.stringify({
-							githubAccessToken: `${githubAccessToken}`,
-						}),
-					},
-				);
-
-				if (!tokenExchangeRes.ok) {
-					throw new Error("Token exchange failed");
-				}
-
-				// 2. サインアップ
-				const signupRes = await fetch("http://localhost:8080/auth/signup", {
+				// ★ バックエンドへのリクエストは /auth/token/exchange のみで完結
+				const res = await fetch("http://localhost:8080/auth/token/exchange", {
 					method: "POST",
 					headers: {
 						"Content-Type": "application/json",
 						Authorization: `Bearer ${firebaseToken}`,
 					},
 					body: JSON.stringify({
-						language: "ja",
+						githubAccessToken: `${githubAccessToken}`,
 					}),
 				});
 
-				// 3. セッション作成（Cookie設定）
-				const sessionRes = await fetch(
-					"http://localhost:8080/auth/session/create",
-					{
-						method: "POST",
-						headers: {
-							"Content-Type": "application/json",
-						},
-						credentials: "include", // Cookieを送受信するために必要
-						body: JSON.stringify({
-							firebaseToken: firebaseToken,
-						}),
-					},
-				);
-
-				if (sessionRes.ok) {
-					const sessionData = await sessionRes.json();
-					console.log("Session created:", sessionData);
-
-					// セッション作成成功後、ホームページへリダイレクト
+				if (res.ok) {
+					console.log("Login and session setup successful!");
+					// ログイン成功後、ダッシュボードなどにリダイレクトする
+					// 例: window.location.href = '/home';
 					router.push("/home");
 				} else {
-					throw new Error("Session creation failed");
+					const errorData = await res.json();
+					console.error("Authentication failed:", errorData);
+					setError({
+						message: errorData.message || res.statusText,
+						code: String(res.status),
+					});
 				}
-			} catch (error) {
-				console.error("Authentication error:", error);
-				setError({
-					message:
-						error instanceof Error ? error.message : "Authentication failed",
-					code: "AUTH_ERROR",
-				});
+			} catch (e) {
+				console.error("Firebase or network error:", e);
+
+				// ★ 型ガードを使って安全にmessageプロパティにアクセスします
+				let message = "An unexpected error occurred.";
+				if (e instanceof Error) {
+					message = e.message;
+				}
+
+				setError({ message: message, code: "CLIENT_ERROR" });
 			}
 		}
 		signIn();

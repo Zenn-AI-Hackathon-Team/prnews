@@ -150,7 +150,7 @@ const userPublicRoutes = createApp()
 		);
 	})
 	.openapi(createSessionRoute, async (c) => {
-		const { userService } = c.var;
+		const { userService, userRepo } = c.var;
 		const { firebaseToken } = c.req.valid("json");
 
 		let decodedToken: DecodedIdToken;
@@ -163,37 +163,44 @@ const userPublicRoutes = createApp()
 			});
 		}
 
-		// ユーザー情報を取得
-		const user = await userService.getCurrentUser({
-			id: decodedToken.uid,
-			firebaseUid: decodedToken.uid,
-			githubUsername: decodedToken.name || "",
-			email: decodedToken.email,
-		});
+		const user = await userRepo.findByFirebaseUid(decodedToken.uid);
 
 		if (!user) {
 			throw new HTTPException(401, {
-				message: "User not found",
+				message: "User not found in our database.",
 			});
 		}
 
-		// HttpOnly Cookieを設定
-		setCookie(c, "auth-token", firebaseToken, {
+		// 4. セッションを作成してDBに保存
+		const session = await userService.createSession({
+			id: user.id,
+			firebaseUid: user.firebaseUid,
+			githubUsername: user.githubUsername,
+		});
+
+		if (!session) {
+			throw new HTTPException(500, {
+				message: "Failed to create session after user registration.",
+			});
+		}
+
+		// 5. Cookieにセッショントークン（この例ではセッションID）を設定
+		setCookie(c, "auth-token", session.id, {
 			httpOnly: true,
 			secure: process.env.NODE_ENV === "production",
-			sameSite: "lax",
-			maxAge: 60 * 60 * 24 * 7, // 7日間
+			sameSite: "Lax",
 			path: "/",
+			maxAge: 60 * 60 * 24 * 14, // 14日間
 		});
 
 		return c.json(
 			{
-				success: true as const,
+				success: true,
 				data: {
-					message: "Session created successfully",
+					message: "Login successful. Session cookie set.",
 					userId: user.id,
 				},
-			},
+			} as const,
 			200,
 		);
 	});

@@ -144,7 +144,16 @@ export const createUserService = (deps: {
 			createdAt: now,
 			revokedAt: undefined,
 		};
-		return session;
+		// return session;
+		const savedSession = await deps.authSessionRepo.save(session);
+		if (!savedSession) {
+			console.error(
+				`[UserService] Failed to save session for user ${authenticatedUser.id}`,
+			);
+			return null;
+		}
+
+		return savedSession;
 	};
 
 	const registerFavoriteRepository = async (

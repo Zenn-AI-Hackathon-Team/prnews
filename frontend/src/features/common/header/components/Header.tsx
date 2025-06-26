@@ -1,4 +1,5 @@
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+"use client";
+import { Avatar, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
 	DropdownMenu,
@@ -9,10 +10,40 @@ import {
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
+import { userClient } from "@/lib/hono";
+import type { User as UserType } from "@prnews/common";
 import { Bell, Heart, LogOut, Search, Settings, User } from "lucide-react";
+import { useEffect, useState } from "react";
 import Logo from "../../logo/components/Logo";
 
 const Header = () => {
+	// ★ 4. ユーザー情報を保持するstate
+	const [user, setUser] = useState<UserType | null>(null);
+	const [isLoading, setIsLoading] = useState(true);
+
+	// ★ 5. コンポーネントのマウント時にユーザー情報を取得
+	useEffect(() => {
+		const fetchUser = async () => {
+			try {
+				const res = await userClient.users.me.$get();
+				if (res.ok) {
+					const data = await res.json();
+					setUser(data.data);
+				} else {
+					// ログインしていない場合はnullのまま
+					setUser(null);
+				}
+			} catch (error) {
+				console.error("Failed to fetch user:", error);
+				setUser(null);
+			} finally {
+				setIsLoading(false);
+			}
+		};
+
+		fetchUser();
+	}, []);
+
 	return (
 		<header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
 			<div className="container mx-auto px-4">
@@ -71,8 +102,10 @@ const Header = () => {
 							<DropdownMenuTrigger asChild>
 								<Button variant="ghost" size="icon" className="relative">
 									<Avatar className="h-8 w-8">
-										<AvatarImage src="/api/placeholder/32/32" alt="ユーザー" />
-										<AvatarFallback>U</AvatarFallback>
+										<AvatarImage
+											src={user?.avatarUrl ?? undefined}
+											alt={user?.githubUsername ?? "ユーザー"}
+										/>
 									</Avatar>
 								</Button>
 							</DropdownMenuTrigger>
