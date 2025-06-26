@@ -6,7 +6,7 @@ import type { PrPublicRoutesType } from "@prnews/backend/routes/prPublicRoutes";
 import type { RankingRoutesType } from "@prnews/backend/routes/rankingRoutes";
 import type { UserPrivateRoutesType } from "@prnews/backend/routes/userPrivateRoutes";
 import type { UserPublicRoutesType } from "@prnews/backend/routes/userPublicRoutes";
-import type { AppType } from "@prnews/common";
+import type { AppType } from "@prnews/backend/rpc";
 import { hc } from "hono/client";
 
 const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
