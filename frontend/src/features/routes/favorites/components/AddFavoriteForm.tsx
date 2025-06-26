@@ -1,4 +1,7 @@
-"use client";
+import { Github, Heart } from "lucide-react";
+import type React from "react";
+import { useState } from "react";
+import { useAddFavoriteForm } from "../hooks";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -8,20 +11,24 @@ import {
 	TooltipContent,
 	TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Github } from "lucide-react";
-import type React from "react";
-import { useState } from "react";
 
 type AddFavoriteFormProps = {
-	isLoading?: boolean;
+	refetch: () => void;
 };
 
-const AddFavoriteForm: React.FC<AddFavoriteFormProps> = ({ isLoading }) => {
+const AddFavoriteForm: React.FC<AddFavoriteFormProps> = ({ refetch }) => {
 	const [url, setUrl] = useState("");
 
-	const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+	const { isLoading, onAdd } = useAddFavoriteForm({
+		onSuccess: () => {
+			setUrl(""); // 成功時にURL入力欄をクリア
+			refetch(); // 親コンポーネントに通知
+		},
+	});
+
+	const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
 		e.preventDefault();
-		// 実際の送信処理はここに記述
+		onAdd(url);
 	};
 
 	return (
@@ -30,7 +37,7 @@ const AddFavoriteForm: React.FC<AddFavoriteFormProps> = ({ isLoading }) => {
 			<div className="space-y-3">
 				<div className="flex items-center gap-3">
 					<div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-lg shadow-black-600/20">
-						<Github className="h-5 w-5" />
+						<Heart className="h-5 w-5" />
 					</div>
 					<span className="text-xl font-bold bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
 						お気に入り
