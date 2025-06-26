@@ -1,4 +1,5 @@
 import type { User } from "@prnews/common";
+import { getCookie } from "hono/cookie";
 import { createMiddleware } from "hono/factory";
 import { HTTPException } from "hono/http-exception";
 import type { Dependencies } from "../../config/di";
@@ -18,17 +19,24 @@ export const authMiddleware = createMiddleware<{
 	Variables: Dependencies & AuthVariables;
 }>(async (c, next) => {
 	const { auth, userRepo } = c.var;
-	const authHeader = c.req.header("Authorization");
 
-	if (!authHeader) {
-		throw new HTTPException(401, {
-			message: "Authorization header is missing",
-		});
-	}
+	// 1. まずCookieからトークンを取得
+	let token = getCookie(c, "auth-token");
 
-	const [scheme, token] = authHeader.split(" ");
-	if (scheme !== "Bearer" || !token) {
-		throw new HTTPException(401, { message: "Invalid token format" });
+	// 2. Cookieがない場合はAuthorizationヘッダーから取得（API利用時用）
+	if (!token) {
+		const authHeader = c.req.header("Authorization");
+		if (!authHeader) {
+			throw new HTTPException(401, {
+				message: "Authorization header or cookie is missing",
+			});
+		}
+
+		const [scheme, headerToken] = authHeader.split(" ");
+		if (scheme !== "Bearer" || !headerToken) {
+			throw new HTTPException(401, { message: "Invalid token format" });
+		}
+		token = headerToken;
 	}
 
 	try {
