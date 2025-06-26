@@ -23,6 +23,7 @@ app.use(
 		origin: ["http://localhost:3000"],
 		allowHeaders: ["Authorization", "Content-Type"],
 		allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+		credentials: true, // Cookieの送受信を許可
 	}),
 );
 
