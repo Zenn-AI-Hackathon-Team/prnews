@@ -15,17 +15,17 @@ import type React from "react";
 
 type Props = {
 	fav: FavoriteRepository;
-	onRemove: (id: string) => void;
+	onDelete: (id: string) => void;
 };
 
-const FavoriteItemCard: React.FC<Props> = ({ fav, onRemove }) => {
+const FavoriteItemCard: React.FC<Props> = ({ fav, onDelete }) => {
 	return (
 		<div className="group relative rounded-xl border border-gray-100 p-4 hover:shadow-lg hover:shadow-gray-200/50 transition-all">
 			<div className="flex items-center justify-between mb-3">
 				<div>
 					<div className="text-sm text-gray-500">@{fav.owner}</div>
 					<div className="text-lg font-semibold text-gray-900 font-mono">
-						{fav.repositoryFullName}
+						{fav.repo}
 					</div>
 				</div>
 				<AlertDialog>
@@ -47,7 +47,7 @@ const FavoriteItemCard: React.FC<Props> = ({ fav, onRemove }) => {
 						</AlertDialogHeader>
 						<AlertDialogFooter>
 							<AlertDialogCancel>キャンセル</AlertDialogCancel>
-							<AlertDialogAction onClick={() => onRemove(fav.id)}>
+							<AlertDialogAction onClick={() => onDelete(fav.id)}>
 								削除
 							</AlertDialogAction>
 						</AlertDialogFooter>
