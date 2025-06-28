@@ -6,7 +6,7 @@
 		"moduleResolution": "Node",
 		"strict": false,
 		"esModuleInterop": true,
-		"verbatimModuleSyntax": true,
+		"verbatimModuleSyntax": false,
 		"skipLibCheck": true,
 		"types": ["node", "jest"],
 		"jsx": "react-jsx",
