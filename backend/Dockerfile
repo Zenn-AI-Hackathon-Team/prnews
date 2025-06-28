@@ -9,11 +9,11 @@ COPY . /app
 
 WORKDIR /app
 
-# Install dependencies for the backend workspace
-WORKDIR /app/backend
+# Install dependencies for the entire workspace from the root
 RUN pnpm install --prod
 
 # Build the backend application
+WORKDIR /app/backend
 RUN pnpm build
 
 # Stage 2: Production
