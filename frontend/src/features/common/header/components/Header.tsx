@@ -1,5 +1,5 @@
 "use client";
-import { Avatar, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
 	DropdownMenu,
@@ -10,39 +10,15 @@ import {
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
-import { userClient } from "@/lib/hono";
-import type { User as UserType } from "@prnews/common";
-import { Bell, Heart, LogOut, Search, Settings, User } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useAuth } from "@/context/AuthContext";
+import { Bell, LogOut, Search } from "lucide-react";
 import Logo from "../../logo/components/Logo";
 
 const Header = () => {
-	// ★ 4. ユーザー情報を保持するstate
-	const [user, setUser] = useState<UserType | null>(null);
-	const [isLoading, setIsLoading] = useState(true);
-
-	// ★ 5. コンポーネントのマウント時にユーザー情報を取得
-	useEffect(() => {
-		const fetchUser = async () => {
-			try {
-				const res = await userClient.users.me.$get();
-				if (res.ok) {
-					const data = await res.json();
-					setUser(data.data);
-				} else {
-					// ログインしていない場合はnullのまま
-					setUser(null);
-				}
-			} catch (error) {
-				console.error("Failed to fetch user:", error);
-				setUser(null);
-			} finally {
-				setIsLoading(false);
-			}
-		};
-
-		fetchUser();
-	}, []);
+	const { user, isLoading } = useAuth();
+	const getInitials = (name?: string | null) => {
+		return name ? name.charAt(0).toUpperCase() : "U";
+	};
 
 	return (
 		<header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -106,32 +82,37 @@ const Header = () => {
 											src={user?.avatarUrl ?? undefined}
 											alt={user?.githubUsername ?? "ユーザー"}
 										/>
+										<AvatarFallback>
+											{getInitials(
+												user?.githubDisplayName || user?.githubUsername,
+											)}
+										</AvatarFallback>
 									</Avatar>
 								</Button>
 							</DropdownMenuTrigger>
 							<DropdownMenuContent align="end" className="w-56">
-								<DropdownMenuLabel>
-									<p className="font-semibold text-gray-900">ユーザー名</p>
-									<p className="text-sm text-gray-600">user@example.com</p>
-								</DropdownMenuLabel>
-								<DropdownMenuSeparator />
-								<DropdownMenuItem>
-									<User className="h-4 w-4 text-gray-600" />
-									プロフィール
-								</DropdownMenuItem>
-								<DropdownMenuItem>
-									<Settings className="h-4 w-4 text-gray-600" />
-									設定
-								</DropdownMenuItem>
-								<DropdownMenuItem>
-									<Heart className="h-4 w-4 text-gray-600" />
-									お気に入り
-								</DropdownMenuItem>
-								<DropdownMenuSeparator />
-								<DropdownMenuItem className="text-red-600">
-									<LogOut className="h-4 w-4 text-red-600" />
-									ログアウト
-								</DropdownMenuItem>
+								{isLoading ? (
+									<DropdownMenuLabel>読み込み中...</DropdownMenuLabel>
+								) : user ? (
+									<>
+										<DropdownMenuLabel>
+											<p className="font-semibold text-gray-900">
+												{user.githubDisplayName || user.githubUsername}
+											</p>
+											<p className="text-sm text-gray-600">{user.email}</p>
+										</DropdownMenuLabel>
+										<DropdownMenuSeparator />
+										{/* ... メニュー項目 ... */}
+										<DropdownMenuItem className="text-red-600">
+											<LogOut className="h-4 w-4 text-red-600" />
+											ログアウト
+										</DropdownMenuItem>
+									</>
+								) : (
+									<DropdownMenuItem>
+										<a href="/login">ログイン</a>
+									</DropdownMenuItem>
+								)}
 							</DropdownMenuContent>
 						</DropdownMenu>
 					</div>

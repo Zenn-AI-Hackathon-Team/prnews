@@ -1,7 +1,8 @@
 "use client";
 
 import { LoginForm } from "@/components/ui/loginform";
-import { GithubAuthProvider, getAuth, signInWithPopup } from "firebase/auth";
+import { getAuth } from "@/lib/firebase"; // Firebaseの初期化を行うモジュールをインポート
+import { GithubAuthProvider, signInWithPopup } from "firebase/auth";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
