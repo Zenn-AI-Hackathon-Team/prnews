@@ -57,7 +57,7 @@ jobs:
 
       - name: Build and push Docker image
         run: |
-          docker build -t ${CLOUD_RUN_REGION}-docker.pkg.dev/${GCP_PROJECT_ID}/${ARTIFACT_REGISTRY_REPO}/${CLOUD_RUN_SERVICE_NAME}:${GITHUB_SHA} .
+          docker build -f Dockerfile -t ${CLOUD_RUN_REGION}-docker.pkg.dev/${GCP_PROJECT_ID}/${ARTIFACT_REGISTRY_REPO}/${CLOUD_RUN_SERVICE_NAME}:${GITHUB_SHA} ../
           docker push ${CLOUD_RUN_REGION}-docker.pkg.dev/${GCP_PROJECT_ID}/${ARTIFACT_REGISTRY_REPO}/${CLOUD_RUN_SERVICE_NAME}:${GITHUB_SHA}
 
       - name: Deploy to Cloud Run
