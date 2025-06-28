@@ -21,10 +21,13 @@ COPY packages/common/package.json ./packages/common/package.json
 # Use --frozen-lockfile to ensure exact dependencies from the lockfile are used
 RUN pnpm install --frozen-lockfile
 
-# Build common package first
-RUN pnpm --filter common build
+# Clean and build common package first
+WORKDIR /app/packages/common
+RUN rm -rf dist
+RUN pnpm build
 
 # Copy the backend source code
+WORKDIR /app
 COPY backend/src ./backend/src
 COPY backend/tsconfig.json ./backend/tsconfig.json
 COPY backend/tsconfig.dts.json ./backend/tsconfig.dts.json
