@@ -9,11 +9,9 @@ COPY . /app
 
 WORKDIR /app
 
-# Fetch all dependencies to the pnpm store
-RUN pnpm fetch
-
-# Install production dependencies for the entire workspace from the root
-RUN pnpm install --prod
+# Install all dependencies for the entire workspace from the root
+# This will create the .pnpm-store and symlinks for workspace packages
+RUN pnpm install
 
 # Build the backend application
 WORKDIR /app/backend
@@ -28,6 +26,9 @@ WORKDIR /app/backend
 COPY --from=builder /app/backend/dist ./dist
 COPY --from=builder /app/backend/node_modules ./node_modules
 COPY --from=builder /app/backend/package.json ./package.json
+
+# Prune development dependencies to keep the image small
+RUN pnpm prune --prod
 
 # Expose the port the app runs on
 EXPOSE 8080
