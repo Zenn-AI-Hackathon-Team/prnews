@@ -15,7 +15,7 @@ import type React from "react";
 
 type Props = {
 	fav: FavoriteRepository;
-	onRemove: (id: string) => void;
+	onDelete: (id: string) => void;
 };
 
 const FavoriteItemCard: React.FC<Props> = ({ fav, onRemove }) => {
@@ -50,7 +50,7 @@ const FavoriteItemCard: React.FC<Props> = ({ fav, onRemove }) => {
 						</AlertDialogHeader>
 						<AlertDialogFooter>
 							<AlertDialogCancel>キャンセル</AlertDialogCancel>
-							<AlertDialogAction onClick={() => onRemove(fav.id)}>
+							<AlertDialogAction onClick={() => onDelete(fav.id)}>
 								削除
 							</AlertDialogAction>
 						</AlertDialogFooter>

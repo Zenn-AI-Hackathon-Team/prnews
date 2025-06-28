@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/context/AuthContext";
+import { Toaster } from "@/components/ui/sonner";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import Header from "@/features/common/header/components/Header";
 import Sidebar from "@/features/common/sidebar/components/Sidebar";
 
@@ -30,13 +32,17 @@ export default function RootLayout({
 			<body
 				className={`${geistSans.variable} ${geistMono.variable} antialiased`}
 			>
+
 				<AuthProvider>
+				<TooltipProvider>
 					<Header />
 					<Sidebar />
 					<main className="ml-48 min-h-screen bg-background">
 						<div className="p-6">{children}</div>
 					</main>
-				</AuthProvider>
+				</TooltipProvider>
+				<Toaster richColors />
+         </AuthProvider>
 			</body>
 		</html>
 	);
