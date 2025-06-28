@@ -38,5 +38,8 @@ export const authSessionRepoMemory = (): AuthSessionRepoPort => {
 			sessions.set(session.id, session);
 			return sessions.get(session.id) || null;
 		},
+		findById: async (id: string) => {
+			return sessions.get(id) || null;
+		},
 	};
 };

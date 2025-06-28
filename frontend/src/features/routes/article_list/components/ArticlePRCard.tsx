@@ -38,19 +38,12 @@ const ArticlePRCard = ({ pr }: { pr: RankedArticleInfo }) => {
 		return languageMap[langCode] || langCode.toUpperCase();
 	};
 
-	// リポジトリ名から作者名を推測（実際のAPIに作者情報があれば置き換え）
-	const getAuthorFromRepo = (repoFullName: string) => {
-		const parts = repoFullName.split("/");
-		return parts[0] || "anonymous";
-	};
-
 	// アバターイニシャルを生成
-	const getAvatarInitials = (author: string) => {
-		return author.slice(0, 2).toUpperCase();
-	};
+	const authorInitials = pr.owner.slice(0, 2).toUpperCase();
 
-	const author = getAuthorFromRepo(pr.repositoryFullName);
-	const authorAvatar = getAvatarInitials(author);
+	// stateを削除し、propsから直接値を計算する通常の変数に変更Add commentMore actions
+	const repositoryFullName =
+		pr.owner && pr.repo ? `${pr.owner}/${pr.repo}` : "";
 
 	// PRのステータスを判定（PR番号やランクに基づいて仮のロジック）
 	const status = pr.prNumber % 3 === 0 ? "open" : "merged";
@@ -74,13 +67,13 @@ const ArticlePRCard = ({ pr }: { pr: RankedArticleInfo }) => {
 						<div className="flex items-center gap-3">
 							<div className="relative">
 								<div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-gray-100 to-gray-200 text-sm font-semibold text-gray-700">
-									{authorAvatar}
+									{authorInitials}
 								</div>
 							</div>
 							<div>
 								<div className="flex items-center gap-2">
 									<span className="text-sm font-medium text-gray-900">
-										@{author}
+										@{pr.owner}
 									</span>
 									<span className="text-gray-300">•</span>
 									<span className="text-sm text-gray-500">
@@ -91,7 +84,7 @@ const ArticlePRCard = ({ pr }: { pr: RankedArticleInfo }) => {
 									variant="secondary"
 									className="mt-1 font-mono text-xs px-2 py-0.5 bg-gray-100/80"
 								>
-									{pr.repositoryFullName}
+									{repositoryFullName}
 								</Badge>
 							</div>
 						</div>

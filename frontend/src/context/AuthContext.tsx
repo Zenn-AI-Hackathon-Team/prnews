@@ -1,6 +1,4 @@
 "use client";
-
-import { userClient } from "@/lib/hono";
 import type { User } from "@prnews/common";
 import type { ReactNode } from "react";
 import {
@@ -30,10 +28,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 	const revalidateUser = useCallback(async () => {
 		setIsLoading(true);
 		try {
-			const res = await userClient.users.me.$get();
+			// const res = await userClient.users.me.$get();
+			const res = await fetch("http://localhost:8080/users/me", {
+				method: "GET",
+				headers: {
+					"Content-Type": "application/json",
+				},
+				credentials: "include", // Cookieを送信するために必須
+			});
+
 			if (res.ok) {
-				const data = await res.json();
-				setUser(data.data);
+				// const data = await res.json();
+				// setUser(data.data);
+				const body: { success: boolean; data: User } = await res.json();
+				setUser(body.data);
 			} else {
 				setUser(null);
 			}

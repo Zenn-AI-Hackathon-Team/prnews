@@ -20,14 +20,7 @@ const app = createApp();
 app.use(
 	"*",
 	cors({
-		origin: (origin) => {
-			// 許可するオリジンを指定
-			if (origin === "http://localhost:3000") {
-				return origin;
-			}
-			// 他にも許可したいオリジンがあればここに追加
-			return null; // 許可しない場合はnullを返す
-		},
+		origin: ["http://localhost:3000"],
 		allowHeaders: ["Authorization", "Content-Type"],
 		allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
 		credentials: true, // Cookieの送受信を許可

@@ -41,17 +41,15 @@ export default function LoginPage() {
 					firebaseToken,
 					githubAccessToken,
 				}),
+				credentials: "include",
 			});
 
 			if (!res.ok) {
 				const errorData = await res.json();
 				throw new Error(errorData.message || "Failed to log in.");
 			}
-
-			console.log("Login successful, redirecting to /home");
 			router.push("/home");
 		} catch (err) {
-			console.error("Authentication failed:", err);
 			let message = "認証に失敗しました。";
 			if (err instanceof Error) {
 				message = err.message;
