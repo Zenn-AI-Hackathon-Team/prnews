@@ -7,15 +7,31 @@ RUN npm install -g pnpm
 # Set working directory
 WORKDIR /app
 
-# Copy the entire project context into the /app directory in the container
-COPY . .
+# Copy pnpm-workspace.yaml, root package.json, and pnpm-lock.yaml first
+COPY pnpm-workspace.yaml ./
+COPY package.json ./
+COPY pnpm-lock.yaml ./
 
-# Debug: List contents of /app to verify pnpm-lock.yaml presence
-RUN ls -la /app
+# Copy all package.json files from workspace packages
+COPY backend/package.json ./backend/package.json
+COPY frontend/package.json ./frontend/package.json
+COPY packages/common/package.json ./packages/common/package.json
 
 # Install all dependencies for the entire workspace from the root
 # Use --frozen-lockfile to ensure exact dependencies from the lockfile are used
 RUN pnpm install --frozen-lockfile
+
+# Copy the backend source code
+COPY backend/src ./backend/src
+COPY backend/tsconfig.json ./backend/tsconfig.json
+COPY backend/tsconfig.dts.json ./backend/tsconfig.dts.json
+COPY backend/tsconfig.jest.json ./backend/tsconfig.jest.json
+COPY backend/jest.config.cjs ./backend/jest.config.cjs
+COPY backend/.env.example ./backend/.env.example
+
+# Copy common package source code if backend depends on it for build
+COPY packages/common/src ./packages/common/src
+COPY packages/common/tsconfig.json ./packages/common/tsconfig.json
 
 # Build the backend application
 WORKDIR /app/backend
