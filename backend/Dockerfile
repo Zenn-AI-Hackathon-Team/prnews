@@ -29,7 +29,7 @@ WORKDIR /app/backend
 
 # Copy only necessary files from the builder stage
 COPY --from=builder /app/backend/dist ./dist
-COPY --from=builder /app/backend/node_modules ./node_modules # Copy backend's production dependencies
+COPY --from=builder /app/backend/node_modules ./node_modules # Copy backends production dependencies
 COPY backend/package.json ./package.json
 
 # Expose the port the app runs on
