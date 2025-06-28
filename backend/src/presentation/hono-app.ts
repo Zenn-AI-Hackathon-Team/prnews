@@ -2,8 +2,8 @@ import { OpenAPIHono } from "@hono/zod-openapi";
 import type { Context } from "hono"; // Context をインポート
 import { HTTPException } from "hono/http-exception";
 import { ZodError } from "zod";
-import type { Dependencies } from "../config/di";
-import type { AuthVariables } from "./middlewares/authMiddleware";
+import type { Dependencies } from "../config/di.js";
+import type { AuthVariables } from "./middlewares/authMiddleware.js";
 
 // サブアプリ（ルーター）を生成するためのファクトリ関数
 export const createApp = <

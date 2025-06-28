@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { issueSchema } from "./issueSchema";
+import { issueSchema } from "./issueSchema.js";
 
 // Issue 要約記事の言語ごとの内容
 const issueArticleContentSchema = z.object({

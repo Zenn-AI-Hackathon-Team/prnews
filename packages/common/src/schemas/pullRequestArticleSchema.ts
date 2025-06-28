@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { pullRequestSchema } from "./prBaseSchema";
+import { pullRequestSchema } from "./prBaseSchema.js";
 
 const changeTypeEnum = z.enum([
 	"FEAT", // 機能追加

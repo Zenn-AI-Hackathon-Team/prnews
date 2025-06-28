@@ -11,18 +11,18 @@ import { createIssueService } from "src/application/issueService";
 const serviceAccount = JSON.parse(
 	process.env.FIREBASE_ADMIN_SDK_CONFIG || "{}",
 ) as ServiceAccount;
-import { createGeneralService } from "../application/generalService";
-import { createPrService } from "../application/prService";
-import { createRankingService } from "../application/rankingService";
-import { createUserService } from "../application/userService";
-import { geminiClient } from "../infrastructure/adapters/geminiClient";
-import { githubClient } from "../infrastructure/adapters/githubClient";
-import { articleLikeRepoFirestore } from "../infrastructure/repositories/articleLikeRepoFirestore";
-import { authSessionRepoFirestore } from "../infrastructure/repositories/authSessionRepoFirestore";
-import { favoriteRepositoryRepoFirestore } from "../infrastructure/repositories/favoriteRepositoryRepoFirestore";
-import { issueRepoFirestore } from "../infrastructure/repositories/issueRepoFirestore";
-import { prRepoFirestore } from "../infrastructure/repositories/prRepoFirestore";
-import { userRepoFirestore } from "../infrastructure/repositories/userRepoFirestore";
+import { createGeneralService } from "../application/generalService.js";
+import { createPrService } from "../application/prService.js";
+import { createRankingService } from "../application/rankingService.js";
+import { createUserService } from "../application/userService.js";
+import { geminiClient } from "../infrastructure/adapters/geminiClient.js";
+import { githubClient } from "../infrastructure/adapters/githubClient.js";
+import { articleLikeRepoFirestore } from "../infrastructure/repositories/articleLikeRepoFirestore.js";
+import { authSessionRepoFirestore } from "../infrastructure/repositories/authSessionRepoFirestore.js";
+import { favoriteRepositoryRepoFirestore } from "../infrastructure/repositories/favoriteRepositoryRepoFirestore.js";
+import { issueRepoFirestore } from "../infrastructure/repositories/issueRepoFirestore.js";
+import { prRepoFirestore } from "../infrastructure/repositories/prRepoFirestore.js";
+import { userRepoFirestore } from "../infrastructure/repositories/userRepoFirestore.js";
 
 // [注意] このグローバルインスタンスは開発・検証用の仮実装です。
 // 本番運用時は必ず外部DB（Firestore等）に置き換えてください。
