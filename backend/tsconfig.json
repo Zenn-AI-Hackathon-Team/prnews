@@ -25,8 +25,5 @@
 		".gcloud/firebase-admin.json"
 	],
 	"exclude": ["node_modules"],
-	"references": [
-		// ★追加
-		{ "path": "../packages/common" }
-	]
+	"references": [{ "path": "../packages/common" }]
 }
