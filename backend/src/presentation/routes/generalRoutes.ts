@@ -39,7 +39,10 @@ const healthzRoute = createRoute({
 const generalRoutes = createApp().openapi(healthzRoute, async (c) => {
 	const { generalService } = c.var;
 	const healthStatus = await generalService.checkHealth();
-	return c.json({ success: true as const, data: healthStatus }, 200);
+	return c.json(
+		{ success: true as const, data: healthStatus },
+		{ status: 200 },
+	) as never;
 });
 
 export default generalRoutes;

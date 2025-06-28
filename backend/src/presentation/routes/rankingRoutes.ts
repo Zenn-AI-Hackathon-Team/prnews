@@ -89,8 +89,8 @@ const rankingRoutes = createApp().openapi(
 					},
 				},
 			},
-			200,
-		);
+			{ status: 200 },
+		) as never;
 	},
 );
 

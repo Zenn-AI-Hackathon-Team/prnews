@@ -420,7 +420,10 @@ const privateRoutes = createApp()
 				message: "Failed to create/update user.",
 			});
 		}
-		return c.json({ success: true as const, data: result }, 201);
+		return c.json(
+			{ success: true as const, data: result },
+			{ status: 201 },
+		) as never;
 	})
 	.openapi(getMyProfileRoute, async (c) => {
 		const { userService } = c.var;
@@ -430,7 +433,10 @@ const privateRoutes = createApp()
 		if (!userProfile) {
 			throw new HTTPException(404, { message: "User profile not found" });
 		}
-		return c.json({ success: true as const, data: userProfile }, 200);
+		return c.json(
+			{ success: true as const, data: userProfile },
+			{ status: 200 },
+		) as never;
 	})
 	.openapi(logoutRoute, async (c) => {
 		const { userService } = c.var;
@@ -451,7 +457,10 @@ const privateRoutes = createApp()
 			sameSite: "Lax",
 		});
 
-		return c.json({ success: true as const, data: {} }, 200);
+		return c.json(
+			{ success: true as const, data: {} },
+			{ status: 200 },
+		) as never;
 	})
 	.openapi(sessionRoute, async (c) => {
 		const { userService } = c.var;
@@ -461,7 +470,10 @@ const privateRoutes = createApp()
 		if (!created) {
 			throw new HTTPException(500, { message: "Failed to create session" });
 		}
-		return c.json({ success: true as const, data: created }, 201);
+		return c.json(
+			{ success: true as const, data: created },
+			{ status: 201 },
+		) as never;
 	})
 	.openapi(addFavoriteRepoRoute, async (c) => {
 		const { userService } = c.var;
@@ -474,9 +486,15 @@ const privateRoutes = createApp()
 			repo,
 		);
 		if (result.alreadyExists) {
-			return c.json({ success: true as const, data: result.favorite }, 200);
+			return c.json(
+				{ success: true as const, data: result.favorite },
+				{ status: 200 },
+			) as never;
 		}
-		return c.json({ success: true as const, data: result.favorite }, 201);
+		return c.json(
+			{ success: true as const, data: result.favorite },
+			{ status: 201 },
+		) as never;
 	})
 	.openapi(getLikedArticlesRoute, async (c) => {
 		const { prService } = c.var;
@@ -503,8 +521,8 @@ const privateRoutes = createApp()
 					},
 				},
 			},
-			200,
-		);
+			{ status: 200 },
+		) as never;
 	})
 	.openapi(getFavoriteReposRoute, async (c) => {
 		const { userService } = c.var;
@@ -525,8 +543,8 @@ const privateRoutes = createApp()
 					pagination: { totalItems: total, limit: numLimit, offset: numOffset },
 				},
 			},
-			200,
-		);
+			{ status: 200 },
+		) as never;
 	})
 	.openapi(deleteFavoriteRepoRoute, async (c) => {
 		const { userService } = c.var;
@@ -539,8 +557,8 @@ const privateRoutes = createApp()
 				success: true as const,
 				data: { message: "Favorite repository deleted successfully." },
 			},
-			200,
-		);
+			{ status: 200 },
+		) as never;
 	});
 
 const userPrivateRoutes = createApp().route("/", privateRoutes);

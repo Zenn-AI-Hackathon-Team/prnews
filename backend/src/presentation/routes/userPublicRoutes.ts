@@ -109,8 +109,8 @@ const userPublicRoutes = createApp().openapi(loginRoute, async (c) => {
 
 	return c.json(
 		{ success: true, data: { message: "Login successful." } } as const,
-		200,
-	);
+		{ status: 200 },
+	) as never;
 });
 
 export type UserPublicRoutesType = typeof userPublicRoutes;

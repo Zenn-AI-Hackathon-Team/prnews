@@ -159,7 +159,10 @@ const prPublicRoutes = createApp()
 				message: "Pull request not found in cache",
 			});
 		const parsed = pullRequestSchema.parse(pr);
-		return c.json({ success: true as const, data: parsed }, 200);
+		return c.json(
+			{ success: true as const, data: parsed },
+			{ status: 200 },
+		) as never;
 	})
 	.openapi(getArticleRoute, async (c) => {
 		const { prService, prRepo } = c.var;
@@ -180,7 +183,10 @@ const prPublicRoutes = createApp()
 				message: "Article not found for this pull request",
 			});
 		const parsed = pullRequestArticleSchema.parse(article);
-		return c.json({ success: true as const, data: parsed }, 200);
+		return c.json(
+			{ success: true as const, data: parsed },
+			{ status: 200 },
+		) as never;
 	});
 
 export type PrPublicRoutesType = typeof prPublicRoutes;

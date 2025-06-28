@@ -570,7 +570,10 @@ const prPrivateRoutes = createApp()
 			params.number,
 		);
 		const parsed = pullRequestSchema.parse(ingestedPr);
-		return c.json({ success: true as const, data: parsed }, 200);
+		return c.json(
+			{ success: true as const, data: parsed },
+			{ status: 200 },
+		) as never;
 	})
 	.openapi(listRepoPullsRoute, async (c) => {
 		const { prService } = c.var;
@@ -585,7 +588,10 @@ const prPrivateRoutes = createApp()
 			query,
 		);
 		const parsed = pullRequestListItemSchema.array().parse(prList);
-		return c.json({ success: true as const, data: parsed }, 200);
+		return c.json(
+			{ success: true as const, data: parsed },
+			{ status: 200 },
+		) as never;
 	})
 	.openapi(likeArticleRoute, async (c) => {
 		const { prService, prRepo } = c.var;
@@ -605,8 +611,14 @@ const prPrivateRoutes = createApp()
 			message: result.message,
 		});
 		if (result.alreadyLiked)
-			return c.json({ success: true as const, data: responseData }, 200);
-		return c.json({ success: true as const, data: responseData }, 201);
+			return c.json(
+				{ success: true as const, data: responseData },
+				{ status: 200 },
+			) as never;
+		return c.json(
+			{ success: true as const, data: responseData },
+			{ status: 201 },
+		) as never;
 	})
 	.openapi(generateArticleRoute, async (c) => {
 		const { prService } = c.var;
@@ -619,7 +631,10 @@ const prPrivateRoutes = createApp()
 			params.number,
 		);
 		const parsed = pullRequestArticleSchema.parse(article);
-		return c.json({ success: true as const, data: parsed }, 200);
+		return c.json(
+			{ success: true as const, data: parsed },
+			{ status: 200 },
+		) as never;
 	});
 
 export type PrPrivateRoutesType = typeof prPrivateRoutes;
