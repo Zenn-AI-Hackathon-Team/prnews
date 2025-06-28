@@ -9,7 +9,10 @@ COPY . /app
 
 WORKDIR /app
 
-# Install dependencies for the entire workspace from the root
+# Fetch all dependencies to the pnpm store
+RUN pnpm fetch
+
+# Install production dependencies for the entire workspace from the root
 RUN pnpm install --prod
 
 # Build the backend application
