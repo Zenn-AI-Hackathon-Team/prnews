@@ -6,44 +6,61 @@ import type { PrPublicRoutesType } from "@prnews/backend/routes/prPublicRoutes";
 import type { RankingRoutesType } from "@prnews/backend/routes/rankingRoutes";
 import type { UserPrivateRoutesType } from "@prnews/backend/routes/userPrivateRoutes";
 import type { UserPublicRoutesType } from "@prnews/backend/routes/userPublicRoutes";
-import type { AppType } from "@prnews/common";
+import type { AppType } from "@prnews/backend/rpc";
 import { hc } from "hono/client";
 
 const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
-// テスト用のトークン：ログイン機能ができるまではトークンを固定値で設定
-const token = "hogehoge";
+const customFetch: typeof fetch = async (input, init) => {
+	const headers = new Headers(init?.headers);
+
+	if (typeof window === "undefined") {
+		try {
+			const { cookies } = await import("next/headers");
+			const cookieStore = await cookies();
+			const authToken = cookieStore.get("auth-token");
+
+			if (authToken) {
+				headers.set("Cookie", `auth-token=${authToken.value}`);
+			}
+		} catch (error) {}
+	}
+
+	const newInit: RequestInit = {
+		...init,
+		headers,
+		credentials: "include",
+	};
+
+	return fetch(input, newInit);
+};
+
+export const client = hc<AppType>(apiUrl, {
+	fetch: customFetch,
+});
+
+export const generalClient = hc<GeneralRoutesType>(apiUrl, {
+	fetch: customFetch,
+});
 
 export const rankingClient = hc<RankingRoutesType>(apiUrl, {
-	headers: {
-		Authorization: `Bearer ${token}`,
-	},
+	fetch: customFetch,
 });
+
 export const prClient = hc<PrPublicRoutesType & PrPrivateRoutesType>(apiUrl, {
-	headers: {
-		Authorization: `Bearer ${token}`,
-	},
+	fetch: customFetch,
 });
+
 export const issueClient = hc<IssuePublicRoutesType & IssuePrivateRoutesType>(
 	apiUrl,
 	{
-		headers: {
-			Authorization: `Bearer ${token}`,
-		},
+		fetch: customFetch,
 	},
 );
+
 export const userClient = hc<UserPublicRoutesType & UserPrivateRoutesType>(
 	apiUrl,
 	{
-		headers: {
-			Authorization: `Bearer ${token}`,
-		},
+		fetch: customFetch,
 	},
 );
-export const generalClient = hc<GeneralRoutesType>(apiUrl, {
-	headers: {
-		Authorization: `Bearer ${token}`,
-	},
-});
-
-export const client = hc<AppType>(apiUrl);

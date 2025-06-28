@@ -6,6 +6,7 @@ import {
 	successResponseSchema,
 	userSchema,
 } from "@prnews/common";
+import { deleteCookie } from "hono/cookie";
 import { HTTPException } from "hono/http-exception";
 import { createApp } from "../hono-app";
 
@@ -435,12 +436,21 @@ const privateRoutes = createApp()
 		const { userService } = c.var;
 		const user = c.var.user;
 		if (!user) throw new HTTPException(401, { message: "Unauthenticated" });
+
 		const result = await userService.logoutUser(user);
 		if (!result.success) {
 			throw new HTTPException(500, {
 				message: result.message || "Logout failed",
 			});
 		}
+
+		// Cookie削除
+		deleteCookie(c, "auth-token", {
+			path: "/",
+			secure: process.env.NODE_ENV === "production",
+			sameSite: "Lax",
+		});
+
 		return c.json({ success: true as const, data: {} }, 200);
 	})
 	.openapi(sessionRoute, async (c) => {

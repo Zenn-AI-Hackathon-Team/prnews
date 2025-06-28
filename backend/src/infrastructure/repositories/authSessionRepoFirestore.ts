@@ -62,4 +62,8 @@ export const authSessionRepoFirestore = (
 		const updated = await ref.get();
 		return sessionFromDoc(updated);
 	},
+	async findById(id: string) {
+		const doc = await db.collection(COLLECTION).doc(id).get();
+		return sessionFromDoc(doc);
+	},
 });

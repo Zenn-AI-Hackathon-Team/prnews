@@ -1,4 +1,5 @@
 import type { User } from "@prnews/common";
+import { getCookie } from "hono/cookie"; // Cookieを取得するヘルパーをインポート
 import { createMiddleware } from "hono/factory";
 import { HTTPException } from "hono/http-exception";
 import type { Dependencies } from "../../config/di";
@@ -17,48 +18,49 @@ export type AuthVariables = {
 export const authMiddleware = createMiddleware<{
 	Variables: Dependencies & AuthVariables;
 }>(async (c, next) => {
-	const { auth, userRepo } = c.var;
-	const authHeader = c.req.header("Authorization");
+	const sessionId = getCookie(c, "auth-token");
 
-	if (!authHeader) {
+	if (!sessionId) {
+		console.error("Middleware Error: Cookie 'auth-token' is missing!");
 		throw new HTTPException(401, {
-			message: "Authorization header is missing",
+			message: "Authorization cookie is missing",
 		});
 	}
 
-	const [scheme, token] = authHeader.split(" ");
-	if (scheme !== "Bearer" || !token) {
-		throw new HTTPException(401, { message: "Invalid token format" });
+	const { authSessionRepo, userRepo } = c.var;
+
+	const session = await authSessionRepo.findById(sessionId);
+
+	if (
+		!session ||
+		session.revokedAt ||
+		new Date(session.expiresAt) < new Date()
+	) {
+		console.error(
+			"Middleware Error: Session not found in DB or is invalid/expired.",
+		);
+		throw new HTTPException(401, { message: "Session is invalid or expired" });
 	}
 
-	try {
-		// Firebase IDトークンを検証
-		const decodedToken = await auth.verifyIdToken(token);
-		const firebaseUid = decodedToken.uid;
+	const appUser = await userRepo.findById(session.userId);
 
-		// アプリDBからユーザー検索
-		const appUser = await userRepo.findByFirebaseUid(firebaseUid);
-		if (!appUser) {
-			console.warn(
-				`User with firebaseUid ${firebaseUid} not found in app database.`,
-			);
-			throw new HTTPException(401, {
-				message: "User not registered in this service",
-			});
-		}
-
-		const authenticatedUser: AuthenticatedUser = {
-			id: appUser.id,
-			githubUsername: appUser.githubUsername,
-			firebaseUid,
-			githubDisplayName: appUser.githubDisplayName,
-			email: appUser.email,
-			avatarUrl: appUser.avatarUrl,
-		};
-		c.set("user", authenticatedUser);
-		await next();
-	} catch (error) {
-		console.error("Token verification failed:", error);
-		throw new HTTPException(401, { message: "Invalid or expired token" });
+	if (!appUser) {
+		console.error("Middleware Error: User for this session not found in DB.");
+		throw new HTTPException(401, {
+			message: "User associated with the session not found",
+		});
 	}
+
+	// コンテキストに認証済みユーザー情報をセット
+	const authenticatedUser: AuthenticatedUser = {
+		id: appUser.id,
+		githubUsername: appUser.githubUsername,
+		firebaseUid: appUser.firebaseUid,
+		githubDisplayName: appUser.githubDisplayName,
+		email: appUser.email,
+		avatarUrl: appUser.avatarUrl,
+	};
+	c.set("user", authenticatedUser);
+
+	await next();
 });

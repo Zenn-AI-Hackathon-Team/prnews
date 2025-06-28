@@ -1,3 +1,4 @@
+"use client";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -9,10 +10,16 @@ import {
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
-import { Bell, Heart, LogOut, Search, Settings, User } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
+import { Bell, LogOut, Search } from "lucide-react";
 import Logo from "../../logo/components/Logo";
 
 const Header = () => {
+	const { user, isLoading } = useAuth();
+	const getInitials = (name?: string | null) => {
+		return name ? name.charAt(0).toUpperCase() : "U";
+	};
+
 	return (
 		<header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
 			<div className="container mx-auto px-4">
@@ -71,34 +78,41 @@ const Header = () => {
 							<DropdownMenuTrigger asChild>
 								<Button variant="ghost" size="icon" className="relative">
 									<Avatar className="h-8 w-8">
-										<AvatarImage src="/api/placeholder/32/32" alt="ユーザー" />
-										<AvatarFallback>U</AvatarFallback>
+										<AvatarImage
+											src={user?.avatarUrl ?? undefined}
+											alt={user?.githubUsername ?? "ユーザー"}
+										/>
+										<AvatarFallback>
+											{getInitials(
+												user?.githubDisplayName || user?.githubUsername,
+											)}
+										</AvatarFallback>
 									</Avatar>
 								</Button>
 							</DropdownMenuTrigger>
 							<DropdownMenuContent align="end" className="w-56">
-								<DropdownMenuLabel>
-									<p className="font-semibold text-gray-900">ユーザー名</p>
-									<p className="text-sm text-gray-600">user@example.com</p>
-								</DropdownMenuLabel>
-								<DropdownMenuSeparator />
-								<DropdownMenuItem>
-									<User className="h-4 w-4 text-gray-600" />
-									プロフィール
-								</DropdownMenuItem>
-								<DropdownMenuItem>
-									<Settings className="h-4 w-4 text-gray-600" />
-									設定
-								</DropdownMenuItem>
-								<DropdownMenuItem>
-									<Heart className="h-4 w-4 text-gray-600" />
-									お気に入り
-								</DropdownMenuItem>
-								<DropdownMenuSeparator />
-								<DropdownMenuItem className="text-red-600">
-									<LogOut className="h-4 w-4 text-red-600" />
-									ログアウト
-								</DropdownMenuItem>
+								{isLoading ? (
+									<DropdownMenuLabel>読み込み中...</DropdownMenuLabel>
+								) : user ? (
+									<>
+										<DropdownMenuLabel>
+											<p className="font-semibold text-gray-900">
+												{user.githubDisplayName || user.githubUsername}
+											</p>
+											<p className="text-sm text-gray-600">{user.email}</p>
+										</DropdownMenuLabel>
+										<DropdownMenuSeparator />
+										{/* ... メニュー項目 ... */}
+										<DropdownMenuItem className="text-red-600">
+											<LogOut className="h-4 w-4 text-red-600" />
+											ログアウト
+										</DropdownMenuItem>
+									</>
+								) : (
+									<DropdownMenuItem>
+										<a href="/login">ログイン</a>
+									</DropdownMenuItem>
+								)}
 							</DropdownMenuContent>
 						</DropdownMenu>
 					</div>

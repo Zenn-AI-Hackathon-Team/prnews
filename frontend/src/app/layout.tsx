@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { AuthProvider } from "@/context/AuthContext";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import Header from "@/features/common/header/components/Header";
@@ -31,6 +32,8 @@ export default function RootLayout({
 			<body
 				className={`${geistSans.variable} ${geistMono.variable} antialiased`}
 			>
+
+				<AuthProvider>
 				<TooltipProvider>
 					<Header />
 					<Sidebar />
@@ -39,6 +42,7 @@ export default function RootLayout({
 					</main>
 				</TooltipProvider>
 				<Toaster richColors />
+         </AuthProvider>
 			</body>
 		</html>
 	);

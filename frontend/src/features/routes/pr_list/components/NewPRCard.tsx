@@ -9,27 +9,17 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 const NewPRCard = ({ pr }: { pr: newPR }) => {
-	const [authorAvatar, setAuthorAvatar] = useState<string>("");
-	const [repositoryFullName, setRepositoryFullName] = useState<string>("");
 	const [isGenerating, setIsGenerating] = useState(false);
 	const router = useRouter();
 
-	const author = pr.owner;
-	const repoName = pr.repo;
+	const author = pr.owner ?? "";
+	const repoName = pr.repo ?? "";
 
 	// アバターイニシャルを生成
-	const getAvatarInitials = (author: string) => {
-		return author.slice(0, 2).toUpperCase();
-	};
+	const authorInitials = author.slice(0, 2).toUpperCase();
 
-	const createRepositoryFullName = (owner: string, repo: string) => {
-		return `${owner}/${repo}`;
-	};
-
-	if (author && repoName && !authorAvatar) {
-		setAuthorAvatar(getAvatarInitials(author));
-		setRepositoryFullName(createRepositoryFullName(author, repoName));
-	}
+	// stateを削除し、propsから直接値を計算する通常の変数に変更Add commentMore actions
+	const repositoryFullName = author && repoName ? `${author}/${repoName}` : "";
 
 	// 記事生成のハンドラー
 	const handleGenerateArticle = async (e: React.MouseEvent) => {
@@ -85,7 +75,7 @@ const NewPRCard = ({ pr }: { pr: newPR }) => {
 					<div className="flex items-center gap-3">
 						<div className="relative">
 							<div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-gray-100 to-gray-200 text-sm font-semibold text-gray-700">
-								{authorAvatar}
+								{authorInitials}
 							</div>
 						</div>
 						<div>

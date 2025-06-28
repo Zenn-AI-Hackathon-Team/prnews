@@ -30,15 +30,8 @@ export const createUserService = (deps: {
 		}
 		const user = await deps.userRepo.findById(authenticatedUser.id);
 		if (user) {
-			console.log(
-				`[UserService] Found existing user in DB for ID (${authenticatedUser.id}):`,
-				user,
-			);
 			return user;
 		}
-		console.log(
-			`[UserService] User with ID (${authenticatedUser.id}) not found in DB. Returning null.`,
-		);
 		return null;
 	};
 
@@ -49,9 +42,6 @@ export const createUserService = (deps: {
 			console.warn("[UserService] logoutUser called without authenticatedUser");
 			return { success: false, message: "User not authenticated." };
 		}
-		console.log(
-			`[UserService] Attempting to logout user: ${authenticatedUser.githubUsername} (FirebaseUID: ${authenticatedUser.firebaseUid})`,
-		);
 		const currentSession =
 			await deps.authSessionRepo.findByFirebaseUidActiveSession(
 				authenticatedUser.firebaseUid,
@@ -77,9 +67,6 @@ export const createUserService = (deps: {
 			);
 			return { success: false, message: "Failed to revoke session." };
 		}
-		console.log(
-			`[UserService] Session ${updatedSession.id} for FirebaseUID ${authenticatedUser.firebaseUid} has been revoked at ${updatedSession.revokedAt}.`,
-		);
 		return {
 			success: true,
 			message: "Logged out successfully. Session revoked.",
@@ -144,7 +131,16 @@ export const createUserService = (deps: {
 			createdAt: now,
 			revokedAt: undefined,
 		};
-		return session;
+		// return session;
+		const savedSession = await deps.authSessionRepo.save(session);
+		if (!savedSession) {
+			console.error(
+				`[UserService] Failed to save session for user ${authenticatedUser.id}`,
+			);
+			return null;
+		}
+
+		return savedSession;
 	};
 
 	const registerFavoriteRepository = async (

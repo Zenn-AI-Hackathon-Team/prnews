@@ -1,8 +1,10 @@
 {
 	"compilerOptions": {
+		"composite": true,
 		"baseUrl": ".",
 		"paths": {
 			"@/*": ["./src/*"],
+			"src/*": ["../backend/src/*"],
 			"@prnews/backend/rpc": ["../backend/src/index.ts"],
 			"@prnews/backend/routes/*": ["../backend/src/presentation/routes/*"]
 		},
@@ -25,6 +27,20 @@
 			}
 		]
 	},
-	"include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
-	"exclude": ["node_modules"]
+	"include": [
+		"next-env.d.ts",
+		"src/**/*.ts",
+		"src/**/*.tsx",
+		".next/types/**/*.ts"
+	],
+	"exclude": [
+		"node_modules",
+		"../backend", // backendディレクトリを明示的に除外
+		"../packages" // packagesディレクトリも除外
+	],
+	"references": [
+		// ★追加
+		{ "path": "../backend" },
+		{ "path": "../packages/common" }
+	]
 }

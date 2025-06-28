@@ -6,4 +6,5 @@ export interface AuthSessionRepoPort {
 		firebaseUid: string,
 	) => Promise<AuthSession | null>;
 	update: (session: AuthSession) => Promise<AuthSession | null>;
+	findById: (id: string) => Promise<AuthSession | null>;
 }

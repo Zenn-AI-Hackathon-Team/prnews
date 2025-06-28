@@ -1,5 +1,6 @@
 {
 	"compilerOptions": {
+		"composite": true,
 		"target": "ESNext",
 		"module": "ESNext",
 		"moduleResolution": "bundler",
@@ -14,7 +15,18 @@
 		"baseUrl": ".",
 		"paths": {
 			"@prnews/common": ["../packages/common/src"]
-		}
+		},
+		"resolveJsonModule": true
 	},
-	"exclude": ["node_modules"]
+	"include": [
+		"src",
+		"src/**/*.ts",
+		"src/**/*.json",
+		".gcloud/firebase-admin.json"
+	],
+	"exclude": ["node_modules"],
+	"references": [
+		// ★追加
+		{ "path": "../packages/common" }
+	]
 }

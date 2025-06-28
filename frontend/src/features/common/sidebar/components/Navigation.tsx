@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useState } from "react";
 
 const menuItems = [
-	{ id: "home", label: "Home", icon: Home, path: "/" },
+	{ id: "home", label: "Home", icon: Home, path: "/home" },
 	{
 		id: "pr-issue",
 		label: "PR and Issue",

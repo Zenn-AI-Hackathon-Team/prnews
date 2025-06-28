@@ -2,30 +2,25 @@ import { createRoute, z } from "@hono/zod-openapi";
 import { errorResponseSchema, successResponseSchema } from "@prnews/common";
 import { getAuth } from "firebase-admin/auth";
 import type { DecodedIdToken } from "firebase-admin/auth";
+import { setCookie } from "hono/cookie";
 import { HTTPException } from "hono/http-exception";
 import { createApp } from "../hono-app";
 
-const tokenExchangeRoute = createRoute({
+// 新しいログイン用のルート定義
+const loginRoute = createRoute({
 	method: "post",
-	path: "/auth/token/exchange",
-	summary: "GitHubアクセストークン保存",
-	description: `\
-GitHubアクセストークンを保存します。
-ユーザ作成時にGitHubアクセストークンを保存するためのAPIです。
-ユーザ作成時は、まずこのAPIを呼び出して、GitHubアクセストークンを保存してください。
-その後、ユーザ作成API(POST /auth/signup)を呼び出してください。
-`,
+	path: "/auth/login",
+	summary: "ログインとセッション作成",
+	description:
+		"FirebaseとGitHubのトークンを受け取り、ユーザーを認証/登録し、セッションCookieを設定します。",
 	tags: ["User & Auth"],
-	security: [{ bearerAuth: [] }],
 	request: {
 		body: {
 			content: {
 				"application/json": {
 					schema: z.object({
-						githubAccessToken: z.string().openapi({
-							description: "GitHubのアクセストークン",
-							example: "ghp_...",
-						}),
+						firebaseToken: z.string(),
+						githubAccessToken: z.string(),
 					}),
 				},
 			},
@@ -33,73 +28,90 @@ GitHubアクセストークンを保存します。
 	},
 	responses: {
 		200: {
-			description: "保存成功",
+			description: "ログイン成功",
 			content: {
 				"application/json": {
 					schema: successResponseSchema(z.object({ message: z.string() })),
 				},
 			},
 		},
-		400: {
-			description: "リクエストボディが不正",
-			content: { "application/json": { schema: errorResponseSchema } },
-		},
 		401: {
-			description: "認証エラー。Bearerトークンが無効または未指定。",
+			description: "認証エラー",
 			content: { "application/json": { schema: errorResponseSchema } },
 		},
 		500: {
-			description: "サーバーエラー。トークン保存失敗など。",
+			description: "サーバーエラー",
 			content: { "application/json": { schema: errorResponseSchema } },
 		},
 	},
 });
 
-const userPublicRoutes = createApp().openapi(tokenExchangeRoute, async (c) => {
-	const { userService } = c.var;
+const userPublicRoutes = createApp().openapi(loginRoute, async (c) => {
+	const { userService, userRepo } = c.var;
+	const { firebaseToken, githubAccessToken } = c.req.valid("json");
 
-	const authHeader = c.req.header("Authorization");
-	if (!authHeader || !authHeader.startsWith("Bearer ")) {
-		throw new HTTPException(401, {
-			message: "Bearer token is missing or invalid",
-		});
-	}
-	const idToken = authHeader.substring(7);
+	// 1. Firebaseトークンを検証
 	let decodedToken: DecodedIdToken;
 	try {
-		decodedToken = await getAuth().verifyIdToken(idToken);
+		decodedToken = await getAuth().verifyIdToken(firebaseToken);
 	} catch (error) {
 		throw new HTTPException(401, {
-			message: "Invalid or expired token",
+			message: "Invalid or expired Firebase token",
 			cause: error,
 		});
 	}
 
-	const { githubAccessToken } = c.req.valid("json");
-	if (!githubAccessToken) {
-		throw new HTTPException(400, {
-			message: "githubAccessToken is required",
+	// 2. ユーザーの仮登録とGitHubトークンの保存
+	await userService.saveGitHubToken(decodedToken.uid, githubAccessToken);
+
+	// 3. ユーザーの本登録（情報の完全化）
+	let user = await userRepo.findByFirebaseUid(decodedToken.uid);
+	if (!user) {
+		throw new HTTPException(500, {
+			message: "Failed to create provisional user.",
 		});
 	}
-
-	const result = await userService.saveGitHubToken(
-		decodedToken.uid,
-		githubAccessToken,
-	);
-
-	if (!result.success) {
-		throw new HTTPException(500, { message: "Failed to save token." });
+	if (user.githubUserId === 0) {
+		const authUser = {
+			id: user.id,
+			firebaseUid: user.firebaseUid,
+			githubUsername: "",
+		};
+		const updatedUser = await userService.createUser(authUser, user.language);
+		if (updatedUser && updatedUser !== "already_exists") {
+			user = updatedUser;
+		}
 	}
 
+	const finalUser = await userRepo.findByFirebaseUid(decodedToken.uid);
+	if (!finalUser) {
+		throw new HTTPException(401, { message: "User not fully registered." });
+	}
+
+	// 4. セッションを作成してDBに保存
+	const session = await userService.createSession({
+		id: finalUser.id,
+		firebaseUid: finalUser.firebaseUid,
+		githubUsername: finalUser.githubUsername,
+	});
+	if (!session) {
+		throw new HTTPException(500, { message: "Failed to create session." });
+	}
+
+	// 5. Cookieにセッショントークン（セッションID）を設定
+	setCookie(c, "auth-token", session.id, {
+		httpOnly: true,
+		secure: process.env.NODE_ENV === "production",
+		sameSite: "Lax",
+		path: "/",
+		maxAge: 60 * 60 * 24 * 14, // 14日間
+	});
+
 	return c.json(
-		{
-			success: true as const,
-			data: { message: "Token saved successfully." },
-		},
+		{ success: true, data: { message: "Login successful." } } as const,
 		200,
 	);
 });
 
 export type UserPublicRoutesType = typeof userPublicRoutes;
-
 export default userPublicRoutes;
