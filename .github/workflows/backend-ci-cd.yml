@@ -3,7 +3,7 @@ name: Backend CI/CD
 on:
   push:
     branches:
-      - deploy-docker-gcp
+      - ci-cd-backend-gcp
 
 env:
   GCP_PROJECT_ID: prnews-c617b
