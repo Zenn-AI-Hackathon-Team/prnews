@@ -10,6 +10,9 @@ WORKDIR /app
 # Copy the entire project context into the /app directory in the container
 COPY . .
 
+# Debug: List contents of /app to verify pnpm-lock.yaml presence
+RUN ls -la /app
+
 # Install all dependencies for the entire workspace from the root
 # Use --frozen-lockfile to ensure exact dependencies from the lockfile are used
 RUN pnpm install --frozen-lockfile
