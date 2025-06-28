@@ -18,12 +18,7 @@
 		},
 		"resolveJsonModule": true
 	},
-	"include": [
-		"src",
-		"src/**/*.ts",
-		"src/**/*.json",
-		".gcloud/firebase-admin.json"
-	],
+	"include": ["src", "src/**/*.ts", "src/**/*.json"],
 	"exclude": ["node_modules"],
 	"references": [{ "path": "../packages/common" }]
 }

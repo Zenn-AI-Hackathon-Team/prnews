@@ -7,9 +7,10 @@ import {
 import { getAuth } from "firebase-admin/auth";
 import { getFirestore } from "firebase-admin/firestore";
 import { createIssueService } from "src/application/issueService";
-import serviceAccount from "../../.gcloud/firebase-admin.json" assert {
-	type: "json",
-};
+
+const serviceAccount = JSON.parse(
+	process.env.FIREBASE_ADMIN_SDK_CONFIG || "{}",
+) as ServiceAccount;
 import { createGeneralService } from "../application/generalService";
 import { createPrService } from "../application/prService";
 import { createRankingService } from "../application/rankingService";
