@@ -33,6 +33,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
+      - name: Build common package
+        run: pnpm --filter common build
+
       - name: Build application
         run: pnpm build
 
@@ -43,6 +46,11 @@ jobs:
 
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v2
+
+      - name: Set GOOGLE_APPLICATION_CREDENTIALS
+        run: |
+          echo "${{ secrets.GCP_SA_KEY }}" > firebase-admin-key.json
+          echo "GOOGLE_APPLICATION_CREDENTIALS=$(pwd)/firebase-admin-key.json" >> $GITHUB_ENV
 
       - name: Configure Docker for Artifact Registry
         run: gcloud auth configure-docker ${CLOUD_RUN_REGION}-docker.pkg.dev
