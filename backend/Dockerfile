@@ -4,19 +4,15 @@ FROM node:20-alpine AS builder
 # Install pnpm globally
 RUN npm install -g pnpm
 
+# Set working directory
 WORKDIR /app
 
-# Copy pnpm-workspace.yaml, root package.json, and pnpm-lock.yaml first
-COPY ./pnpm-workspace.yaml ./pnpm-workspace.yaml
-COPY ./package.json ./package.json
-COPY ./pnpm-lock.yaml ./pnpm-lock.yaml
+# Copy the entire project context into the /app directory in the container
+COPY . .
 
 # Install all dependencies for the entire workspace from the root
 # Use --frozen-lockfile to ensure exact dependencies from the lockfile are used
 RUN pnpm install --frozen-lockfile
-
-# Copy the rest of the project context
-COPY . .
 
 # Build the backend application
 WORKDIR /app/backend
