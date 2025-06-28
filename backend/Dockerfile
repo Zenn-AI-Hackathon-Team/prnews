@@ -24,7 +24,7 @@ RUN pnpm install --frozen-lockfile
 # Clean and build common package first
 WORKDIR /app/packages/common
 RUN rm -rf dist
-RUN pnpm build
+RUN pnpm run build
 
 # Copy the backend source code
 WORKDIR /app
