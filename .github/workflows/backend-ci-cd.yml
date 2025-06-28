@@ -31,7 +31,8 @@ jobs:
       - name: Enable Corepack
         run: corepack enable
 
-      
+      - name: Install pnpm globally
+        run: npm install -g pnpm
 
       - name: Install dependencies
         run: pnpm install
