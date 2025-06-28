@@ -7,9 +7,9 @@ RUN npm install -g pnpm
 WORKDIR /app
 
 # Copy pnpm-workspace.yaml, root package.json, and pnpm-lock.yaml first
-COPY pnpm-workspace.yaml ./
-COPY package.json ./
-COPY pnpm-lock.yaml ./
+COPY ./pnpm-workspace.yaml ./pnpm-workspace.yaml
+COPY ./package.json ./package.json
+COPY ./pnpm-lock.yaml ./pnpm-lock.yaml
 
 # Install all dependencies for the entire workspace from the root
 # Use --frozen-lockfile to ensure exact dependencies from the lockfile are used
