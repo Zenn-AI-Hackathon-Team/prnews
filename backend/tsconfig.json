@@ -3,7 +3,7 @@
 		"composite": true,
 		"target": "ESNext",
 		"module": "ESNext",
-		"moduleResolution": "bundler",
+		"moduleResolution": "Node",
 		"strict": false,
 		"esModuleInterop": true,
 		"verbatimModuleSyntax": true,
