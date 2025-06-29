@@ -66,4 +66,5 @@ jobs:
             --image ${CLOUD_RUN_REGION}-docker.pkg.dev/${GCP_PROJECT_ID}/${ARTIFACT_REGISTRY_REPO}/${CLOUD_RUN_SERVICE_NAME}:${GITHUB_SHA} \
             --region ${CLOUD_RUN_REGION} \
             --project ${GCP_PROJECT_ID} \
-            --allow-unauthenticated # Adjust as needed for authentication
+            --allow-unauthenticated \
+            --set-env-vars "ENCRYPTION_KEY=${{ secrets.ENCRYPTION_KEY }},ENCRYPTION_SALT=${{ secrets.ENCRYPTION_SALT }},GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}" # Adjust as needed for authentication
