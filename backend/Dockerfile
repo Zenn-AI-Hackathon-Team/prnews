@@ -68,11 +68,8 @@ RUN pnpm install --prod --frozen-lockfile --ignore-scripts
 RUN ls -l /app/node_modules/@prnews/common
 RUN ls -R /app/packages/common/dist
 
-# Set the working directory for running the app
-WORKDIR /app/backend
-
 # Expose the port the app runs on
 EXPOSE 8080
 
 # Run the application
-CMD ["node", "dist/src/index.js"]
+CMD ["node", "/app/backend/dist/src/index.js"]
