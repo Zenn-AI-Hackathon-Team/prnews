@@ -64,7 +64,7 @@ COPY --from=builder /app/backend/dist ./backend/dist
 COPY --from=builder /app/packages/common/dist ./packages/common/dist
 
 # Install only production dependencies for the workspace
-RUN pnpm install --prod --frozen-lockfile
+RUN pnpm install --prod --frozen-lockfile --ignore-scripts
 
 # Set the working directory for running the app
 WORKDIR /app/backend
