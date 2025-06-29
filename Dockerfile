@@ -42,4 +42,4 @@ COPY --from=build /app/deploy /app
 WORKDIR /app/backend
 
 # アプリケーションの起動
-CMD [ "npm", "start" ]
+CMD [ "node", "dist/index.js" ]
