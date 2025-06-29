@@ -17,8 +17,11 @@ RUN pnpm install --frozen-lockfile
 # プロジェクト全体のソースコードをコピー
 COPY . .
 
-# backendとその依存関係( @prnews/common)をビルド
-RUN pnpm --filter @prnews/backend... build
+# commonパッケージをビルド
+RUN pnpm --filter @prnews/common build
+
+# backendパッケージをビルド
+RUN pnpm --filter @prnews/backend build
 
 
 # ---- 2. 本番ステージ ----
