@@ -65,7 +65,7 @@ COPY --from=builder /app/packages/common ./packages/common
 
 # Install only production dependencies for the workspace
 RUN pnpm install --prod --frozen-lockfile --ignore-scripts
-RUN ls -l /app/node_modules/@prnews/common
+RUN ls -l /app/node_modules/
 RUN ls -R /app/packages/common/dist
 
 # Expose the port the app runs on
