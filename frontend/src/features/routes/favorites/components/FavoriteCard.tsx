@@ -18,7 +18,7 @@ type Props = {
 	onDelete: (id: string) => void;
 };
 
-const FavoriteItemCard: React.FC<Props> = ({ fav, onRemove }) => {
+const FavoriteItemCard: React.FC<Props> = ({ fav, onDelete }) => {
 	// stateを削除し、propsから直接値を計算する通常の変数に変更Add commentMore actions
 	const repositoryFullName =
 		fav.owner && fav.repo ? `${fav.owner}/${fav.repo}` : "";

@@ -7,6 +7,7 @@ import { FileText, GitPullRequest, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { toast } from "sonner";
 
 const NewPRCard = ({ pr }: { pr: newPR }) => {
 	const [isGenerating, setIsGenerating] = useState(false);
@@ -26,14 +27,39 @@ const NewPRCard = ({ pr }: { pr: newPR }) => {
 		e.preventDefault();
 		e.stopPropagation();
 
+		if (!pr.owner || !pr.repo) {
+			toast.error("記事の生成に必要な情報が不足しています。");
+			console.error("PR情報にownerまたはrepoがありません");
+			return;
+		}
+
 		setIsGenerating(true);
 
 		try {
-			if (!pr.owner || !pr.repo || !pr.prNumber) {
-				console.error("PR情報が不完全です");
+			// 1. まずPR情報をDBに取り込む (ingest)
+			const ingestResponse = await prClient.repos[":owner"][":repo"].pulls[
+				":number"
+			].ingest.$post({
+				param: {
+					owner: pr.owner,
+					repo: pr.repo,
+					number: pr.prNumber.toString(),
+				},
+			});
+
+			if (!ingestResponse.ok) {
+				const errorData = await ingestResponse.json();
+				console.error("記事の取り込みに失敗しました:", errorData);
+				toast.error("記事の取り込みに失敗しました。", {
+					description: errorData.message,
+				});
+				setIsGenerating(false);
 				return;
 			}
-			// ここに記事生成APIのエンドポイントを実装
+
+			toast.info("PR情報の取り込みが完了しました。記事の生成を開始します...");
+
+			// 2. 取り込みが成功したら、記事を生成する
 			const generateArticleResponse = await prClient.repos[":owner"][
 				":repo"
 			].pulls[":number"].article.$post({
@@ -45,13 +71,19 @@ const NewPRCard = ({ pr }: { pr: newPR }) => {
 			});
 
 			if (generateArticleResponse.ok) {
+				toast.success("記事の生成に成功しました！");
 				// 生成成功後、記事ページへ遷移
 				router.push(`/article/${pr.prNumber}`);
 			} else {
-				console.error("記事の生成に失敗しました");
+				const errorData = await generateArticleResponse.json();
+				console.error("記事の生成に失敗しました:", errorData);
+				toast.error("記事の生成に失敗しました。", {
+					description: errorData.message,
+				});
 			}
 		} catch (error) {
-			console.error("記事生成エラー:", error);
+			console.error("記事生成プロセスでエラーが発生しました:", error);
+			toast.error("記事の生成中に予期せぬエラーが発生しました。");
 		} finally {
 			setIsGenerating(false);
 		}
