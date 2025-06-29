@@ -26,15 +26,6 @@ jobs:
       - name: Enable Corepack
         run: corepack enable
 
-      # - name: Install dependencies
-      #   run: pnpm install
-      #
-      # - name: Build common package
-      #   run: pnpm --filter common build
-      #
-      # - name: Build application
-      #   run: pnpm build
-
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
         with:
@@ -53,7 +44,7 @@ jobs:
 
       - name: Build and push Docker image
         run: |
-          docker build --no-cache -f Dockerfile -t ${CLOUD_RUN_REGION}-docker.pkg.dev/${GCP_PROJECT_ID}/${ARTIFACT_REGISTRY_REPO}/${CLOUD_RUN_SERVICE_NAME}:${GITHUB_SHA} .
+          docker build --no-cache -f backend/Dockerfile -t ${CLOUD_RUN_REGION}-docker.pkg.dev/${GCP_PROJECT_ID}/${ARTIFACT_REGISTRY_REPO}/${CLOUD_RUN_SERVICE_NAME}:${GITHUB_SHA} .
           docker push ${CLOUD_RUN_REGION}-docker.pkg.dev/${GCP_PROJECT_ID}/${ARTIFACT_REGISTRY_REPO}/${CLOUD_RUN_SERVICE_NAME}:${GITHUB_SHA}
 
       - name: Deploy to Cloud Run
