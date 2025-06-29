@@ -37,11 +37,11 @@ RUN npm install -g pnpm@10.11.0
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 
 # backendとcommonのソースコードとビルド済み成果物をコピー
-COPY backend ./backend
-RUN ls -R /app/backend
-COPY packages/common ./packages/common
 
-# 本番依存関係のみをインストール
+
+
+COPY --from=build /app/backend/dist /app/backend/dist
+
 RUN pnpm install --prod --ignore-scripts
 
 # backendディレクトリに移動
