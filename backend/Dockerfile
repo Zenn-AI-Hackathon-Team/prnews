@@ -47,6 +47,10 @@ FROM node:20-alpine AS runner
 
 WORKDIR /app/backend
 
+# Copy pnpm from builder stage
+COPY --from=builder /usr/local/bin/pnpm /usr/local/bin/pnpm
+COPY --from=builder /usr/local/lib/node_modules/pnpm /usr/local/lib/node_modules/pnpm
+
 # Copy only necessary files from the builder stage
 COPY --from=builder /app/backend/dist ./dist
 COPY --from=builder /app/backend/node_modules ./node_modules
