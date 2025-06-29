@@ -5,6 +5,8 @@ FROM node:20-alpine AS builder
 RUN npm install -g pnpm
 RUN ls -l /usr/local/bin
 RUN ls -l /usr/local/lib/node_modules
+RUN ls -l /usr/local/bin
+RUN ls -l /usr/local/lib/node_modules
 
 # Set working directory
 WORKDIR /app
@@ -51,13 +53,6 @@ WORKDIR /app/backend
 
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
-
-# Copy pnpm and its dependencies from builder stage
-COPY --from=builder /pnpm /pnpm
-
-# Copy pnpm store and node_modules from builder stage
-COPY --from=builder /pnpm/store /pnpm/store
-COPY --from=builder /app/node_modules /app/node_modules
 
 # Copy only necessary files from the builder stage
 COPY --from=builder /app/backend/dist ./dist
