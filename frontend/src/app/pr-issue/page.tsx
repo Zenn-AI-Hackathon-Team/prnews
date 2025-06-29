@@ -19,7 +19,7 @@ export type newPR = {
 const page = async () => {
 	const exitingCookie = await validateAuthCookie();
 	if (!exitingCookie) {
-		redirect("/login");
+		redirect("/");
 	}
 
 	// まずお気に入りリポジトリを取得

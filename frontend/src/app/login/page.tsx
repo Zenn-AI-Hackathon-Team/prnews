@@ -1,15 +1,13 @@
 "use client";
 
 import { LoginForm } from "@/components/ui/loginform";
-import { getAuth } from "@/lib/firebase"; // Firebaseの初期化を行うモジュールをインポート
+import { getAuth } from "@/lib/firebase";
 import { GithubAuthProvider, signInWithPopup } from "firebase/auth";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 export default function LoginPage() {
 	const [isLoading, setIsLoading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
-	const router = useRouter();
 
 	const handleGithubLogin = async () => {
 		setIsLoading(true);
@@ -30,13 +28,11 @@ export default function LoginPage() {
 			}
 			const githubAccessToken = credential.accessToken;
 
-			// ★★★ 呼び出すAPIを新しい `/auth/login` に変更 ★★★
 			const res = await fetch("http://localhost:8080/auth/login", {
 				method: "POST",
 				headers: {
 					"Content-Type": "application/json",
 				},
-				// ★★★ 必要な情報をすべてbodyに含める ★★★
 				body: JSON.stringify({
 					firebaseToken,
 					githubAccessToken,
@@ -61,11 +57,19 @@ export default function LoginPage() {
 	};
 
 	return (
-		<div className="flex min-h-svh w-full items-center justify-center p-6 md:p-10">
-			<div className="w-full max-w-sm">
+		<div className="flex min-h-screen w-full flex-col items-center justify-center bg-gray-50 dark:bg-gray-950 p-6">
+			<div className="w-full max-w-sm space-y-6">
 				<LoginForm className="w-full" onGithubLogin={handleGithubLogin} />
-				{isLoading && <p className="text-center mt-4">認証中...</p>}
-				{error && <p className="text-red-500 text-center mt-4">{error}</p>}
+				{isLoading && (
+					<p className="text-center text-sm text-muted-foreground animate-pulse">
+						認証中です...
+					</p>
+				)}
+				{error && (
+					<p className="text-center text-sm font-medium text-destructive">
+						{error}
+					</p>
+				)}
 			</div>
 		</div>
 	);

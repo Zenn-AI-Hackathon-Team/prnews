@@ -1,7 +1,15 @@
 "use client";
+
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import {
+	Card,
+	CardContent,
+	CardDescription,
+	CardHeader,
+	CardTitle,
+} from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import { Github, Sparkles } from "lucide-react";
 
 type LoginFormProps = {
 	onGithubLogin: () => void;
@@ -13,44 +21,51 @@ export function LoginForm({
 	...props
 }: LoginFormProps) {
 	return (
-		<div
-			className={cn("flex flex-col gap-6 items-center", className)}
-			{...props}
-		>
-			<Card className="overflow-hidden p-0 w-max h-[40vh] flex justify-center ">
-				<CardContent className="grid p-0 md:grid-cols-2">
-					{" "}
-					{/* imgいらないときはここのclassnameを変える */}
-					<form className="p-6 md:p-8">
-						<div className="flex flex-col gap-6">
-							<div className="flex flex-col items-center text-center">
-								<h1 className="text-2xl font-bold">Sign In</h1>
-								<p className="text-muted-foreground text-balance">
-									ログインしてはじめよう！
-									{/* 適当にコメント入れる */}
-								</p>
-							</div>
+		<div className={cn("w-full max-w-md", className)} {...props}>
+			{/* 装飾的な背景ブラー */}
+			<div className="absolute -top-20 -left-20 h-40 w-40 rounded-full bg-gradient-to-br from-blue-100 to-purple-100 blur-3xl opacity-70" />
+			<div className="absolute -bottom-20 -right-20 h-40 w-40 rounded-full bg-gradient-to-br from-purple-100 to-pink-100 blur-3xl opacity-70" />
 
-							<Button
-								variant="outline"
-								className="w-full"
-								type="button"
-								onClick={onGithubLogin}
-							>
-								<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-									<title>GitHub icon</title>
-									<path
-										d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"
-										fill="currentColor"
-									/>
-								</svg>
-								Login with GitHub
-							</Button>
+			<Card className="relative overflow-hidden bg-white/95 backdrop-blur-sm border-gray-100 shadow-lg">
+				{/* 上部のアクセントライン */}
+				<div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500" />
+
+				<CardHeader className="space-y-6 pb-4 pt-8">
+					{/* ロゴセクション */}
+					<div className="flex justify-center">
+						<div className="relative">
+							<div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-primary/80 shadow-lg shadow-primary/25">
+								<img src="/PRNews.png" alt="PR News" className="h-16 w-16" />
+							</div>
+							<div className="absolute -top-1 -right-1">
+								<Sparkles className="h-5 w-5 text-yellow-500 animate-pulse" />
+							</div>
 						</div>
-					</form>
-					<div className="bg-muted relative hidden md:block">
-						ここにプロダクトの説明とかimg
 					</div>
+
+					<div className="space-y-2 text-center">
+						<CardTitle className="text-2xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
+							PR-Newsへようこそ
+						</CardTitle>
+						<CardDescription className="text-base text-gray-600">
+							GitHubアカウントでログインして
+							<br />
+							最新の技術トレンドを発見しましょう
+						</CardDescription>
+					</div>
+				</CardHeader>
+
+				<CardContent className="pb-8">
+					<Button
+						variant="default"
+						size="lg"
+						className="w-full h-12 text-base font-medium bg-gradient-to-r from-gray-900 to-gray-800 hover:from-gray-800 hover:to-gray-700 text-white shadow-md transition-all duration-200 hover:shadow-lg hover:scale-[1.02] group"
+						type="button"
+						onClick={onGithubLogin}
+					>
+						<Github className="mr-2 h-5 w-5 transition-transform group-hover:rotate-12" />
+						GitHubでサインイン
+					</Button>
 				</CardContent>
 			</Card>
 		</div>
