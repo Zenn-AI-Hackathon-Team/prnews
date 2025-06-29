@@ -24,7 +24,7 @@ RUN PATH=$(pnpm bin):$PATH pnpm --filter @prnews/common build
 RUN PATH=$(pnpm bin):$PATH pnpm --filter @prnews/backend build
 
 # 本番稼働に必要なファイルのみを /app/deploy に集約
-RUN pnpm deploy --prod --filter @prnews/backend /app/deploy
+RUN pnpm deploy --prod --filter @prnews/backend --legacy /app/deploy
 
 
 # ---- 2. 本番ステージ ----
