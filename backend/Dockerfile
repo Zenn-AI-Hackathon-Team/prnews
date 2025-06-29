@@ -45,21 +45,29 @@ RUN pnpm build
 # Stage 2: Production
 FROM node:20-alpine AS runner
 
-WORKDIR /app/backend
+WORKDIR /app
 
 # Install pnpm globally in runner stage
 RUN npm install -g pnpm
 
-# Copy only necessary files from the builder stage
-COPY --from=builder /app/backend/dist ./dist
-COPY --from=builder /app/backend/node_modules ./node_modules
-COPY --from=builder /app/backend/package.json ./package.json
-COPY --from=builder /app/pnpm-lock.yaml ./pnpm-lock.yaml
-COPY --from=builder /app/packages/common/dist ./packages/common/dist
-COPY --from=builder /app/packages/common/package.json ./packages/common/package.json
+# Copy workspace configuration files
+COPY pnpm-workspace.yaml .
+COPY package.json .
+COPY pnpm-lock.yaml .
 
-# Install production dependencies
-RUN pnpm install --frozen-lockfile --prod
+# Copy package.json files for relevant workspaces
+COPY backend/package.json ./backend/package.json
+COPY packages/common/package.json ./packages/common/package.json
+
+# Copy built artifacts from the builder stage
+COPY --from=builder /app/backend/dist ./backend/dist
+COPY --from=builder /app/packages/common/dist ./packages/common/dist
+
+# Install only production dependencies for the workspace
+RUN pnpm install --prod --frozen-lockfile
+
+# Set the working directory for running the app
+WORKDIR /app/backend
 
 # Expose the port the app runs on
 EXPOSE 8080
