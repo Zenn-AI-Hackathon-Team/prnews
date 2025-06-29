@@ -29,9 +29,9 @@ const ArticleList: React.FC<ArticleListProps> = ({
 			<div className="relative">
 				<div className="absolute -top-4 -left-4 h-20 w-20 rounded-full bg-gradient-to-br from-blue-100 to-purple-100 blur-2xl opacity-70" />
 				<div className="relative space-y-3">
-					<Logo />
+					<Logo iconName="home" />
 					<p className="text-gray-600 text-lg w-full">
-						注目のプルリクエストをチェックして、最新の技術トレンドを把握しましょう
+						人気のプルリクエスト技術記事を読んで、技術についての理解を深めましょう
 					</p>
 				</div>
 			</div>

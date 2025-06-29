@@ -1,5 +1,7 @@
+import { validateAuthCookie } from "@/features/common/functions/cookie/cookieCheck";
 import PRList from "@/features/routes/pr_list/components/PRList";
 import { prClient, userClient } from "@/lib/hono";
+import { redirect } from "next/navigation";
 
 // PR型定義 - 新しいAPIのデータ構造に合わせて更新
 export type newPR = {
@@ -15,6 +17,11 @@ export type newPR = {
 };
 
 const page = async () => {
+	const exitingCookie = await validateAuthCookie();
+	if (!exitingCookie) {
+		redirect("/login");
+	}
+
 	// まずお気に入りリポジトリを取得
 	const favoritesRes = await userClient.users.me["favorite-repositories"].$get({
 		query: {

@@ -25,7 +25,7 @@ const Header = () => {
 			<div className="container mx-auto px-4">
 				<div className="flex h-16 items-center justify-between">
 					{/* Left section - Logo */}
-					<Logo />
+					<Logo iconName="" />
 					{/* Center section - Search */}
 					<div className="flex flex-1 max-w-md mx-8">
 						<div className="relative w-full">

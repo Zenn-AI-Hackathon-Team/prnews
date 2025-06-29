@@ -3,7 +3,6 @@ import AddFavoriteForm from "@/features/routes/favorites/components/AddFavoriteF
 import FavoriteList from "@/features/routes/favorites/components/FavoriteList";
 import { useFavorites } from "@/features/routes/favorites/hooks";
 
-
 const page = () => {
 	const { favorites, isLoading, error, refetch, onDelete } = useFavorites();
 
