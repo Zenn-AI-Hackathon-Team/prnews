@@ -39,7 +39,7 @@ RUN npm install -g pnpm@10.11.0
 COPY --from=build /app/deploy /app
 
 # backendディレクトリに移動
-WORKDIR /app
+WORKDIR /app/backend
 
 # アプリケーションの起動
 CMD [ "npm", "start" ]
