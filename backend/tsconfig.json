@@ -2,7 +2,7 @@
 	"compilerOptions": {
 		"composite": true,
 		"target": "ESNext",
-		"module": "ESNext",
+		"module": "CommonJS",
 		"moduleResolution": "Bundler",
 		"allowSyntheticDefaultImports": true,
 		"strict": false,
