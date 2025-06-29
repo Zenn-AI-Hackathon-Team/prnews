@@ -22,6 +22,7 @@ RUN PATH=$(pnpm bin):$PATH pnpm --filter @prnews/common build
 
 # backendパッケージをビルド
 RUN PATH=$(pnpm bin):$PATH pnpm --filter @prnews/backend build
+RUN ls -R /app/backend
 
 
 # ---- 2. 本番ステージ ----
@@ -37,6 +38,7 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 
 # backendとcommonのソースコードとビルド済み成果物をコピー
 COPY backend ./backend
+RUN ls -R /app/backend
 COPY packages/common ./packages/common
 
 # 本番依存関係のみをインストール
