@@ -36,8 +36,9 @@ RUN npm install -g pnpm@10.11.0
 
 # ビルドステージから、本番稼働に必要なファイルのみをコピー
 COPY --from=build /app/backend/dist /app/dist
-COPY --from=build /app/backend/node_modules /app/node_modules
 COPY --from=build /app/backend/package.json /app/package.json
+COPY pnpm-lock.yaml /app/pnpm-lock.yaml
+RUN pnpm install --prod
 
 # backendディレクトリに移動
 WORKDIR /app
