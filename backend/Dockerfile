@@ -1,4 +1,4 @@
-# Stage 1: Builder - Build the entire monorepo and create a deployment package
+# Stage 1: Builder
 FROM node:20-alpine AS builder
 RUN npm install -g pnpm
 WORKDIR /app
@@ -21,25 +21,20 @@ COPY . .
 RUN pnpm run build --filter @prnews/common
 RUN pnpm run build --filter @prnews/backend
 
-# Create a self-contained, production-ready deployment package for the backend.
-# `pnpm deploy` copies only production dependencies and necessary files.
-RUN pnpm deploy --filter=@prnews/backend /deploy
-
-
-# Stage 2: Production - Run the deployed application
+# Stage 2: Production - The "Kitchen Sink"
+# This approach copies the entire application, including dev dependencies,
+# to ensure module resolution works exactly like in development.
 FROM node:20-alpine AS runner
 WORKDIR /app
 
 # Set the environment to production
 ENV NODE_ENV=production
 
-# Copy the deployed application from the builder stage.
-# The /deploy directory contains the backend code and its production node_modules.
-COPY --from=builder /deploy .
+# Copy the entire built application from the builder stage
+COPY --from=builder /app .
 
 # Expose the port the app runs on
 EXPOSE 8080
 
-# The command is relative to the new WORKDIR.
-# `pnpm deploy` preserves the package structure.
+# Run the application
 CMD ["node", "backend/dist/src/index.js"]
