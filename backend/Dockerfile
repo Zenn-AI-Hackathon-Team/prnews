@@ -2,9 +2,9 @@
 FROM node:20-alpine AS builder
 
 # Install pnpm globally
-ENV PNPM_HOME="/pnpm"
-ENV PATH="$PNPM_HOME:$PATH"
 RUN npm install -g pnpm
+RUN ls -l /usr/local/bin
+RUN ls -l /usr/local/lib/node_modules
 
 # Set working directory
 WORKDIR /app
