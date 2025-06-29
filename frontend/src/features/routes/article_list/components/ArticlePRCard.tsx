@@ -1,21 +1,76 @@
 "use client";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import type { RankedArticleInfo } from "@prnews/common";
+import { prClient } from "@/lib/hono";
+import type { ErrorResponse, RankedArticleInfo } from "@prnews/common";
 import { GitPullRequest, ThumbsUp } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import { useCallback, useState } from "react";
+import { toast } from "sonner";
 
 const ArticlePRCard = ({ pr }: { pr: RankedArticleInfo }) => {
-	const [likedPRs, setLikedPRs] = useState<string[]>([]);
+	// 状態管理をカード単位に変更
+	const [isLiked, setIsLiked] = useState(false);
+	const [likeCount, setLikeCount] = useState(pr.likeCount);
+	const [isSubmitting, setIsSubmitting] = useState(false);
 
-	const isLiked = likedPRs.includes(pr.articleId);
+	const handleLike = useCallback(
+		async (e: React.MouseEvent) => {
+			e.preventDefault();
+			e.stopPropagation();
 
-	const handleLike = (prId: string) => {
-		setLikedPRs((prev) =>
-			prev.includes(prId) ? prev.filter((id) => id !== prId) : [...prev, prId],
-		);
-	};
+			if (isSubmitting) return;
+
+			// 既にいいね済みの場合は、取り消し不可のメッセージを表示して処理を中断
+			if (isLiked) {
+				toast.info("現在、いいねの取り消しはできません。");
+				return;
+			}
+
+			setIsSubmitting(true);
+			const originalLikeCount = likeCount;
+
+			// オプティミスティックUIアップデート (いいね追加のみ)
+			setIsLiked(true);
+			setLikeCount(originalLikeCount + 1);
+
+			try {
+				// いいねAPIを呼び出す
+				const response = await prClient.repos[":owner"][":repo"].pulls[
+					":number"
+				].language[":langCode"].like.$post({
+					param: {
+						owner: pr.owner,
+						repo: pr.repo,
+						number: pr.prNumber.toString(),
+						langCode: pr.languageCode,
+					},
+				});
+
+				if (!response.ok) {
+					const errorData: ErrorResponse = await response.json();
+					throw new Error(errorData.message || "API request failed");
+				}
+
+				const result = await response.json();
+				// サーバーからの最新のいいね数で同期
+				setLikeCount(result.data.likeCount);
+				toast.success(result.data.message);
+			} catch (error) {
+				// エラー時はUIを元に戻す
+				setIsLiked(false);
+				setLikeCount(originalLikeCount);
+				toast.error(
+					error instanceof Error
+						? error.message
+						: "いいねの更新中にエラーが発生しました。",
+				);
+			} finally {
+				setIsSubmitting(false);
+			}
+		},
+		[isLiked, likeCount, isSubmitting, pr],
+	);
 
 	// 言語表示用のマッピング
 	const getLanguageDisplay = (langCode: string) => {
@@ -130,10 +185,7 @@ const ArticlePRCard = ({ pr }: { pr: RankedArticleInfo }) => {
 									? "bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-md"
 									: "hover:bg-gray-100"
 							}`}
-							onClick={(e) => {
-								e.preventDefault();
-								handleLike(pr.articleId);
-							}}
+							onClick={handleLike}
 						>
 							<ThumbsUp
 								className={`h-4 w-4 transition-transform duration-200 ${isLiked ? "fill-current scale-110" : ""}`}
