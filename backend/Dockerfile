@@ -32,7 +32,6 @@ COPY --from=builder /app .
 # Expose the port the app runs on
 EXPOSE 8080
 
-# DEBUGGING COMMAND: List directory contents to verify file presence.
-# This will cause the container to start, run the command, and exit.
-# We can then inspect the logs on Cloud Run to see the output.
-CMD ["sh", "-c", "echo '--- ls -l /app ---' && ls -l /app && echo '--- ls -l /app/node_modules ---' && ls -l /app/node_modules && echo '--- ls -l /app/node_modules/@hono ---' && ls -l /app/node_modules/@hono && echo '--- find /app/node_modules -name \"node-server\" ---' && find /app/node_modules -name \"node-server\""]
+# DEBUGGING ENTRYPOINT: List directory contents to verify file presence.
+# This will override the default command and ensure our debug script runs.
+ENTRYPOINT ["sh", "-c", "echo '--- ls -l /app ---' && ls -l /app && echo '--- ls -l /app/node_modules ---' && ls -l /app/node_modules && echo '--- ls -l /app/node_modules/@hono ---' && ls -l /app/node_modules/@hono && echo '--- find /app/node_modules -name \"node-server\" ---' && find /app/node_modules -name \"node-server\" && exit 1"]
