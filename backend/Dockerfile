@@ -62,10 +62,8 @@ COPY packages/common/package.json ./packages/common/package.json
 # Copy built artifacts from the builder stage
 COPY --from=builder /app/backend/dist ./backend/dist
 COPY --from=builder /app/packages/common/dist ./packages/common/dist
-RUN cp -r ./packages/common/dist ./node_modules/@prnews/common/
-
-# Install only production dependencies for the workspace
 RUN pnpm install --prod --frozen-lockfile --ignore-scripts
+RUN cp -r ./packages/common/dist ./node_modules/@prnews/common/
 
 # Set the working directory for running the app
 WORKDIR /app/backend
