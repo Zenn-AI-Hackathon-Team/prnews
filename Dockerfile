@@ -22,7 +22,6 @@ RUN PATH=$(pnpm bin):$PATH pnpm --filter @prnews/common build
 
 # backendパッケージをビルド
 RUN PATH=$(pnpm bin):$PATH pnpm --filter @prnews/backend build
-RUN ls -R /app/backend/dist
 
 
 # ---- 2. 本番ステージ ----
@@ -41,7 +40,6 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 
 
 COPY --from=build /app/backend/dist /app/backend/dist
-RUN ls -R /app/backend/dist
 
 RUN pnpm install --prod --ignore-scripts
 
@@ -49,4 +47,4 @@ RUN pnpm install --prod --ignore-scripts
 WORKDIR /app/backend
 
 # アプリケーションの起動
-CMD [ "node", "dist/index.js" ]
+CMD [ "node", "dist/src/index.js" ]
