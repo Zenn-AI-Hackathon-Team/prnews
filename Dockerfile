@@ -4,7 +4,7 @@ FROM node:20 as build
 WORKDIR /app
 
 # pnpmのインストール
-RUN npm install -g pnpm
+RUN npm install -g pnpm@10.11.0
 
 # ルートと各ワークスペースのpackage.jsonをコピー
 COPY package.json pnpm-lock.yaml ./
@@ -30,7 +30,7 @@ FROM node:20-slim
 WORKDIR /app
 
 # pnpmのインストール
-RUN npm install -g pnpm
+RUN npm install -g pnpm@10.11.0
 
 # ビルドステージから、本番稼働に必要なファイルのみをコピー
 # pnpm deployコマンドは、指定したパッケージ（backend）の実行に必要な
