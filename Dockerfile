@@ -22,6 +22,7 @@ RUN PATH=$(pnpm bin):$PATH pnpm --filter @prnews/common build
 
 # backendパッケージをビルド
 RUN PATH=$(pnpm bin):$PATH pnpm --filter @prnews/backend build
+RUN ls -R /app/backend/dist
 
 
 # ---- 2. 本番ステージ ----
