@@ -2,10 +2,13 @@
 	"name": "@prnews/backend",
 	"type": "commonjs",
 	"exports": {
-		"./rpc": {
-			"types": "./src/index.ts"
-		}
-	},
+    "./rpc": {
+      "types": "./src/index.ts"
+    }
+  },
+  "files": [
+    "dist"
+  ],
 	"scripts": {
 		"dev": "tsx watch --env-file .env src/index.ts",
 		"build": "tsc",
