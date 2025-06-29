@@ -47,8 +47,9 @@ FROM node:20-alpine AS runner
 
 WORKDIR /app/backend
 
-# Install pnpm globally in runner stage
-RUN npm install -g pnpm
+# Copy pnpm store and node_modules from builder stage
+COPY --from=builder /root/.pnpm-store /root/.pnpm-store
+COPY --from=builder /app/node_modules /app/node_modules
 
 # Copy only necessary files from the builder stage
 COPY --from=builder /app/backend/dist ./dist
@@ -58,7 +59,7 @@ COPY --from=builder /app/packages/common/dist ./packages/common/dist
 COPY --from=builder /app/packages/common/package.json ./packages/common/package.json
 
 # Install production dependencies
-RUN pnpm install --prod
+RUN pnpm install --frozen-lockfile --prod
 
 # Expose the port the app runs on
 EXPOSE 8080
