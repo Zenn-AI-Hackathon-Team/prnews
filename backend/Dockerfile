@@ -7,78 +7,42 @@ RUN npm install -g pnpm
 # Set working directory
 WORKDIR /app
 
-# Copy pnpm-workspace.yaml, root package.json, and pnpm-lock.yaml first
+# Copy workspace setup files
 COPY pnpm-workspace.yaml ./
 COPY package.json ./
 COPY pnpm-lock.yaml ./
 
-# Copy all package.json files from workspace packages
+# Copy all package.json files to leverage Docker cache
 COPY backend/package.json ./backend/package.json
 COPY frontend/package.json ./frontend/package.json
 COPY packages/common/package.json ./packages/common/package.json
 
-# Install all dependencies for the entire workspace from the root
-# Use --frozen-lockfile to ensure exact dependencies from the lockfile are used
+# Install all dependencies for the entire workspace
 RUN pnpm install --frozen-lockfile
 
-# Copy common package source code and tsconfig before building
-COPY packages/common/src ./packages/common/src
-COPY packages/common/tsconfig.json ./packages/common/tsconfig.json
+# Copy all source code
+# Note: Consider using a .dockerignore file to exclude unnecessary files
+COPY . .
 
-# Clean and build common package first
-WORKDIR /app/packages/common
-RUN rm -rf dist
-RUN pnpm run build
-WORKDIR /app
+# Build workspace packages
+RUN pnpm run build --filter @prnews/common
+RUN pnpm run build --filter @prnews/backend
 
-# Copy the backend source code
-COPY backend/src ./backend/src
-COPY backend/tsconfig.json ./backend/tsconfig.json
-COPY backend/tsconfig.dts.json ./backend/tsconfig.dts.json
-COPY backend/tsconfig.jest.json ./backend/tsconfig.jest.json
-COPY backend/.env.example ./backend/.env.example
+# Create a production-ready deployment directory for the backend
+RUN pnpm deploy --filter=@prnews/backend --prod /prod
 
-# Build the backend application
-WORKDIR /app/backend
-RUN pnpm build
 
 # Stage 2: Production
 FROM node:20-alpine AS runner
 
 WORKDIR /app
 
-# Install pnpm globally in runner stage
-RUN npm install -g pnpm
-
-# Copy workspace configuration files
-COPY pnpm-workspace.yaml .
-COPY package.json .
-COPY pnpm-lock.yaml .
-
-# Copy package.json files for relevant workspaces
-COPY backend/package.json ./backend/package.json
-COPY packages/common/package.json ./packages/common/package.json
-
-# Copy built artifacts from the builder stage
-COPY --from=builder /app/backend/dist ./backend/dist
-
-# Install only production dependencies for the workspace
-RUN pnpm install --prod --frozen-lockfile --ignore-scripts
-
-# Explicitly create the target directory for @prnews/common within backend's node_modules
-RUN mkdir -p ./backend/node_modules/@prnews/common
-
-# Copy the built common package from the builder stage into backend's node_modules
-COPY --from=builder /app/packages/common/dist ./backend/node_modules/@prnews/common/dist
-COPY --from=builder /app/packages/common/package.json ./backend/node_modules/@prnews/common/package.json
-COPY --from=builder /app/packages/common/src ./backend/node_modules/@prnews/common/src
-
-RUN ls -l /app/node_modules/
-RUN ls -R /app/packages/common/dist
-RUN ls -R /app/backend/node_modules/@prnews/common/dist
+# Copy the deployed application from the builder stage
+COPY --from=builder /prod .
 
 # Expose the port the app runs on
 EXPOSE 8080
 
 # Run the application
-CMD ["node", "/app/backend/dist/src/index.js"]
+# The path is relative to the deployment directory structure created by `pnpm deploy`
+CMD ["node", "backend/dist/src/index.js"]
