@@ -7,7 +7,7 @@ WORKDIR /app
 RUN npm install -g pnpm@10.11.0
 
 # ルートと各ワークスペースのpackage.jsonをコピー
-COPY package.json pnpm-lock.yaml ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY backend/package.json ./backend/
 COPY packages/common/package.json ./packages/common/
 
