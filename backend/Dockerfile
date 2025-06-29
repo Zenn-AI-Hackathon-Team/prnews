@@ -41,6 +41,7 @@ COPY backend/.env.example ./backend/.env.example
 # Build the backend application
 WORKDIR /app/backend
 RUN pnpm build
+RUN ls -R dist
 
 # Stage 2: Production
 FROM node:20-alpine AS runner
