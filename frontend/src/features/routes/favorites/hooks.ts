@@ -59,7 +59,8 @@ export const useFavorites = () => {
 					throw new Error(errorData.message || "削除に失敗しました。");
 				}
 
-				toast.success("お気に入りから削除しました。");
+				toast.success(`「${repo}」をお気に入りから削除しました。`);
+				await getFavoriteRepos();
 			} catch (err) {
 				// エラーが発生した場合は、UIを元に戻す
 				setFavorites(originalFavorites);
@@ -68,7 +69,7 @@ export const useFavorites = () => {
 				);
 			}
 		},
-		[favorites],
+		[favorites, getFavoriteRepos],
 	);
 
 	return {
