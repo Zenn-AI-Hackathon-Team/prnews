@@ -18,10 +18,10 @@ RUN pnpm install --frozen-lockfile
 COPY . .
 
 # commonパッケージをビルド
-RUN pnpm --filter @prnews/common build
+RUN PATH=$(pnpm bin):$PATH pnpm --filter @prnews/common build
 
 # backendパッケージをビルド
-RUN pnpm --filter @prnews/backend build
+RUN PATH=$(pnpm bin):$PATH pnpm --filter @prnews/backend build
 
 
 # ---- 2. 本番ステージ ----
