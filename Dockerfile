@@ -23,8 +23,7 @@ RUN PATH=$(pnpm bin):$PATH pnpm --filter @prnews/common build
 # backendパッケージをビルド
 RUN PATH=$(pnpm bin):$PATH pnpm --filter @prnews/backend build
 
-# 本番稼働に必要なファイルのみを /app/deploy に集約
-RUN pnpm deploy --prod --filter @prnews/backend --legacy /app/deploy
+
 
 
 # ---- 2. 本番ステージ ----
@@ -36,7 +35,9 @@ WORKDIR /app
 RUN npm install -g pnpm@10.11.0
 
 # ビルドステージから、本番稼働に必要なファイルのみをコピー
-COPY --from=build /app/deploy /app
+COPY --from=build /app/backend/dist /app/dist
+COPY --from=build /app/backend/node_modules /app/node_modules
+COPY --from=build /app/backend/package.json /app/package.json
 
 # backendディレクトリに移動
 WORKDIR /app
