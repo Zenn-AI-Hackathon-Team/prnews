@@ -54,6 +54,7 @@ RUN npm install -g pnpm
 COPY --from=builder /app/backend/dist ./dist
 COPY --from=builder /app/backend/node_modules ./node_modules
 COPY --from=builder /app/backend/package.json ./package.json
+COPY --from=builder /app/pnpm-lock.yaml ./pnpm-lock.yaml
 COPY --from=builder /app/packages/common/dist ./packages/common/dist
 COPY --from=builder /app/packages/common/package.json ./packages/common/package.json
 
