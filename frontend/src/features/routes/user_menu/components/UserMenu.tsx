@@ -10,7 +10,7 @@ import {
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/context/AuthContext";
-import { LogOut } from "lucide-react";
+import { LogIn, LogOut } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
@@ -49,6 +49,11 @@ const UserMenu = () => {
 			await revalidateUser();
 		}
 	};
+
+	const handleLogin = () => {
+		router.push("/login");
+	};
+
 	return (
 		<>
 			<DropdownMenu>
@@ -84,8 +89,9 @@ const UserMenu = () => {
 							</DropdownMenuItem>
 						</>
 					) : (
-						<DropdownMenuItem>
-							<a href="/login">ログイン</a>
+						<DropdownMenuItem onClick={handleLogin}>
+							<LogIn className="h-4 w-4 text-black" />
+							ログイン
 						</DropdownMenuItem>
 					)}
 				</DropdownMenuContent>
