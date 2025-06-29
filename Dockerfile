@@ -40,7 +40,7 @@ COPY backend ./backend
 COPY packages/common ./packages/common
 
 # 本番依存関係のみをインストール
-RUN pnpm install --prod
+RUN pnpm install --prod --ignore-scripts
 
 # backendディレクトリに移動
 WORKDIR /app/backend
