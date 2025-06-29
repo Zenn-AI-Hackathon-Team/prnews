@@ -1,6 +1,6 @@
 {
 	"name": "@prnews/backend",
-	"type": "module",
+	"type": "commonjs",
 	"exports": {
 		"./rpc": {
 			"types": "./src/index.ts"
