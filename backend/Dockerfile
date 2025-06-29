@@ -47,16 +47,13 @@ FROM node:20-alpine AS runner
 
 WORKDIR /app/backend
 
-# Copy pnpm from builder stage
-COPY --from=builder /usr/local/bin/pnpm /usr/local/bin/pnpm
-
 # Copy only necessary files from the builder stage
 COPY --from=builder /app/backend/dist ./dist
 COPY --from=builder /app/backend/node_modules ./node_modules
 COPY --from=builder /app/backend/package.json ./package.json
 
 # Prune development dependencies to keep the image small
-RUN pnpm prune --prod
+RUN ./node_modules/.bin/pnpm prune --prod
 
 # Expose the port the app runs on
 EXPOSE 8080
