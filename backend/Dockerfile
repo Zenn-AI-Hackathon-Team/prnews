@@ -47,6 +47,9 @@ FROM node:20-alpine AS runner
 
 WORKDIR /app/backend
 
+# Copy pnpm from builder stage
+COPY --from=builder /usr/local/bin/pnpm /usr/local/bin/pnpm
+
 # Copy only necessary files from the builder stage
 COPY --from=builder /app/backend/dist ./dist
 COPY --from=builder /app/backend/node_modules ./node_modules
@@ -55,7 +58,7 @@ COPY --from=builder /app/packages/common/dist ./packages/common/dist
 COPY --from=builder /app/packages/common/package.json ./packages/common/package.json
 
 # Install production dependencies
-RUN npm install --production
+RUN pnpm install --prod
 
 # Expose the port the app runs on
 EXPOSE 8080
