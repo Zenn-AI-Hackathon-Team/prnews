@@ -49,6 +49,9 @@ FROM node:20-alpine AS runner
 
 WORKDIR /app/backend
 
+ENV PNPM_HOME="/pnpm"
+ENV PATH="$PNPM_HOME:$PATH"
+
 # Copy pnpm and its dependencies from builder stage
 COPY --from=builder /pnpm /pnpm
 
