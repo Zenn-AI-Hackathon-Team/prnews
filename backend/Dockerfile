@@ -21,11 +21,16 @@ COPY packages/common/package.json ./packages/common/package.json
 # Use --frozen-lockfile to ensure exact dependencies from the lockfile are used
 RUN pnpm install --frozen-lockfile
 
-# Clean and build common package first
-RUN pnpm --filter common exec rm -rf dist
-RUN pnpm --filter common run build
+# Copy common package source code and tsconfig before building
+COPY packages/common/src ./packages/common/src
+COPY packages/common/tsconfig.json ./packages/common/tsconfig.json
 
-# Copy the backend source code
+# Clean and build common package first
+WORKDIR /app/packages/common
+RUN pnpm run rm -rf dist
+RUN pnpm run build
+WORKDIR /app
+
 # Copy the backend source code
 COPY backend/src ./backend/src
 COPY backend/tsconfig.json ./backend/tsconfig.json
@@ -36,10 +41,6 @@ COPY backend/.env.example ./backend/.env.example
 # Build the backend application
 WORKDIR /app/backend
 RUN pnpm build
-
-# Copy common package source code if backend depends on it for build
-COPY packages/common/src ./packages/common/src
-COPY packages/common/tsconfig.json ./packages/common/tsconfig.json
 
 # Stage 2: Production
 FROM node:20-alpine AS runner
