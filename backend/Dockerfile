@@ -63,7 +63,6 @@ COPY packages/common/package.json ./packages/common/package.json
 COPY --from=builder /app/backend/dist ./backend/dist
 COPY --from=builder /app/packages/common/dist ./packages/common/dist
 RUN pnpm install --prod --frozen-lockfile --ignore-scripts
-RUN cp -r ./packages/common/dist ./node_modules/@prnews/common/
 
 # Set the working directory for running the app
 WORKDIR /app/backend
