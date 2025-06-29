@@ -56,6 +56,12 @@ jobs:
           docker build --no-cache -f Dockerfile -t ${CLOUD_RUN_REGION}-docker.pkg.dev/${GCP_PROJECT_ID}/${ARTIFACT_REGISTRY_REPO}/${CLOUD_RUN_SERVICE_NAME}:${GITHUB_SHA} .
           docker push ${CLOUD_RUN_REGION}-docker.pkg.dev/${GCP_PROJECT_ID}/${ARTIFACT_REGISTRY_REPO}/${CLOUD_RUN_SERVICE_NAME}:${GITHUB_SHA}
 
-      - name: Deploy to Cloud Run
+      - name: Deploy to Cloud Run for Debugging
         run: |
-          gcloud run deploy ${CLOUD_RUN_SERVICE_NAME}             --image ${CLOUD_RUN_REGION}-docker.pkg.dev/${GCP_PROJECT_ID}/${ARTIFACT_REGISTRY_REPO}/${CLOUD_RUN_SERVICE_NAME}:${GITHUB_SHA}             --region ${CLOUD_RUN_REGION}             --project ${GCP_PROJECT_ID}             --allow-unauthenticated             --set-env-vars "ENCRYPTION_KEY=${{ secrets.ENCRYPTION_KEY }},ENCRYPTION_SALT=${{ secrets.ENCRYPTION_SALT }},GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}" # Adjust as needed for authentication
+          gcloud run deploy ${{ env.CLOUD_RUN_SERVICE_NAME }} \
+            --image ${{ env.CLOUD_RUN_REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/${{ env.ARTIFACT_REGISTRY_REPO }}/${{ env.CLOUD_RUN_SERVICE_NAME }}:${{ github.sha }} \
+            --region ${{ env.CLOUD_RUN_REGION }} \
+            --project ${{ env.GCP_PROJECT_ID }} \
+            --allow-unauthenticated \
+            --command="sh" \
+            --args="-c,ls -lR /app"
