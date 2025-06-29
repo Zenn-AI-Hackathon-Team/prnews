@@ -1,7 +1,7 @@
 "use client";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipTrigger } from "@/components/ui/tooltip";
-import { GitPullRequest, Heart, Home, Settings } from "lucide-react";
+import { GitPullRequest, Heart, Home } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 
@@ -14,7 +14,6 @@ const menuItems = [
 		path: "/pr-issue",
 	},
 	{ id: "favorites", label: "Favorites", icon: Heart, path: "/favorites" },
-	{ id: "settings", label: "Settings", icon: Settings, path: "/settings" },
 ];
 
 const Navigation = () => {

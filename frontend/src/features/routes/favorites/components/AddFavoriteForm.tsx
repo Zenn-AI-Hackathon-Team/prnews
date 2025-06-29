@@ -1,9 +1,3 @@
-import { Github, Heart } from "lucide-react";
-import type React from "react";
-import { useState } from "react";
-import { useAddFavoriteForm } from "../hooks";
-
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -11,6 +5,11 @@ import {
 	TooltipContent,
 	TooltipTrigger,
 } from "@/components/ui/tooltip";
+import Logo from "@/features/common/logo/components/Logo";
+import { Github } from "lucide-react";
+import type React from "react";
+import { useState } from "react";
+import { useAddFavoriteForm } from "../hooks";
 
 type AddFavoriteFormProps = {
 	refetch: () => void;
@@ -35,17 +34,7 @@ const AddFavoriteForm: React.FC<AddFavoriteFormProps> = ({ refetch }) => {
 		<>
 			{/* Header */}
 			<div className="space-y-3">
-				<div className="flex items-center gap-3">
-					<div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-lg shadow-black-600/20">
-						<Heart className="h-5 w-5" />
-					</div>
-					<span className="text-xl font-bold bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
-						お気に入り
-					</span>
-					<Badge variant="secondary" className="ml-1">
-						NEW
-					</Badge>
-				</div>
+				<Logo iconName="favorites" />
 				<p className="text-gray-600 text-lg mb-6">
 					お気に入りライブラリを追加して、最新のプルリクエストをチェックしましょう
 				</p>
