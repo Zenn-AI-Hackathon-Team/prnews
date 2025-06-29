@@ -21,10 +21,14 @@ COPY . .
 RUN pnpm run build --filter @prnews/common
 RUN pnpm run build --filter @prnews/backend
 
-# Stage 2: Production - Debugging
-# This stage will not run the app, but will list files to debug the module issue.
+# Stage 2: Production - The "Kitchen Sink"
+# This approach copies the entire application, including dev dependencies,
+# to ensure module resolution works exactly like in development.
 FROM node:20-alpine AS runner
 WORKDIR /app
+
+# Set the environment to production
+ENV NODE_ENV=production
 
 # Copy the entire built application from the builder stage
 COPY --from=builder /app .
@@ -32,6 +36,5 @@ COPY --from=builder /app .
 # Expose the port the app runs on
 EXPOSE 8080
 
-# DEBUGGING ENTRYPOINT: List directory contents to verify file presence.
-# This will override the default command and ensure our debug script runs.
-ENTRYPOINT ["sh", "-c", "echo '--- ls -l /app ---' && ls -l /app && echo '--- ls -l /app/node_modules ---' && ls -l /app/node_modules && echo '--- ls -l /app/node_modules/@hono ---' && ls -l /app/node_modules/@hono && echo '--- find /app/node_modules -name \"node-server\" ---' && find /app/node_modules -name \"node-server\" && exit 1"]
+# Run the application
+CMD ["node", "backend/dist/src/index.js"]
