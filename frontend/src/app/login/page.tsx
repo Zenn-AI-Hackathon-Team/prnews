@@ -48,7 +48,7 @@ export default function LoginPage() {
 				const errorData = await res.json();
 				throw new Error(errorData.message || "Failed to log in.");
 			}
-			router.push("/home");
+			window.location.href = "/home";
 		} catch (err) {
 			let message = "認証に失敗しました。";
 			if (err instanceof Error) {
