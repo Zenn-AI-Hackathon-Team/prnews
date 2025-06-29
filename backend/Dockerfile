@@ -61,12 +61,21 @@ COPY packages/common/package.json ./packages/common/package.json
 
 # Copy built artifacts from the builder stage
 COPY --from=builder /app/backend/dist ./backend/dist
-COPY --from=builder /app/packages/common ./packages/common
 
 # Install only production dependencies for the workspace
 RUN pnpm install --prod --frozen-lockfile --ignore-scripts
+
+# Explicitly create the target directory for @prnews/common within backend's node_modules
+RUN mkdir -p ./backend/node_modules/@prnews/common
+
+# Copy the built common package from the builder stage into backend's node_modules
+COPY --from=builder /app/packages/common/dist ./backend/node_modules/@prnews/common/dist
+COPY --from=builder /app/packages/common/package.json ./backend/node_modules/@prnews/common/package.json
+COPY --from=builder /app/packages/common/src ./backend/node_modules/@prnews/common/src
+
 RUN ls -l /app/node_modules/
 RUN ls -R /app/packages/common/dist
+RUN ls -R /app/backend/node_modules/@prnews/common/dist
 
 # Expose the port the app runs on
 EXPOSE 8080
