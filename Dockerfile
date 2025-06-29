@@ -16,7 +16,6 @@ RUN pnpm install --frozen-lockfile
 
 # プロジェクト全体のソースコードをコピー
 COPY . .
-RUN ls -R /app
 
 # commonパッケージをビルド
 RUN PATH=$(pnpm bin):$PATH pnpm --filter @prnews/common build
@@ -26,7 +25,6 @@ RUN PATH=$(pnpm bin):$PATH pnpm --filter @prnews/backend build
 
 # 本番稼働に必要なファイルのみを /app/deploy に集約
 RUN pnpm deploy --prod --filter @prnews/backend --legacy /app/deploy
-RUN ls -R /app/deploy
 
 
 # ---- 2. 本番ステージ ----
@@ -39,10 +37,9 @@ RUN npm install -g pnpm@10.11.0
 
 # ビルドステージから、本番稼働に必要なファイルのみをコピー
 COPY --from=build /app/deploy /app
-RUN ls -R /app
 
 # backendディレクトリに移動
 WORKDIR /app
 
 # アプリケーションの起動
-CMD [ "node", "dist/index.js" ]
+CMD [ "node", "dist/src/index.js" ]
