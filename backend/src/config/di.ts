@@ -6,7 +6,7 @@ import {
 } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
 import { getFirestore } from "firebase-admin/firestore";
-import { createIssueService } from "src/application/issueService";
+import { createIssueService } from "../application/issueService";
 
 const serviceAccount = JSON.parse(
 	process.env.FIREBASE_ADMIN_SDK_CONFIG || "{}",
