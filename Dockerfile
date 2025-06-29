@@ -24,8 +24,6 @@ RUN PATH=$(pnpm bin):$PATH pnpm --filter @prnews/common build
 RUN PATH=$(pnpm bin):$PATH pnpm --filter @prnews/backend build
 
 
-
-
 # ---- 2. 本番ステージ ----
 FROM node:20-slim
 
@@ -34,14 +32,18 @@ WORKDIR /app
 # pnpmのインストール
 RUN npm install -g pnpm@10.11.0
 
-# ビルドステージから、本番稼働に必要なファイルのみをコピー
-COPY --from=build /app/backend/dist /app/dist
-COPY --from=build /app/backend/package.json /app/package.json
-COPY pnpm-lock.yaml /app/pnpm-lock.yaml
+# ルートと各ワークスペースのpackage.json, pnpm-lock.yaml, pnpm-workspace.yamlをコピー
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+
+# backendとcommonのソースコードとビルド済み成果物をコピー
+COPY backend ./backend
+COPY packages/common ./packages/common
+
+# 本番依存関係のみをインストール
 RUN pnpm install --prod
 
 # backendディレクトリに移動
-WORKDIR /app
+WORKDIR /app/backend
 
 # アプリケーションの起動
-CMD [ "node", "dist/src/index.js" ]
+CMD [ "node", "dist/index.js" ]
