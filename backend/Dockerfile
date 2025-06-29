@@ -62,6 +62,7 @@ COPY packages/common/package.json ./packages/common/package.json
 # Copy built artifacts from the builder stage
 COPY --from=builder /app/backend/dist ./backend/dist
 COPY --from=builder /app/packages/common ./packages/common
+RUN ls -R packages/common
 
 # Install only production dependencies for the workspace
 RUN pnpm install --prod --frozen-lockfile --ignore-scripts
