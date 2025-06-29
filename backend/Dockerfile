@@ -27,7 +27,7 @@ COPY packages/common/tsconfig.json ./packages/common/tsconfig.json
 
 # Clean and build common package first
 WORKDIR /app/packages/common
-RUN pnpm run rm -rf dist
+RUN rm -rf dist
 RUN pnpm run build
 WORKDIR /app
 
