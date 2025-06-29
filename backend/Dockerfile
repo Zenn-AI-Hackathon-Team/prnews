@@ -23,7 +23,7 @@ RUN pnpm install --frozen-lockfile
 
 # Clean and build common package first
 RUN pnpm --filter common run rm -rf dist
-RUN pnpm --filter common build
+RUN pnpm --filter common run build --loglevel debug
 
 # Copy the backend source code
 COPY backend/src ./backend/src
