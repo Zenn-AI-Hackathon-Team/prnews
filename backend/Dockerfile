@@ -26,20 +26,20 @@ RUN pnpm --filter common exec rm -rf dist
 RUN pnpm --filter common run build
 
 # Copy the backend source code
+# Copy the backend source code
 COPY backend/src ./backend/src
 COPY backend/tsconfig.json ./backend/tsconfig.json
 COPY backend/tsconfig.dts.json ./backend/tsconfig.dts.json
 COPY backend/tsconfig.jest.json ./backend/tsconfig.jest.json
-COPY backend/jest.config.cjs ./backend/jest.config.cjs
 COPY backend/.env.example ./backend/.env.example
-
-# Copy common package source code if backend depends on it for build
-COPY packages/common/src ./packages/common/src
-COPY packages/common/tsconfig.json ./packages/common/tsconfig.json
 
 # Build the backend application
 WORKDIR /app/backend
 RUN pnpm build
+
+# Copy common package source code if backend depends on it for build
+COPY packages/common/src ./packages/common/src
+COPY packages/common/tsconfig.json ./packages/common/tsconfig.json
 
 # Stage 2: Production
 FROM node:20-alpine AS runner
