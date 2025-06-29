@@ -2,6 +2,8 @@
 FROM node:20-alpine AS builder
 
 # Install pnpm globally
+ENV PNPM_HOME="/pnpm"
+ENV PATH="$PNPM_HOME:$PATH"
 RUN npm install -g pnpm
 
 # Set working directory
@@ -48,7 +50,7 @@ FROM node:20-alpine AS runner
 WORKDIR /app/backend
 
 # Copy pnpm store and node_modules from builder stage
-COPY --from=builder /root/.pnpm-store /root/.pnpm-store
+COPY --from=builder /pnpm/store /pnpm/store
 COPY --from=builder /app/node_modules /app/node_modules
 
 # Copy only necessary files from the builder stage
