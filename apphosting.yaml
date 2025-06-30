@@ -7,6 +7,10 @@
 #   # cpu: 1
 #   # memoryMiB: 512
 
+build:
+  environmentVariables:
+    GOOGLE_NODE_PNPM_VERSION: 10.11.0
+
 scripts:
   # ビルドコマンドは、package.jsonの"build"スクリプトが自動で使われるため
   # 通常は指定不要です。もし明示的に指定したい場合は記述します。
