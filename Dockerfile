@@ -48,4 +48,4 @@ RUN pnpm install --prod --ignore-scripts
 WORKDIR /app/backend
 
 # アプリケーションの起動
-CMD [ "node", "dist/src/index.js" ]
+CMD [ "node", "backend/dist/src/index.js" ]

@@ -3,7 +3,7 @@ import { swaggerUI } from "@hono/swagger-ui";
 import { cors } from "hono/cors";
 import { HTTPException } from "hono/http-exception";
 import { ZodError } from "zod";
-import { buildDependencies } from "./config/di.js";
+import { buildDependencies } from "./config/di";
 import { createApp } from "./presentation/hono-app";
 import { authMiddleware } from "./presentation/middlewares/authMiddleware";
 import generalRoutes from "./presentation/routes/generalRoutes";
