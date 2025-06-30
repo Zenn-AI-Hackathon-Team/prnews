@@ -1,5 +1,3 @@
-console.log("Application starting...");
-require("dotenv").config();
 import { serve } from "@hono/node-server";
 import { swaggerUI } from "@hono/swagger-ui";
 import { cors } from "hono/cors";

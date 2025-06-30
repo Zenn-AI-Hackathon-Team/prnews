@@ -40,4 +40,4 @@ COPY backend/.env.example backend/.env
 EXPOSE 8080
 
 # Run the application
-CMD ["node", "backend/dist/src/index.js"]
+CMD ["node", "-e", "console.log('Simple Node.js script running...'); setInterval(() => {}, 1000 * 60 * 60);"]
