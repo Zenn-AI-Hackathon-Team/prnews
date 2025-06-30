@@ -25,8 +25,8 @@ ENV NODE_ENV=production
 RUN pnpm --filter @prnews/backend... run build
 
 # Use pnpm deploy to create a self-contained, production-ready package
-# This command copies the backend package and its dependencies to the /deploy directory
-RUN pnpm --filter @prnews/backend deploy --prod /deploy
+# The --legacy flag is required for pnpm v10+ in this non-injected workspace context.
+RUN pnpm --filter @prnews/backend deploy --prod --legacy /deploy
 
 
 # Stage 2: Production
