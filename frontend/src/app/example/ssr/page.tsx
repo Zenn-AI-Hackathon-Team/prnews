@@ -3,6 +3,8 @@
 import { rankingClient } from "@/lib/hono";
 import type { RankedArticleInfo } from "@prnews/common";
 
+export const dynamic = "force-dynamic";
+
 const page = async () => {
 	const res = await rankingClient.ranking.articles.likes.$get({
 		query: {

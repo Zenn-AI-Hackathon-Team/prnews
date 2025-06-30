@@ -2,6 +2,8 @@ import ArticleList from "@/features/routes/article_list/components/ArticleList";
 import { rankingClient } from "@/lib/hono";
 import type { RankedArticleInfo } from "@prnews/common";
 
+export const dynamic = "force-dynamic";
+
 export default async function page() {
 	// ランキングデータを取得
 	const weeklyRes = await rankingClient.ranking.articles.likes.$get({

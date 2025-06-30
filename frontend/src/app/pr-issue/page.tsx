@@ -3,6 +3,8 @@ import PRList from "@/features/routes/pr_list/components/PRList";
 import { prClient, userClient } from "@/lib/hono";
 import { redirect } from "next/navigation";
 
+export const dynamic = "force-dynamic";
+
 // PR型定義 - 新しいAPIのデータ構造に合わせて更新
 export type newPR = {
 	prNumber: number;

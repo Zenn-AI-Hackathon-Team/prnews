@@ -1,6 +1,8 @@
 import ArticleDetailPage from "@/features/routes/article_detail/components/ArticleDetailPage";
 import { prClient } from "@/lib/hono";
 
+export const dynamic = "force-dynamic";
+
 const page = async ({ params }: { params: Promise<{ id: string }> }) => {
 	const resolvedParams = await params;
 	// PR記事詳細データを取得
