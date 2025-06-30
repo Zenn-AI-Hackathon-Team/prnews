@@ -13,7 +13,8 @@
 		"lint": "biome lint --write .",
 		"check": "biome check --write .",
 
-		"build": "pnpm --filter frontend build",
+		"build:frontend": "pnpm --filter frontend build",
+		"build:common": "pnpm --filter @prnews/common build",
 
 		"start": "node frontend/.next/standalone/server.js",
 
