@@ -4,8 +4,8 @@ import {
 	getApps,
 	initializeApp,
 } from "firebase-admin/app";
-import { getAuth } from "firebase-admin/auth";
-import { getFirestore } from "firebase-admin/firestore";
+import { getAuth, type Auth } from "firebase-admin/auth";
+import { getFirestore, type Firestore } from "firebase-admin/firestore";
 import { createIssueService } from "src/application/issueService";
 import { createGeneralService } from "../application/generalService";
 import { createPrService } from "../application/prService";
@@ -20,49 +20,56 @@ import { issueRepoFirestore } from "../infrastructure/repositories/issueRepoFire
 import { prRepoFirestore } from "../infrastructure/repositories/prRepoFirestore";
 import { userRepoFirestore } from "../infrastructure/repositories/userRepoFirestore";
 
-// [注意] このグローバルインスタンスは開発・検証用の仮実装です。
-// 本番運用時は必ず外部DB（Firestore等）に置き換えてください。
+let firestore: Firestore;
+let auth: Auth;
 
-// Firestoreインスタンスの初期化（すでに初期化済みならスキップ）
-if (getApps().length === 0) {
+export async function initializeFirebase() {
+	if (getApps().length > 0) {
+		firestore = getFirestore();
+		auth = getAuth();
+		return;
+	}
+
 	if (process.env.NODE_ENV === "production") {
-		// 本番環境（Cloud Runなど）では、デフォルトのサービスアカウントを使用
 		initializeApp();
 	} else {
-		// ローカル開発環境では、サービスアカウントキーファイルを動的に読み込む
-		// パスを動的に構築して、tscのコンパイル時チェックを回避する
-		const keyPath = ["..", "..", ".gcloud", "firebase-admin.json"].join("/");
-		import(keyPath, {
-			assert: { type: "json" },
-		})
-			.then((serviceAccountModule) => {
-				const serviceAccount = serviceAccountModule.default;
-				initializeApp({
-					credential: cert(serviceAccount as ServiceAccount),
-				});
-			})
-			.catch((err) => {
-				console.error(
-					"Failed to load local firebase-admin.json, falling back to default credentials.",
-					err,
-				);
-				initializeApp();
+		try {
+			const keyPath = ["..", "..", ".gcloud", "firebase-admin.json"].join("/");
+			const serviceAccountModule = await import(keyPath, {
+				assert: { type: "json" },
 			});
+			const serviceAccount = serviceAccountModule.default;
+			initializeApp({
+				credential: cert(serviceAccount as ServiceAccount),
+			});
+		} catch (err) {
+			console.error(
+				"Failed to load local firebase-admin.json, falling back to default credentials.",
+				err,
+			);
+			initializeApp(); // Fallback for CI/other envs without the key
+		}
 	}
+	firestore = getFirestore();
+	auth = getAuth();
 }
-const firestore = getFirestore();
-
-const userRepo = userRepoFirestore(firestore);
-const authSessionRepo = authSessionRepoFirestore(firestore);
-const favoriteRepositoryRepo = favoriteRepositoryRepoFirestore(firestore);
-const articleLikeRepo = articleLikeRepoFirestore(firestore);
-const prRepo = prRepoFirestore(firestore);
-const github = githubClient();
-const gemini = geminiClient();
-const auth = getAuth();
-const issueRepo = issueRepoFirestore(firestore);
 
 export const buildDependencies = () => {
+	if (!firestore || !auth) {
+		throw new Error(
+			"Firebase has not been initialized. Call initializeFirebase() first.",
+		);
+	}
+
+	const userRepo = userRepoFirestore(firestore);
+	const authSessionRepo = authSessionRepoFirestore(firestore);
+	const favoriteRepositoryRepo = favoriteRepositoryRepoFirestore(firestore);
+	const articleLikeRepo = articleLikeRepoFirestore(firestore);
+	const prRepo = prRepoFirestore(firestore);
+	const github = githubClient();
+	const gemini = geminiClient();
+	const issueRepo = issueRepoFirestore(firestore);
+
 	const generalService = createGeneralService({});
 	const prService = createPrService({
 		github,
@@ -88,8 +95,8 @@ export const buildDependencies = () => {
 		github,
 		gemini,
 		prRepo,
-		userRepo, // グローバルなメモリDB（仮）
-		authSessionRepo, // グローバルなメモリDB（仮）
+		userRepo,
+		authSessionRepo,
 		favoriteRepositoryRepo,
 		articleLikeRepo,
 		generalService,
