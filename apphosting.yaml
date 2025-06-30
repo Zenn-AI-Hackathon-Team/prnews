@@ -7,6 +7,13 @@
 #   # cpu: 1
 #   # memoryMiB: 512
 
+scripts:
+  # ビルドコマンドは、package.jsonの"build"スクリプトが自動で使われるため
+  # 通常は指定不要です。もし明示的に指定したい場合は記述します。
+  # buildCommand: ...
+
+  runCommand: node frontend/.next/standalone/server.js
+
 # Environment variables and secrets.
 env:
   # Firebase Admin SDKのサービスアカウントキー
