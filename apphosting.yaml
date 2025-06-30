@@ -1,0 +1,52 @@
+env:
+  # Firebase Admin SDKのサービスアカウントキー
+  - variable: GOOGLE_APPLICATION_CREDENTIALS
+    secret: firebase-admin-sdk # これは特別な変数名で、サービスアカウントのパスを示します
+
+  # 暗号化キー
+  - variable: ENCRYPTION_KEY
+    secret: BACKEND_ENCRYPTION_KEY 
+
+  # 暗号化ソルト
+  - variable: ENCRYPTION_SALT
+    secret: BACKEND_ENCRYPTION_SALT
+
+  # Gemini APIキー
+  - variable: GEMINI_API_KEY
+    secret: BACKEND_GEMINI_API_KEY 
+
+  # GCLOUDのプロジェクトID
+  - variable:GCLOUD_PROJECT_ID
+    secret: BACKEND_GCLOUD_PROJECT_ID
+
+  # 通常の環境変数の設定
+  - variable: NEXT_PUBLIC_GITHUB_CLIENT_ID
+    value: Ov23liiT2dOmNiVJ68IA
+    
+  - variable: NEXT_PUBLIC_GITHUB_REDIRECT_URI
+    value: http://localhost:3000/
+
+  - variable: NEXT_PUBLIC_BACKEND_URL
+    value: http://localhost:8080/
+
+# Firebaseの設定
+  - variable: NEXT_PUBLIC_FIREBASE_API_KEY
+    value: AIzaSyAkbXck49loXju0dWE7GtiChtwITisoW9I
+
+  - variable: NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
+    value: prnews-dev-d8dbd.firebaseapp.com
+
+  - variable: NEXT_PUBLIC_FIREBASE_PROJECT_ID
+    value: prnews-dev-d8dbd
+
+  - variable: NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
+    value: prnews-dev-d8dbd.firebasestorage.app
+
+  - variable: NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
+    value: 1097554385183
+
+  - variable: NEXT_PUBLIC_FIREBASE_APP_ID
+    value: 1:1097554385183:web:dcbd58ed427718c193782a
+
+  - variable: NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID
+    value: G-RLC1MFJE2L
