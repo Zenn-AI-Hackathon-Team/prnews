@@ -1,21 +1,29 @@
 # Use the official Node.js 20 image.
 FROM node:20-slim
 
-# Create and change to the app directory.
+# Set the working directory
 WORKDIR /usr/src/app
 
-# Copy application dependency manifests to the container image.
-# A wildcard is used to ensure both package.json AND package-lock.json are copied.
-# Copying this separately prevents re-running npm install on every code change.
-COPY package*.json ./
+# Install pnpm
+RUN npm install -g pnpm
 
-# Install production dependencies.
-# If you have native dependencies, you'll need to install build tools.
-# RUN apt-get update && apt-get install -y build-essential
-RUN npm install --omit=dev
+# Copy root dependency management files
+COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
 
-# Copy local business logic and other files to the container.
-COPY . .
+# Copy package.json files for all workspace packages to leverage Docker cache
+COPY packages/common/package.json ./packages/common/
+COPY backend/package.json ./backend/
+
+# Install dependencies for the backend service and its workspace dependencies
+# The --filter flag tells pnpm to only install dependencies for the specified package
+RUN pnpm install --prod --filter @prnews/backend
+
+# Copy the source code for the relevant packages
+COPY packages/common/ ./packages/common/
+COPY backend/ ./backend/
+
+# Set the working directory to the backend service
+WORKDIR /usr/src/app/backend
 
 # Build the application
 RUN npm run build
