@@ -1,46 +1,37 @@
 # Stage 1: Build
-# This stage builds the entire monorepo and creates a self-contained deployment package.
 FROM node:20-slim AS builder
 
 WORKDIR /app
-
-# Install pnpm
 RUN npm install -g pnpm
 
-# Copy dependency manifests for the entire monorepo
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
-
-# Copy all package.json files to leverage Docker cache
 COPY packages/common/package.json ./packages/common/
 COPY backend/package.json ./backend/
 
-# Install all dependencies for the backend and its workspace dependencies
 RUN pnpm install --filter @prnews/backend...
 
-# Copy the rest of the source code
 COPY . .
 
-# Build the entire workspace required by the backend
 ENV NODE_ENV=production
 RUN pnpm --filter @prnews/backend... run build
 
-# Use pnpm deploy to create a self-contained, production-ready package
-# The --legacy flag is required for pnpm v10+ in this non-injected workspace context.
 RUN pnpm --filter @prnews/backend deploy --prod --legacy /deploy
 
 
 # Stage 2: Production
-# This stage uses the clean, self-contained package from the builder stage.
 FROM node:20-slim
 
 WORKDIR /app
 
-# Set environment for production
 ENV NODE_ENV=production
 ENV HOST=0.0.0.0
 
-# Copy the self-contained deployment package from the builder stage
 COPY --from=builder /deploy .
+COPY backend/entrypoint.sh .
 
-# Start the application. The node_modules is now flat and self-contained.
-CMD ["node", "dist/index.js"]
+# Fix line endings and make the entrypoint script executable
+RUN sed -i 's/\r$//' entrypoint.sh
+RUN chmod +x entrypoint.sh
+
+ENTRYPOINT ["./entrypoint.sh"]
+
