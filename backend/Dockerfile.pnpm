@@ -50,10 +50,13 @@ RUN pnpm install --prod --filter @prnews/backend... --ignore-scripts
 COPY --from=builder /app/packages/common/dist ./packages/common/dist
 COPY --from=builder /app/backend/dist ./backend/dist
 
+# Copy the entrypoint script
+COPY backend/entrypoint.sh /app/backend/entrypoint.sh
+
 WORKDIR /app/backend
 
-# Override the base image's entrypoint to allow shell commands
-ENTRYPOINT ["/bin/sh", "-c"]
+# Make the entrypoint script executable
+RUN chmod +x entrypoint.sh
 
-# Start the application with diagnostic commands, then run the app
-CMD "echo '--- DIAGNOSTIC START ---' && pwd && ls -la dist/ && echo '--- index.js content ---' && cat dist/index.js && echo '--- DIAGNOSTIC END ---' && node dist/index.js"
+# Set the entrypoint to our script
+ENTRYPOINT ["./entrypoint.sh"]
