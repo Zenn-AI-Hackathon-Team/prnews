@@ -20,8 +20,8 @@ COPY . .
 # Build the required packages
 # We use `pnpm --filter <package> build` to avoid running the root build script
 # and directly target the build script within each package.
-RUN pnpm --filter @prnews/common build
-RUN pnpm run build:backend
+RUN cd packages/common && pnpm run build && cd ../..
+RUN cd backend && pnpm run build && cd ..
 
 # Stage 2: Production - The "Kitchen Sink"
 # This approach copies the entire application, including dev dependencies,

@@ -18,10 +18,10 @@ RUN pnpm install --frozen-lockfile
 COPY . .
 
 # commonパッケージをビルド
-RUN pnpm run build:common
+RUN cd packages/common && pnpm run build && cd ../..
 
 # backendパッケージをビルド
-RUN pnpm run build:backend
+RUN cd backend && pnpm run build && cd ..
 RUN ls -R /app/backend/dist
 
 
