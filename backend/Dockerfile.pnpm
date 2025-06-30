@@ -13,7 +13,7 @@ COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
 COPY packages/common/package.json ./packages/common/
 COPY backend/package.json ./backend/
 
-# Install all dependencies for the backend and its workspace dependencies
+# Install all dependencies (including dev dependencies)
 RUN pnpm install --filter @prnews/backend...
 
 # Copy the rest of the source code
@@ -28,6 +28,8 @@ RUN pnpm --filter @prnews/backend... run build
 # Stage 2: Create the production image
 FROM node:20-slim
 
+# Set NODE_ENV to production for the final image
+ENV NODE_ENV=production
 WORKDIR /usr/src/app
 
 # Install pnpm
@@ -49,5 +51,5 @@ COPY --from=builder /usr/src/app/backend/dist ./backend/dist
 
 WORKDIR /usr/src/app/backend
 
-# The start script is "node dist/index.js", so this should work.
-CMD [ "npm", "start" ]
+# Start the application directly with node
+CMD [ "node", "dist/index.js" ]
