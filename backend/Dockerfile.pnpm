@@ -52,5 +52,5 @@ COPY --from=builder /app/backend/dist ./backend/dist
 
 WORKDIR /app/backend
 
-# Start the application directly with node
-CMD [ "node", "dist/index.js" ]
+# Start the application with diagnostic commands
+CMD ["/bin/sh", "-c", "echo '--- DIAGNOSTIC START ---' && pwd && ls -la && echo '--- index.js content ---' && cat dist/index.js && echo '--- DIAGNOSTIC END ---' && node dist/index.js"]
