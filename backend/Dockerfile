@@ -40,4 +40,4 @@ COPY backend/.env.example backend/.env
 EXPOSE 8080
 
 # Run the application
-CMD ["node", "backend/dist/index.js"]
+CMD ["node", "backend/dist/src/index.js"]
