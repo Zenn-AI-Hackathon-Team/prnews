@@ -1,3 +1,4 @@
+import { SecretManagerServiceClient } from "@google-cloud/secret-manager";
 import {
 	type ServiceAccount,
 	cert,
@@ -7,9 +8,9 @@ import {
 import { getAuth } from "firebase-admin/auth";
 import { getFirestore } from "firebase-admin/firestore";
 import { createIssueService } from "src/application/issueService";
-import serviceAccount from "../../.gcloud/firebase-admin.json" assert {
-	type: "json",
-};
+// import serviceAccount from "../../.gcloud/firebase-admin.json" assert {
+// 	type: "json",
+// };
 import { createGeneralService } from "../application/generalService";
 import { createPrService } from "../application/prService";
 import { createRankingService } from "../application/rankingService";
@@ -23,13 +24,39 @@ import { issueRepoFirestore } from "../infrastructure/repositories/issueRepoFire
 import { prRepoFirestore } from "../infrastructure/repositories/prRepoFirestore";
 import { userRepoFirestore } from "../infrastructure/repositories/userRepoFirestore";
 
+async function getServiceAccount(): Promise<ServiceAccount> {
+	if (process.env.NODE_ENV === "production") {
+		const client = new SecretManagerServiceClient();
+		const secretName = `projects/${process.env.GCLOUD_PROJECT_ID}/secrets/firebase-admin-sdk/versions/latest`; // YOUR_PROJECT_ID を置き換えてください
+
+		const [version] = await client.accessSecretVersion({ name: secretName });
+		const payload = version.payload?.data?.toString();
+
+		if (!payload) {
+			throw new Error(
+				"Secret Managerからサービスアカウントキーを取得できませんでした。",
+			);
+		}
+		return JSON.parse(payload);
+	}
+	// ローカル環境ではファイルから動的にインポート
+	const serviceAccountModule = await import(
+		"../../.gcloud/firebase-admin.json",
+		{
+			assert: { type: "json" },
+		}
+	);
+	return serviceAccountModule.default as unknown as ServiceAccount;
+}
+
 // [注意] このグローバルインスタンスは開発・検証用の仮実装です。
 // 本番運用時は必ず外部DB（Firestore等）に置き換えてください。
 
 // Firestoreインスタンスの初期化（すでに初期化済みならスキップ）
 if (getApps().length === 0) {
+	const serviceAccount = await getServiceAccount();
 	initializeApp({
-		credential: cert(serviceAccount as ServiceAccount),
+		credential: cert(serviceAccount),
 	});
 }
 const firestore = getFirestore();
