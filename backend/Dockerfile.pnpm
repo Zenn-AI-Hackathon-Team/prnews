@@ -1,4 +1,5 @@
-# Stage 1: Build the application
+# Stage 1: Build
+# This stage builds the entire monorepo to get all necessary artifacts.
 FROM node:20-slim AS builder
 
 WORKDIR /app
@@ -6,58 +7,51 @@ WORKDIR /app
 # Install pnpm
 RUN npm install -g pnpm
 
-# Copy dependency manifests
+# Copy dependency manifests for the entire monorepo
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
 
-# Copy package.json files to leverage Docker cache
+# Copy all package.json files to leverage Docker cache
 COPY packages/common/package.json ./packages/common/
 COPY backend/package.json ./backend/
 
-# Install all dependencies (including dev dependencies)
+# Install all dependencies for the backend and its workspace dependencies
 RUN pnpm install --filter @prnews/backend...
 
 # Copy the rest of the source code
-COPY packages/common/ ./packages/common/
-COPY backend/ ./backend/
+COPY . .
 
-# Build the TypeScript code for the backend and its dependencies
+# Build the entire workspace required by the backend
 ENV NODE_ENV=production
 RUN pnpm --filter @prnews/backend... run build
 
 
-# Stage 2: Create the production image
+# Stage 2: Production
+# This stage creates a clean, self-contained image for the backend service.
 FROM node:20-slim
 
-# Set NODE_ENV and HOST for production
-ENV NODE_ENV=production
-ENV HOST=0.0.0.0
 WORKDIR /app
 
-# Install pnpm
+# Set environment for production
+ENV NODE_ENV=production
+ENV HOST=0.0.0.0
+
+# Install pnpm to run the install command
 RUN npm install -g pnpm
 
-# Copy dependency manifests
-COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
+# Copy only the backend's package.json
+COPY backend/package.json .
 
-# Copy package.json files
-COPY packages/common/package.json ./packages/common/
-COPY backend/package.json ./backend/
+# Copy the built artifacts from the builder stage
+# This includes the compiled JS files for both 'backend' and its dependency 'common'
+COPY --from=builder /app/backend/dist ./dist
+COPY --from=builder /app/packages/common ./packages/common
 
-# Install only production dependencies for the backend and its workspace dependencies
-RUN pnpm install --prod --filter @prnews/backend... --ignore-scripts
+# Re-run pnpm install in a non-workspace context.
+# This will create a flat node_modules directory inside the backend,
+# which is much more robust for production environments than symlinks.
+# We also copy the lockfile to ensure dependency versions are consistent.
+COPY pnpm-lock.yaml .
+RUN pnpm install --prod
 
-# Copy the built application code from the builder stage
-COPY --from=builder /app/packages/common/dist ./packages/common/dist
-COPY --from=builder /app/backend/dist ./backend/dist
-
-# Copy the entrypoint script
-COPY backend/entrypoint.sh /app/backend/entrypoint.sh
-
-WORKDIR /app/backend
-
-# Fix line endings and make the entrypoint script executable
-RUN sed -i 's/\r$//' entrypoint.sh
-RUN chmod +x entrypoint.sh
-
-# Set the entrypoint to our script
-ENTRYPOINT ["./entrypoint.sh"]
+# Start the application using the most direct method.
+CMD ["node", "dist/index.js"]
