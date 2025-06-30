@@ -23,33 +23,31 @@ import { userRepoFirestore } from "../infrastructure/repositories/userRepoFirest
 let firestore: Firestore;
 let auth: Auth;
 
-export async function initializeFirebase() {
+export function initializeFirebase() {
 	if (getApps().length > 0) {
 		firestore = getFirestore();
 		auth = getAuth();
 		return;
 	}
 
-	if (process.env.NODE_ENV === "production") {
-		initializeApp();
-	} else {
+	const serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
+
+	if (serviceAccountJson) {
 		try {
-			const keyPath = ["..", "..", ".gcloud", "firebase-admin.json"].join("/");
-			const serviceAccountModule = await import(keyPath, {
-				assert: { type: "json" },
-			});
-			const serviceAccount = serviceAccountModule.default;
+			const serviceAccount = JSON.parse(serviceAccountJson);
 			initializeApp({
 				credential: cert(serviceAccount as ServiceAccount),
 			});
-		} catch (err) {
-			console.error(
-				"Failed to load local firebase-admin.json, falling back to default credentials.",
-				err,
-			);
-			initializeApp(); // Fallback for CI/other envs without the key
+			console.log("Firebase initialized with service account from environment variable.");
+		} catch (error) {
+			console.error("Failed to parse FIREBASE_SERVICE_ACCOUNT_JSON. Falling back to default credentials.", error);
+			initializeApp();
 		}
+	} else {
+		console.log("FIREBASE_SERVICE_ACCOUNT_JSON not found. Using default credentials.");
+		initializeApp();
 	}
+
 	firestore = getFirestore();
 	auth = getAuth();
 }

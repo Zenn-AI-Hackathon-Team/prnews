@@ -44,4 +44,5 @@ jobs:
             --image ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.GAR_REPOSITORY }}/${{ env.SERVICE_NAME }}:${{ github.sha }} \
             --region ${{ env.REGION }} \
             --platform managed \
-            --allow-unauthenticated
+            --allow-unauthenticated \
+            --set-env-vars="FIREBASE_SERVICE_ACCOUNT_JSON=${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}"
