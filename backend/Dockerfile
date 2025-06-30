@@ -18,8 +18,10 @@ RUN pnpm install --frozen-lockfile
 COPY . .
 
 # Build the required packages
-RUN pnpm run build --filter @prnews/common
-RUN pnpm run build --filter @prnews/backend
+# We use `pnpm --filter <package> build` to avoid running the root build script
+# and directly target the build script within each package.
+RUN pnpm --filter @prnews/common build
+RUN pnpm run build:backend
 
 # Stage 2: Production - The "Kitchen Sink"
 # This approach copies the entire application, including dev dependencies,
