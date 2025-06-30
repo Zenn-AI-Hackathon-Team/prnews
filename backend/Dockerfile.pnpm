@@ -16,7 +16,7 @@ COPY backend/package.json ./backend/
 
 # Install dependencies for the backend service and its workspace dependencies
 # The --filter flag tells pnpm to only install dependencies for the specified package
-RUN pnpm install --prod --filter @prnews/backend
+RUN pnpm install --prod --ignore-scripts --filter @prnews/backend
 
 # Copy the source code for the relevant packages
 COPY packages/common/ ./packages/common/
