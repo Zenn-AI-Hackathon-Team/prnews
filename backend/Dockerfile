@@ -34,6 +34,7 @@ ENV NODE_ENV=production
 
 # Copy the entire built application from the builder stage
 COPY --from=builder /app .
+COPY backend/.env.example backend/.env
 
 # Expose the port the app runs on
 EXPOSE 8080
