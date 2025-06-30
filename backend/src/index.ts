@@ -4,7 +4,7 @@ import { cors } from "hono/cors";
 import { HTTPException } from "hono/http-exception";
 import { ZodError } from "zod";
 import { buildDependencies } from "./config/di.js";
-import { createApp } from "./presentation/hono-app.js";
+import { createApp } from "./presentation/hono-app";
 import { authMiddleware } from "./presentation/middlewares/authMiddleware";
 import generalRoutes from "./presentation/routes/generalRoutes";
 import issuePrivateRoutes from "./presentation/routes/issuePrivateRoutes";
