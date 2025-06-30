@@ -21,7 +21,7 @@ COPY . .
 RUN pnpm run build:common
 
 # backendパッケージをビルド
-RUN PATH=$(pnpm bin):$PATH pnpm --filter @prnews/backend build
+RUN pnpm run build:backend
 RUN ls -R /app/backend/dist
 
 
