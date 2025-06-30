@@ -7,10 +7,6 @@
 #   # cpu: 1
 #   # memoryMiB: 512
 
-build:
-  environmentVariables:
-    GOOGLE_NODE_PNPM_VERSION: 9.0
-
 scripts:
   buildCommand: pnpm --filter frontend build
 
