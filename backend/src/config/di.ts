@@ -30,14 +30,24 @@ if (getApps().length === 0) {
 		initializeApp();
 	} else {
 		// ローカル開発環境では、サービスアカウントキーファイルを動的に読み込む
-		import("../../.gcloud/firebase-admin.json", {
+		// パスを動的に構築して、tscのコンパイル時チェックを回避する
+		const keyPath = ["..", "..", ".gcloud", "firebase-admin.json"].join("/");
+		import(keyPath, {
 			assert: { type: "json" },
-		}).then((serviceAccountModule) => {
-			const serviceAccount = serviceAccountModule.default;
-			initializeApp({
-				credential: cert(serviceAccount as ServiceAccount),
+		})
+			.then((serviceAccountModule) => {
+				const serviceAccount = serviceAccountModule.default;
+				initializeApp({
+					credential: cert(serviceAccount as ServiceAccount),
+				});
+			})
+			.catch((err) => {
+				console.error(
+					"Failed to load local firebase-admin.json, falling back to default credentials.",
+					err,
+				);
+				initializeApp();
 			});
-		});
 	}
 }
 const firestore = getFirestore();
