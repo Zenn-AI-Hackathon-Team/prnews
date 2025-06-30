@@ -39,4 +39,4 @@ COPY --from=builder /app .
 EXPOSE 8080
 
 # Run the application
-CMD ["node", "backend/dist/src/index.js"]
+CMD ["node", "backend/dist/index.js"]
