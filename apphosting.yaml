@@ -8,7 +8,7 @@
 #   # memoryMiB: 512
 
 scripts:
-  buildCommand: pnpm --filter frontend build
+  buildCommand: pnpm build
 
   runCommand: node frontend/.next/standalone/server.js
 
