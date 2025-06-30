@@ -1,7 +1,7 @@
 # Stage 1: Build the application
 FROM node:20-slim AS builder
 
-WORKDIR /usr/src/app
+WORKDIR /app
 
 # Install pnpm
 RUN npm install -g pnpm
@@ -30,7 +30,7 @@ FROM node:20-slim
 
 # Set NODE_ENV to production for the final image
 ENV NODE_ENV=production
-WORKDIR /usr/src/app
+WORKDIR /app
 
 # Install pnpm
 RUN npm install -g pnpm
@@ -46,10 +46,10 @@ COPY backend/package.json ./backend/
 RUN pnpm install --prod --filter @prnews/backend... --ignore-scripts
 
 # Copy the built application code from the builder stage
-COPY --from=builder /usr/src/app/packages/common/dist ./packages/common/dist
-COPY --from=builder /usr/src/app/backend/dist ./backend/dist
+COPY --from=builder /app/packages/common/dist ./packages/common/dist
+COPY --from=builder /app/backend/dist ./backend/dist
 
-WORKDIR /usr/src/app/backend
+WORKDIR /app/backend
 
 # Start the application directly with node
 CMD [ "node", "dist/index.js" ]
