@@ -1,18 +1,11 @@
 #!/bin/sh
-
-# Exit immediately if a command exits with a non-zero status.
 set -e
 
-echo "--- DIAGNOSTIC START (from entrypoint.sh) ---"
-echo "Current directory: $(pwd)"
-echo "Listing current directory contents:"
-ls -la
-echo "Listing dist/ directory contents:"
+echo "--- [ENTRYPOINT] Diagnostics Start ---"
+pwd
+echo "--- [ENTRYPOINT] Listing 'dist' directory: ---"
 ls -la dist/
-echo "--- index.js content ---"
-cat dist/index.js
-echo "--- DIAGNOSTIC END ---"
-
-# Execute the main application
-echo "Starting application..."
+echo "--- [ENTRYPOINT] Starting Application ---"
 node dist/index.js
+echo "--- [ENTRYPOINT] CRITICAL: Application exited unexpectedly. ---"
+exit 1

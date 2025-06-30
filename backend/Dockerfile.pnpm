@@ -55,7 +55,8 @@ COPY backend/entrypoint.sh /app/backend/entrypoint.sh
 
 WORKDIR /app/backend
 
-# Make the entrypoint script executable
+# Fix line endings and make the entrypoint script executable
+RUN sed -i 's/\r$//' entrypoint.sh
 RUN chmod +x entrypoint.sh
 
 # Set the entrypoint to our script
