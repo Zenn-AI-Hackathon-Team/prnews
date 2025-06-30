@@ -1,3 +1,5 @@
+import { promises as fs } from "node:fs";
+import path from "node:path";
 import { SecretManagerServiceClient } from "@google-cloud/secret-manager";
 import {
 	type ServiceAccount,
@@ -27,7 +29,7 @@ import { userRepoFirestore } from "../infrastructure/repositories/userRepoFirest
 async function getServiceAccount(): Promise<ServiceAccount> {
 	if (process.env.NODE_ENV === "production") {
 		const client = new SecretManagerServiceClient();
-		const secretName = `projects/${process.env.GCLOUD_PROJECT_ID}/secrets/firebase-admin-sdk/versions/latest`; // YOUR_PROJECT_ID を置き換えてください
+		const secretName = `projects/${process.env.GCLOUD_PROJECT_ID}/secrets/firebase-admin-sdk/versions/latest`;
 
 		const [version] = await client.accessSecretVersion({ name: secretName });
 		const payload = version.payload?.data?.toString();
@@ -39,14 +41,17 @@ async function getServiceAccount(): Promise<ServiceAccount> {
 		}
 		return JSON.parse(payload);
 	}
-	// ローカル環境ではファイルから動的にインポート
-	const serviceAccountModule = await import(
-		"../../.gcloud/firebase-admin.json",
-		{
-			assert: { type: "json" },
-		}
-	);
-	return serviceAccountModule.default as unknown as ServiceAccount;
+
+	try {
+		const filePath = path.join(__dirname, "../../.gcloud/firebase-admin.json");
+		const fileContent = await fs.readFile(filePath, "utf-8");
+		return JSON.parse(fileContent);
+	} catch (error) {
+		console.error(
+			"ローカルの.gcloud/firebase-admin.jsonの読み込みに失敗しました。",
+		);
+		throw error;
+	}
 }
 
 // [注意] このグローバルインスタンスは開発・検証用の仮実装です。
