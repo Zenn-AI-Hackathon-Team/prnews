@@ -1,5 +1,8 @@
 {
   "projects": {
-    "default": "prnews-dev-d8dbd"
-  }
+    "default": "prnews-c617b",
+    "prod": "prnews-c617b"
+  },
+  "targets": {},
+  "etags": {}
 }

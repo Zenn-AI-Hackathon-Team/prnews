@@ -8,5 +8,16 @@
 			"port": 5051
 		},
 		"singleProjectMode": true
+	},
+	"apphosting": {
+		"backendId": "prnews-backend-app",
+		"rootDir": "/",
+		"ignore": [
+			"node_modules",
+			".git",
+			"firebase-debug.log",
+			"firebase-debug.*.log",
+			"functions"
+		]
 	}
 }
