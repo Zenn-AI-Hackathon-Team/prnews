@@ -13,15 +13,15 @@ COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
 COPY packages/common/package.json ./packages/common/
 COPY backend/package.json ./backend/
 
-# Install all dependencies (including dev dependencies)
-RUN pnpm install --filter @prnews/backend
+# Install all dependencies for the backend and its workspace dependencies
+RUN pnpm install --filter @prnews/backend...
 
 # Copy the rest of the source code
 COPY packages/common/ ./packages/common/
 COPY backend/ ./backend/
 
-# Build the TypeScript code
-RUN pnpm --filter @prnews/backend run build
+# Build the TypeScript code for the backend and its dependencies
+RUN pnpm --filter @prnews/backend... run build
 
 
 # Stage 2: Create the production image
@@ -39,12 +39,12 @@ COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
 COPY packages/common/package.json ./packages/common/
 COPY backend/package.json ./backend/
 
-# Install only production dependencies
-RUN pnpm install --prod --filter @prnews/backend --ignore-scripts
+# Install only production dependencies for the backend and its workspace dependencies
+RUN pnpm install --prod --filter @prnews/backend... --ignore-scripts
 
 # Copy the built application code from the builder stage
+COPY --from=builder /usr/src/app/packages/common/dist ./packages/common/dist
 COPY --from=builder /usr/src/app/backend/dist ./backend/dist
-COPY backend/package.json ./backend/
 
 WORKDIR /usr/src/app/backend
 
