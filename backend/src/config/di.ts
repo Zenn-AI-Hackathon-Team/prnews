@@ -7,9 +7,6 @@ import {
 import { getAuth } from "firebase-admin/auth";
 import { getFirestore } from "firebase-admin/firestore";
 import { createIssueService } from "src/application/issueService";
-import serviceAccount from "../../.gcloud/firebase-admin.json" assert {
-	type: "json",
-};
 import { createGeneralService } from "../application/generalService";
 import { createPrService } from "../application/prService";
 import { createRankingService } from "../application/rankingService";
@@ -28,9 +25,20 @@ import { userRepoFirestore } from "../infrastructure/repositories/userRepoFirest
 
 // Firestoreインスタンスの初期化（すでに初期化済みならスキップ）
 if (getApps().length === 0) {
-	initializeApp({
-		credential: cert(serviceAccount as ServiceAccount),
-	});
+	if (process.env.NODE_ENV === "production") {
+		// 本番環境（Cloud Runなど）では、デフォルトのサービスアカウントを使用
+		initializeApp();
+	} else {
+		// ローカル開発環境では、サービスアカウントキーファイルを動的に読み込む
+		import("../../.gcloud/firebase-admin.json", {
+			assert: { type: "json" },
+		}).then((serviceAccountModule) => {
+			const serviceAccount = serviceAccountModule.default;
+			initializeApp({
+				credential: cert(serviceAccount as ServiceAccount),
+			});
+		});
+	}
 }
 const firestore = getFirestore();
 

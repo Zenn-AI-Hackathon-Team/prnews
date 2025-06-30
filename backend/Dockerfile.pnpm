@@ -21,6 +21,7 @@ COPY packages/common/ ./packages/common/
 COPY backend/ ./backend/
 
 # Build the TypeScript code for the backend and its dependencies
+ENV NODE_ENV=production
 RUN pnpm --filter @prnews/backend... run build
 
 
