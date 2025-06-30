@@ -1,32 +1,52 @@
-# Use the official Node.js 20 image.
-FROM node:20-slim
+# Stage 1: Build the application
+FROM node:20-slim AS builder
 
-# Set the working directory
 WORKDIR /usr/src/app
 
 # Install pnpm
 RUN npm install -g pnpm
 
-# Copy root dependency management files
+# Copy dependency manifests
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
 
-# Copy package.json files for all workspace packages to leverage Docker cache
+# Copy package.json files to leverage Docker cache
 COPY packages/common/package.json ./packages/common/
 COPY backend/package.json ./backend/
 
-# Install dependencies for the backend service and its workspace dependencies
-# The --filter flag tells pnpm to only install dependencies for the specified package
-RUN pnpm install --prod --ignore-scripts --filter @prnews/backend
+# Install all dependencies (including dev dependencies)
+RUN pnpm install --filter @prnews/backend
 
-# Copy the source code for the relevant packages
+# Copy the rest of the source code
 COPY packages/common/ ./packages/common/
 COPY backend/ ./backend/
 
-# Set the working directory to the backend service
+# Build the TypeScript code
+RUN pnpm --filter @prnews/backend run build
+
+
+# Stage 2: Create the production image
+FROM node:20-slim
+
+WORKDIR /usr/src/app
+
+# Install pnpm
+RUN npm install -g pnpm
+
+# Copy dependency manifests
+COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
+
+# Copy package.json files
+COPY packages/common/package.json ./packages/common/
+COPY backend/package.json ./backend/
+
+# Install only production dependencies
+RUN pnpm install --prod --filter @prnews/backend --ignore-scripts
+
+# Copy the built application code from the builder stage
+COPY --from=builder /usr/src/app/backend/dist ./backend/dist
+COPY backend/package.json ./backend/
+
 WORKDIR /usr/src/app/backend
 
-# Build the application
-RUN npm run build
-
-# Run the web service on container startup.
+# The start script is "node dist/index.js", so this should work.
 CMD [ "npm", "start" ]
