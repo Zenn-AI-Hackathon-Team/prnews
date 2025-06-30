@@ -50,4 +50,4 @@ jobs:
             --region ${{ env.REGION }} \
             --platform managed \
             --allow-unauthenticated \
-            --env-vars-from-file=env.yaml
+            --env-vars-file=env.yaml
