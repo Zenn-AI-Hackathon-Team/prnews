@@ -107,12 +107,6 @@ serve(
 	(info) => {
 		console.log(`Server is running on http://localhost:${info.port}`);
 	},
-)
-	.then(() => {
-		console.log("Server started successfully.");
-	})
-	.catch((error) => {
-		console.error("Failed to start server:", error);
-	});
+);
 
 export type AppType = typeof api;
