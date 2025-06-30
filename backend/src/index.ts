@@ -100,7 +100,7 @@ async function main() {
 
 	const port = Number(process.env.PORT) || 8080;
 
-	serve(
+	await serve(
 		{
 			fetch: app.fetch,
 			port: port,
