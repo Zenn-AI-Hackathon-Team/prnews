@@ -1,5 +1,5 @@
 # Stage 1: Build
-# This stage builds the entire monorepo to get all necessary artifacts.
+# This stage builds the entire monorepo and creates a self-contained deployment package.
 FROM node:20-slim AS builder
 
 WORKDIR /app
@@ -24,9 +24,13 @@ COPY . .
 ENV NODE_ENV=production
 RUN pnpm --filter @prnews/backend... run build
 
+# Use pnpm deploy to create a self-contained, production-ready package
+# This command copies the backend package and its dependencies to the /deploy directory
+RUN pnpm --filter @prnews/backend deploy --prod /deploy
+
 
 # Stage 2: Production
-# This stage creates a clean, self-contained image for the backend service.
+# This stage uses the clean, self-contained package from the builder stage.
 FROM node:20-slim
 
 WORKDIR /app
@@ -35,23 +39,8 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV HOST=0.0.0.0
 
-# Install pnpm to run the install command
-RUN npm install -g pnpm
+# Copy the self-contained deployment package from the builder stage
+COPY --from=builder /deploy .
 
-# Copy only the backend's package.json
-COPY backend/package.json .
-
-# Copy the built artifacts from the builder stage
-# This includes the compiled JS files for both 'backend' and its dependency 'common'
-COPY --from=builder /app/backend/dist ./dist
-COPY --from=builder /app/packages/common ./packages/common
-
-# Re-run pnpm install in a non-workspace context.
-# This will create a flat node_modules directory inside the backend,
-# which is much more robust for production environments than symlinks.
-# We also copy the lockfile to ensure dependency versions are consistent.
-COPY pnpm-lock.yaml .
-RUN pnpm install --prod
-
-# Start the application using the most direct method.
+# Start the application. The node_modules is now flat and self-contained.
 CMD ["node", "dist/index.js"]
