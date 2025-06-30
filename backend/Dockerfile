@@ -39,5 +39,9 @@ COPY backend/.env.example backend/.env
 # Expose the port the app runs on
 EXPOSE 8080
 
+# Debugging: List contents of /app to verify files
+RUN ls -la /app
+RUN ls -la /app/backend
+
 # Run the application
 CMD ["tail", "-f", "/dev/null"]
