@@ -15,7 +15,7 @@ env:
 
   # 暗号化キー
   - variable: ENCRYPTION_KEY
-    secret: BACKEND_ENCRYPTION_KEY 
+    secret: BACKEND_ENCRYPTION_KEY
 
   # 暗号化ソルト
   - variable: ENCRYPTION_SALT
@@ -23,23 +23,23 @@ env:
 
   # Gemini APIキー
   - variable: GEMINI_API_KEY
-    secret: BACKEND_GEMINI_API_KEY 
+    secret: BACKEND_GEMINI_API_KEY
 
   # GCLOUDのプロジェクトID
-  - variable:GCLOUD_PROJECT_ID
+  - variable: GCLOUD_PROJECT_ID
     secret: BACKEND_GCLOUD_PROJECT_ID
 
   # 通常の環境変数の設定
   - variable: NEXT_PUBLIC_GITHUB_CLIENT_ID
     value: Ov23liiT2dOmNiVJ68IA
-    
+
   - variable: NEXT_PUBLIC_GITHUB_REDIRECT_URI
     value: http://localhost:3000/
 
   - variable: NEXT_PUBLIC_BACKEND_URL
     value: http://localhost:8080/
 
-# Firebaseの設定
+  # Firebaseの設定
   - variable: NEXT_PUBLIC_FIREBASE_API_KEY
     value: AIzaSyAkbXck49loXju0dWE7GtiChtwITisoW9I
 
