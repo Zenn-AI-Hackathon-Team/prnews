@@ -28,8 +28,9 @@ RUN pnpm --filter @prnews/backend... run build
 # Stage 2: Create the production image
 FROM node:20-slim
 
-# Set NODE_ENV to production for the final image
+# Set NODE_ENV and HOST for production
 ENV NODE_ENV=production
+ENV HOST=0.0.0.0
 WORKDIR /app
 
 # Install pnpm
