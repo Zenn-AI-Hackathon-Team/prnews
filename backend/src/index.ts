@@ -113,9 +113,8 @@ async function main() {
 	return api;
 }
 
-// Start the application
-main().then((api) => {
-	// Export the type for RPC
-	type AppType = typeof api;
-	(global as any).AppType = AppType;
-});
+// Start the application and get the api object for type export
+const api = await main();
+
+// Export the type for RPC
+export type AppType = typeof api;
