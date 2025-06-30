@@ -16,10 +16,12 @@ import userPrivateRoutes from "./presentation/routes/userPrivateRoutes";
 import userPublicRoutes from "./presentation/routes/userPublicRoutes";
 
 async function main() {
-	// Initialize Firebase and wait for it to be ready
+	console.log("Step 1: Starting main function...");
 	await initializeFirebase();
+	console.log("Step 2: Firebase initialized successfully.");
 
 	const app = createApp();
+	console.log("Step 3: Hono app created.");
 
 	app.use(
 		"*",
@@ -27,7 +29,7 @@ async function main() {
 			origin: ["http://localhost:3000"],
 			allowHeaders: ["Authorization", "Content-Type"],
 			allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-			credentials: true, // Cookieの送受信を許可
+			credentials: true,
 		}),
 	);
 
@@ -47,16 +49,7 @@ async function main() {
 		c.set("issueService", deps.issueService);
 		await next();
 	});
-
-	app.doc("/specification", {
-		openapi: "3.0.3",
-		info: {
-			version: "1.0.0",
-			title: "PR News Backend API",
-		},
-	});
-
-	app.get("/doc", swaggerUI({ url: "/specification" }));
+	console.log("Step 4: Core middleware applied.");
 
 	const api = app
 		.route("/", generalRoutes)
@@ -68,15 +61,22 @@ async function main() {
 		.route("/", userPrivateRoutes)
 		.route("/", issuePrivateRoutes)
 		.route("/", prPrivateRoutes);
+	console.log("Step 5: All routes applied.");
 
+	app.doc("/specification", {
+		openapi: "3.0.3",
+		info: {
+			version: "1.0.0",
+			title: "PR News Backend API",
+		},
+	});
+	app.get("/doc", swaggerUI({ url: "/specification" }));
 	app.openAPIRegistry.registerComponent("securitySchemes", "bearerAuth", {
 		type: "http",
 		scheme: "bearer",
 		bearerFormat: "JWT",
 		description: "Firebase IDトークンを Bearer トークンとして指定します。",
 	});
-
-	// グローバルエラーハンドラ
 	app.onError((err, c) => {
 		if (err instanceof HTTPException) {
 			if (err.cause instanceof ZodError) {
@@ -97,8 +97,10 @@ async function main() {
 			500,
 		);
 	});
+	console.log("Step 6: OpenAPI docs and error handler applied.");
 
 	const port = Number(process.env.PORT) || 8080;
+	console.log(`Step 7: Attempting to start server on 0.0.0.0:${port}`);
 
 	await serve(
 		{
@@ -107,15 +109,18 @@ async function main() {
 			hostname: "0.0.0.0",
 		},
 		(info) => {
-			console.log(`Server is running on http://${info.address}:${info.port}`);
+			console.log(
+				`SUCCESS: Server is running and listening on http://${info.address}:${info.port}`,
+			);
 		},
 	);
 
+	console.log(
+		"CRITICAL: serve() function has completed. This should not happen if the server is running correctly.",
+	);
 	return api;
 }
 
-// Start the application and get the api object for type export
 const api = await main();
 
-// Export the type for RPC
 export type AppType = typeof api;
