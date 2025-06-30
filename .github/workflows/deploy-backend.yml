@@ -38,6 +38,11 @@ jobs:
           docker build -t ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.GAR_REPOSITORY }}/${{ env.SERVICE_NAME }}:${{ github.sha }} -f ./backend/Dockerfile.pnpm .
           docker push ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.GAR_REPOSITORY }}/${{ env.SERVICE_NAME }}:${{ github.sha }}
 
+      - name: Create environment variables file
+        run: |
+          echo "FIREBASE_SERVICE_ACCOUNT_JSON: |" > env.yaml
+          echo "${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}" | sed 's/^/  /' >> env.yaml
+
       - name: Deploy to Cloud Run
         run: |
           gcloud run deploy ${{ env.SERVICE_NAME }} \
@@ -45,4 +50,4 @@ jobs:
             --region ${{ env.REGION }} \
             --platform managed \
             --allow-unauthenticated \
-            --set-env-vars="FIREBASE_SERVICE_ACCOUNT_JSON='${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}'"
+            --env-vars-from-file=env.yaml
