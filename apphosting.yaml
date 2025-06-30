@@ -9,7 +9,7 @@
 
 build:
   environmentVariables:
-    GOOGLE_NODE_PNPM_VERSION: 10.11.0
+    GOOGLE_NODE_PNPM_VERSION: 9.7.0
 
 scripts:
   buildCommand: pnpm --filter frontend build
