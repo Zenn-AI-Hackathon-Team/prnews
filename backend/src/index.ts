@@ -98,7 +98,7 @@ app.onError((err, c) => {
 	);
 });
 
-console.log(`Attempting to start server on port: ${process.env.PORT || 8080}`);
+console.log("Attempting to start server...");
 serve(
 	{
 		fetch: app.fetch,

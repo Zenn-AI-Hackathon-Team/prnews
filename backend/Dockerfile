@@ -40,4 +40,4 @@ COPY backend/.env.example backend/.env
 EXPOSE 8080
 
 # Run the application
-CMD ["node", "backend/test-server.js"]
+CMD ["tail", "-f", "/dev/null"]
